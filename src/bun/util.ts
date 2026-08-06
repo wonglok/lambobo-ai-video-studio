@@ -218,6 +218,33 @@ export async function runSetup({}: {}): Promise<SetupState> {
     res.end();
   });
 
+  app.get("/api/render-video", async (req, res) => {
+    // Set SSE headers
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: string, data: object) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    send("progress", {
+      step: "init",
+      status: "running",
+      label: "Starting setup...",
+    });
+
+    await tryRenderVideo({
+      send: send,
+    });
+
+    send("complete", { success: true, port: BACKEND_PORT });
+    res.end();
+  });
+
   app.listen(BACKEND_PORT);
 
   return setupState;
@@ -411,8 +438,7 @@ async function installPythonDependencies(): Promise<boolean> {
   return true;
 }
 
-let backendProcess: any;
-
+let firstVideoProcess: any;
 async function tryRenderVideo({
   send,
 }: {
@@ -429,9 +455,9 @@ async function tryRenderVideo({
 
   const uvPath = await getUvPath();
 
-  if (backendProcess) {
-    if (!backendProcess?.killed) {
-      backendProcess.kill();
+  if (firstVideoProcess) {
+    if (!firstVideoProcess?.killed) {
+      firstVideoProcess.kill();
     }
   }
 
@@ -443,7 +469,7 @@ async function tryRenderVideo({
     return true;
   }
 
-  backendProcess = spawn(
+  firstVideoProcess = spawn(
     [
       uvPath,
       "run",
@@ -481,10 +507,12 @@ async function tryRenderVideo({
 
   // Log backend output and forward to UI
   (async () => {
-    const reader = backendProcess?.stdout.getReader();
+    const reader = firstVideoProcess?.stdout.getReader();
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done) {
+        break;
+      }
       const text = new TextDecoder().decode(value);
       console.log("[Backend]", text);
       send("log", { text: text });
@@ -493,17 +521,19 @@ async function tryRenderVideo({
 
   // Log backend output and forward to UI
   (async () => {
-    const reader = backendProcess?.stderr.getReader();
+    const reader = firstVideoProcess?.stderr.getReader();
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done) {
+        break;
+      }
       const text = new TextDecoder().decode(value);
       console.log("[Backend]", text);
       send("log", { text: text });
     }
   })();
 
-  let proc: Subprocess = backendProcess;
+  let proc: Subprocess = firstVideoProcess;
 
   await new Promise(async (resolve) => {
     if (await proc.exited) {
@@ -516,43 +546,3 @@ async function tryRenderVideo({
 
   return true;
 }
-
-/*
-const result = await runCommand(
-    uvPath,
-    [
-      "run",
-      "ltx-2-mlx",
-      "generate",
-      //
-      "--model",
-      "dgrauet/ltx-2.3-mlx-q4",
-      //
-      "--prompt",
-      `${JSON.stringify("draw me a happy hamster.")}`,
-      //
-      "--distilled",
-      "--low-ram",
-      "--frames",
-      "9",
-      "--width",
-      "360",
-      "--height",
-      "640",
-      "--frame-rate",
-      "24",
-      //
-      "--output",
-      `${join(OUTPUT_DIR, "first-time-setup.mp4")}`,
-    ],
-    {
-      cwd: ltxFolder,
-    },
-  );
-
-  if (!result.success) {
-    console.error("Failed to generate video", result.error);
-    return false;
-  }
-
-*/
