@@ -430,8 +430,11 @@ async function tryRenderVideo({
   const uvPath = await getUvPath();
 
   if (backendProcess) {
-    backendProcess.kill();
+    if (!backendProcess?.killed) {
+      backendProcess.kill();
+    }
   }
+
   backendProcess = spawn(
     [
       uvPath,
@@ -496,6 +499,9 @@ async function tryRenderVideo({
 
   await new Promise(async (resolve) => {
     if (await proc.exited) {
+      if (!(await proc.killed)) {
+        proc.kill();
+      }
       resolve(null);
     }
   });
