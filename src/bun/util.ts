@@ -435,6 +435,14 @@ async function tryRenderVideo({
     }
   }
 
+  if (!existsSync(join(OUTPUT_DIR, "checker"))) {
+    mkdirSync(join(OUTPUT_DIR, "checker"), { recursive: true });
+  }
+
+  if (existsSync(join(OUTPUT_DIR, "checker", "first-time-setup.mp4"))) {
+    return true;
+  }
+
   backendProcess = spawn(
     [
       uvPath,
@@ -455,12 +463,12 @@ async function tryRenderVideo({
       "--width",
       "360",
       "--height",
-      "640",
+      "360",
       "--frame-rate",
       "24",
       //
       "--output",
-      `${join(OUTPUT_DIR, "first-time-setup.mp4")}`,
+      `${join(OUTPUT_DIR, "checker", "first-time-setup.mp4")}`,
     ],
     {
       cwd: ltxFolder,
