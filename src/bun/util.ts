@@ -36,7 +36,6 @@ async function getMainViewUrl(): Promise<string> {
 // const APP_NAME = "Media Studio by loklok";
 const APP_DATA_DIR = join(homedir(), "media-studio");
 const PYTHON_DIR = join(APP_DATA_DIR, "python-src");
-const VOICES_DIR = join(APP_DATA_DIR, "voices");
 const OUTPUT_DIR = join(APP_DATA_DIR, "output");
 const BACKEND_PORT_START = 8765;
 let BACKEND_PORT = BACKEND_PORT_START;
@@ -67,7 +66,7 @@ let setupState: SetupState = {
 };
 
 export async function runSetup({}: {}): Promise<SetupState> {
-  [APP_DATA_DIR, PYTHON_DIR, VOICES_DIR, OUTPUT_DIR].forEach((dir) => {
+  [APP_DATA_DIR, PYTHON_DIR, OUTPUT_DIR].forEach((dir) => {
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
     }
