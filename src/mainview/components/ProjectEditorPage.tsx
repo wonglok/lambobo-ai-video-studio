@@ -22,7 +22,14 @@ export default function ProjectEditorPage() {
   // ========== SVG Icons ==========
 
   const BackIcon = (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
       <line x1="19" y1="12" x2="5" y2="12" />
       <polyline points="12 19 5 12 12 5" />
     </svg>
@@ -32,11 +39,20 @@ export default function ProjectEditorPage() {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-tiffany-50">
         <div className="w-16 h-16 bg-tiffany-100 rounded-2xl flex items-center justify-center mb-4">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#81d8d0" strokeWidth="1.5">
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#81d8d0"
+            strokeWidth="1.5"
+          >
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
           </svg>
         </div>
-        <p className="text-sm font-medium text-tiffany-800 mb-3">Project not found</p>
+        <p className="text-sm font-medium text-tiffany-800 mb-3">
+          Project not found
+        </p>
         <button
           onClick={() => navigate("/app")}
           className="flex items-center gap-1.5 px-4 py-2 bg-tiffany-100 hover:bg-tiffany-200 text-tiffany-700 text-sm font-medium rounded-xl transition-colors"
@@ -60,9 +76,13 @@ export default function ProjectEditorPage() {
           Back
         </button>
         <div className="flex-1">
-          <h1 className="text-lg font-semibold text-tiffany-900 tracking-tight">{project.name}</h1>
+          <h1 className="text-lg font-semibold text-tiffany-900 tracking-tight">
+            {project.name}
+          </h1>
           {project.description && (
-            <p className="text-xs text-tiffany-600/60 mt-0.5">{project.description}</p>
+            <p className="text-xs text-tiffany-600/60 mt-0.5">
+              {project.description}
+            </p>
           )}
         </div>
       </div>
@@ -82,11 +102,16 @@ export default function ProjectEditorPage() {
               <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-tiffany-900 tracking-tight mb-2">Hello World!</h2>
+          <h2 className="text-2xl font-bold text-tiffany-900 tracking-tight mb-2">
+            Hello World!
+          </h2>
           <p className="text-sm text-tiffany-600/70 max-w-md leading-relaxed">
             Project editor for{" "}
-            <span className="text-tiffany-500 font-semibold">{project.name}</span> is
-            coming soon. This is where you'll create and edit your media content.
+            <span className="text-tiffany-500 font-semibold">
+              {project.name}
+            </span>{" "}
+            is coming soon. This is where you'll create and edit your media
+            content.
           </p>
         </div>
       </div>
