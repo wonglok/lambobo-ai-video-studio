@@ -53,12 +53,14 @@ interface SetupState {
   depsInstalled: boolean;
   backendRunning: boolean;
   imageTestRendered: boolean;
+  imageEditTestRendered: boolean;
   videoTestRendered: boolean;
   allOK: boolean;
   error?: string;
 }
 
 let setupState: SetupState = {
+  imageEditTestRendered: false,
   port: "",
   uvInstalled: false,
   pythonInstalled: false,
@@ -236,6 +238,19 @@ export async function runSetup({}: {}): Promise<SetupState> {
       // Non-fatal: still mark setup as complete
       console.warn("Test video render failed, continuing...");
     }
+
+    // Step 6: Test edit image
+    setupState.imageEditTestRendered = await runStep(
+      "edit-image",
+      "Test editing image task...",
+      async () => testRenderEditImage({ send }),
+    );
+    if (!setupState.imageEditTestRendered) {
+      // Non-fatal: still mark setup as complete
+      console.warn("Test image edit failed, continuing...");
+    }
+
+    //
 
     setupState.allOK = true;
     send("complete", { success: true, port: BACKEND_PORT });
@@ -729,6 +744,107 @@ async function testRenderVideo({
       step: "render-video",
       status: "error",
       label: "Rendering test video...",
+      error: stderrText || `Process exited with code ${exitCode}`,
+    });
+  }
+
+  return success;
+}
+
+// ========== Render Functions ==========
+
+let firstImageEdit: Subprocess | null = null;
+
+async function testRenderEditImage({
+  send,
+}: {
+  send: (event: string, data: object) => void;
+}): Promise<boolean> {
+  console.log("Try Render Image...");
+
+  const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
+  if (!existsSync(pythonAppSrcDir)) {
+    mkdirSync(pythonAppSrcDir, { recursive: true });
+  }
+
+  const zImageFolder = join(pythonAppSrcDir, "qwen-image-mps");
+  const uvPath = await getUvPath();
+
+  // Kill any previous image process
+  if (firstImageEdit && !firstImageEdit.killed) {
+    firstImageEdit.kill();
+  }
+
+  if (!existsSync(join(OUTPUT_DIR, "welcome"))) {
+    mkdirSync(join(OUTPUT_DIR, "welcome"), { recursive: true });
+  }
+
+  //
+  const outputPath = join(OUTPUT_DIR, "welcome", "thank-you-edit.png");
+  if (existsSync(outputPath)) {
+    console.log("Image already rendered, skipping.");
+    return true;
+  }
+
+  const lambobo = join(
+    import.meta.path,
+    "..",
+    "..",
+    "python-src",
+    "images",
+    "lambobo.png",
+  );
+
+  firstImageEdit = spawn(
+    [
+      uvPath,
+      "run",
+      "qwen-image-mps",
+      "edit",
+      "-i",
+      lambobo,
+      "-p",
+      "Change the background to sunset",
+      "-o",
+      outputPath,
+    ],
+    {
+      cwd: zImageFolder,
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  );
+
+  const proc: Subprocess = firstImageEdit;
+
+  // Stream stdout and stderr concurrently (cast: we always use "pipe" mode)
+  const stdoutPromise = streamProcessOutput(
+    proc.stdout as ReadableStream<Uint8Array>,
+    "EditImage",
+    send,
+  );
+  const stderrText = await streamProcessOutput(
+    proc.stderr as ReadableStream<Uint8Array>,
+    "EditImage",
+    send,
+  );
+  await stdoutPromise;
+
+  // Wait for process to exit and check result
+  const exitCode = await proc.exited;
+  const success = exitCode === 0 && existsSync(outputPath);
+
+  if (success) {
+    send("progress", {
+      step: "edit-image",
+      status: "completed",
+      label: "Processing edit image task...",
+    });
+  } else {
+    send("progress", {
+      step: "edit-image",
+      status: "error",
+      label: "Processing edit image task...",
       error: stderrText || `Process exited with code ${exitCode}`,
     });
   }
