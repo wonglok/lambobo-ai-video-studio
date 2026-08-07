@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { type Subprocess, spawn } from "bun";
 import Electrobun, {
@@ -11,6 +17,8 @@ import { homedir } from "node:os";
 import express from "express";
 import cors from "cors";
 import { renderMediaRoutes } from "./render-media";
+import { readdir } from "node:fs/promises";
+import { rename } from "node:fs/promises";
 // import { execSync } from "node:child_process";
 
 const DEV_SERVER_PORT = 5173;
@@ -814,11 +822,14 @@ async function testQwenImageEditGeneration({
       "qwen-image-mps",
       "edit",
       "-i",
-      lambobo,
+      JSON.stringify(lambobo),
       "-p",
       "Change the background to sunset",
+      "--ultra-fast",
+      "--quantization",
+      "Q4_0",
       "--output",
-      outputPath,
+      JSON.stringify(outputPath),
     ],
     {
       cwd: zImageFolder,
@@ -913,19 +924,30 @@ async function testQwenImageGeneration({
   //   "lambobo.png",
   // );
 
+  let tempFolder = join(
+    OUTPUT_DIR,
+    "welcome",
+    "generation-temp",
+    `_${Math.random().toString(36).slice(2, 9)}`,
+  );
+  mkdirSync(tempFolder, { recursive: true });
+
   firstQwenImageGen = spawn(
     [
       uvPath,
       "run",
       "qwen-image-mps",
       "generate",
+
       "-p",
       "Draw a sunset",
+      "--outdir",
+      JSON.stringify(tempFolder),
       "--ultra-fast",
+      "--quantization",
+      "Q4_0",
       "--aspect",
       "16:9",
-      "--outdir",
-      dirname(outputPath),
     ],
     {
       cwd: binaryFolder,
@@ -951,9 +973,32 @@ async function testQwenImageGeneration({
 
   // Wait for process to exit and check result
   const exitCode = await proc.exitCode;
-  const success = exitCode === 0 && existsSync(outputPath);
+  const success = exitCode === 0;
 
   if (success) {
+    // please list the first file in tempFolder
+
+    async function listFiles(directoryPath: string) {
+      try {
+        const files = await readdir(directoryPath);
+        console.log(files); // Array of file and folder names
+
+        return files;
+      } catch (err) {
+        console.error("Error reading directory:", err);
+        return [];
+      }
+    }
+
+    const items = await listFiles(`${tempFolder}`);
+
+    for await (let item of items) {
+      if (item.includes(".mp4")) {
+        await rename(item, join(outputPath));
+      }
+    }
+    unlinkSync(tempFolder);
+
     send("progress", {
       step: "qwen-image",
       status: "completed",
