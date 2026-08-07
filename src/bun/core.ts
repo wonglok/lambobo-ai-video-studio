@@ -10,7 +10,7 @@ import Electrobun, {
 import { homedir } from "node:os";
 import express from "express";
 import cors from "cors";
-import { execSync } from "node:child_process";
+// import { execSync } from "node:child_process";
 
 const DEV_SERVER_PORT = 5173;
 const DEV_SERVER_URL = `http://localhost:${DEV_SERVER_PORT}`;
@@ -529,7 +529,7 @@ async function testRenderImage({
       "run",
       "z-image-mps.py",
       "-p",
-      "A very cute lamb stadning on two feet, two hands. the image is render in kids cartoon 3d movie style. a line of text that says: Thank you so much for using Lambobo AI Studio!",
+      "A very cute lamb stadning on two feet, two hands at a park. The image is render in kids cartoon 3d movie style. a line of text that says: Thank you so much for using Lambobo AI Studio!",
       "--aspect",
       "1:1",
       "--height",
