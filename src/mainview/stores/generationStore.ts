@@ -126,7 +126,10 @@ async function readSSEStream(
 
 // ========== CSV Parser ==========
 
-function parseCsv(text: string): { rows: Record<string, string>[]; columns: string[] } {
+function parseCsv(text: string): {
+  rows: Record<string, string>[];
+  columns: string[];
+} {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length === 0) return { rows: [], columns: [] };
 
@@ -188,7 +191,7 @@ const initialImage: ImageState = {
 };
 
 const initialVideo: VideoState = {
-  prompt: `a teenage beaver boy says: "Hi John Wayne, how are you? my name is beaver atlas.” `,
+  prompt: `A teenage beaver boy says: "Hi {{name}}! my name is beaver atlas." `,
   duration: 5,
   generating: false,
   result: null,
@@ -482,7 +485,10 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
   uploadCsv: (base64, filename) => {
     try {
       // Decode base64 (strip data URL prefix if present)
-      const raw = base64.replace(/^data:text\/csv;base64,/, "").replace(/^data:application\/csv;base64,/, "").replace(/^data:text\/plain;base64,/, "");
+      const raw = base64
+        .replace(/^data:text\/csv;base64,/, "")
+        .replace(/^data:application\/csv;base64,/, "")
+        .replace(/^data:text\/plain;base64,/, "");
       const text = atob(raw);
       const { rows, columns } = parseCsv(text);
       set({
@@ -509,7 +515,11 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     const { video, csvRows, batchRunning } = get();
     if (batchRunning || csvRows.length === 0) return;
 
-    set({ batchRunning: true, batchProgress: { current: 0, total: csvRows.length }, batchCancelRequested: false });
+    set({
+      batchRunning: true,
+      batchProgress: { current: 0, total: csvRows.length },
+      batchCancelRequested: false,
+    });
 
     for (let i = 0; i < csvRows.length; i++) {
       if (get().batchCancelRequested) break;
@@ -525,9 +535,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       // Call the single-video generation with the rendered prompt
       // We use the existing generateVideo logic but inline it here for batch
       let resolvedImagePath =
-        get().uploadedImagePath ||
-        get().uploadedImageUrl ||
-        get().image.result;
+        get().uploadedImagePath || get().uploadedImageUrl || get().image.result;
 
       if (!resolvedImagePath) continue;
 
@@ -542,7 +550,8 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       if (resolvedImagePath.startsWith("file://")) {
         resolvedImagePath = resolvedImagePath.slice(7);
       }
-      resolvedImagePath = resolvedImagePath.split("/").pop() || resolvedImagePath;
+      resolvedImagePath =
+        resolvedImagePath.split("/").pop() || resolvedImagePath;
 
       set((s) => ({
         video: {
@@ -583,7 +592,10 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
               set((s) => ({
                 video: {
                   ...s.video,
-                  logs: [...s.video.logs, `[${i + 1}/${csvRows.length}] ${data.text as string}`],
+                  logs: [
+                    ...s.video.logs,
+                    `[${i + 1}/${csvRows.length}] ${data.text as string}`,
+                  ],
                 },
               }));
               break;
@@ -614,7 +626,11 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       }
     }
 
-    set({ batchRunning: false, batchProgress: null, batchCancelRequested: false });
+    set({
+      batchRunning: false,
+      batchProgress: null,
+      batchCancelRequested: false,
+    });
   },
 
   cancelBatch: () => {
