@@ -180,6 +180,28 @@ function parseCsv(text: string): {
   return { rows, columns: headers };
 }
 
+// ========== Beep ==========
+
+function playBeep() {
+  try {
+    const ctx = new (
+      window.AudioContext || (window as any).webkitAudioContext
+    )();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.4);
+  } catch {
+    // silently ignore if audio not available
+  }
+}
+
 // ========== Initial State ==========
 
 const initialImage: ImageState = {
@@ -191,7 +213,7 @@ const initialImage: ImageState = {
 };
 
 const initialVideo: VideoState = {
-  prompt: `Teenage beaver boy says: "Hi {{name}}! I'm beaver." Keep the scene as clean as possible.`,
+  prompt: `[Teenage Beaver Boy]: "Hi {{name}}! I'm beaver." `,
   duration: 5,
   generating: false,
   result: null,
@@ -626,11 +648,16 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       }
     }
 
+    const finished = !get().batchCancelRequested;
     set({
       batchRunning: false,
       batchProgress: null,
       batchCancelRequested: false,
     });
+
+    if (finished) {
+      playBeep();
+    }
   },
 
   cancelBatch: () => {

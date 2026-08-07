@@ -646,41 +646,6 @@ export default function ProjectEditorPage() {
                 Open Output Folder
               </button>
 
-              {/* Generate button (video) */}
-              <button
-                onClick={handleGenerateVideo}
-                disabled={
-                  store.video.generating ||
-                  store.batchRunning ||
-                  !store.video.prompt.trim() ||
-                  store.uploading
-                }
-                className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-600 hover:bg-tiffany-700 active:bg-tiffany-800 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
-              >
-                {store.video.generating ? (
-                  <>
-                    <svg
-                      className="animate-spin"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
-                      <path d="M12 2a10 10 0 0 1 10 10" strokeOpacity="0.75" />
-                    </svg>
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    {SparkleIcon}
-                    {`Generate 1 Video (No Template support)`}
-                  </>
-                )}
-              </button>
-
               {/* Batch generate button */}
               {store.csvRows.length > 0 && (
                 <div className="space-y-2">
@@ -728,6 +693,41 @@ export default function ProjectEditorPage() {
                   )}
                 </div>
               )}
+
+              {/* Generate button (video) */}
+              <button
+                onClick={handleGenerateVideo}
+                disabled={
+                  store.video.generating ||
+                  store.batchRunning ||
+                  !store.video.prompt.trim() ||
+                  store.uploading
+                }
+                className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-600 hover:bg-tiffany-700 active:bg-tiffany-800 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
+              >
+                {store.video.generating ? (
+                  <>
+                    <svg
+                      className="animate-spin"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                      <path d="M12 2a10 10 0 0 1 10 10" strokeOpacity="0.75" />
+                    </svg>
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    {SparkleIcon}
+                    {`Generate 1 Video (No Template support)`}
+                  </>
+                )}
+              </button>
 
               {/* Error */}
               {store.video.error && (
