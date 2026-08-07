@@ -162,7 +162,7 @@ export default function ProjectManager() {
             resetForm();
             setShowCreate(true);
           }}
-          className="flex items-center gap-1.5 px-4 py-2 bg-tiffany-300 hover:bg-tiffany-400 active:bg-tiffany-500 text-white text-sm font-medium rounded-xl transition-all duration-150 shadow-sm hover:shadow-md"
+          className="flex items-center gap-1.5 px-4 py-2 bg-tiffany-600 hover:bg-tiffany-700 active:bg-tiffany-800 text-white text-sm font-medium rounded-xl transition-all duration-150 shadow-sm hover:shadow-md"
         >
           {PlusIcon}
           New Project
@@ -210,7 +210,7 @@ export default function ProjectManager() {
           <div className="flex gap-2">
             <button
               onClick={editingId ? handleUpdate : handleCreate}
-              className="px-5 py-2 bg-tiffany-300 hover:bg-tiffany-400 active:bg-tiffany-500 text-white text-sm font-medium rounded-xl transition-all duration-150"
+              className="px-5 py-2 bg-tiffany-600 hover:bg-tiffany-700 active:bg-tiffany-800 text-white text-sm font-medium rounded-xl transition-all duration-150"
             >
               {editingId ? "Update" : "Create"}
             </button>
