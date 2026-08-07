@@ -10,6 +10,7 @@ import Electrobun, {
 import { homedir } from "node:os";
 import express from "express";
 import cors from "cors";
+import { execSync } from "node:child_process";
 
 const DEV_SERVER_PORT = 5173;
 const DEV_SERVER_URL = `http://localhost:${DEV_SERVER_PORT}`;
@@ -462,7 +463,7 @@ async function testRenderVideo({
     mkdirSync(join(OUTPUT_DIR, "welcome"), { recursive: true });
   }
 
-  if (existsSync(join(OUTPUT_DIR, "welcome", "first-time-setup.mp4"))) {
+  if (existsSync(join(OUTPUT_DIR, "welcome", "thank-you.mp4"))) {
     return true;
   }
 
@@ -491,7 +492,7 @@ async function testRenderVideo({
       "dgrauet/ltx-2.3-mlx-q4",
       //
       "--prompt",
-      `${JSON.stringify("a 5 years old cute lamb wanting to have a hug, he says: Thank you dear for using Lok Lok AI Studio!")}`,
+      `${JSON.stringify("a 5 years old cute lamb wanting to have a hug, he says: Hi! I'm Lambobo. Thank you for using my AI Studio!")}`,
       //
       "--distilled",
       "--low-ram",
@@ -560,6 +561,8 @@ async function testRenderVideo({
       if (!(await proc.killed)) {
         proc.kill();
       }
+
+      execSync(`open ${join(OUTPUT_DIR, "welcome", "thank-you.mp4")}`);
 
       if (hasError.length >= 10) {
         throw new Error(hasError);
