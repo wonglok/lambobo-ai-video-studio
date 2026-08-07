@@ -60,6 +60,13 @@ interface GenerationStore {
   selectedImage: ProjectImage | null;
   selectImage: (img: ProjectImage | null) => void;
 
+  // Project videos (output media)
+  projectVideos: ProjectVideo[];
+  projectVideosLoading: boolean;
+  fetchProjectVideos: (projectId: string) => Promise<void>;
+  selectedVideo: ProjectVideo | null;
+  selectVideo: (vid: ProjectVideo | null) => void;
+
   // Reset
   resetAll: () => void;
 }
@@ -68,6 +75,11 @@ export interface ProjectImage {
   filename: string;
   url: string;
   source: "upload" | "generated";
+}
+
+export interface ProjectVideo {
+  filename: string;
+  url: string;
 }
 
 // ========== SSE Stream Reader ==========
@@ -387,6 +399,11 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
   projectImagesLoading: false,
   selectedImage: null,
 
+  // ---- Project Videos ----
+  projectVideos: [],
+  projectVideosLoading: false,
+  selectedVideo: null,
+
   fetchProjectImages: async (projectId) => {
     set({ projectImagesLoading: true });
     try {
@@ -421,6 +438,43 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     });
   },
 
+  // ---- Project Videos ----
+
+  fetchProjectVideos: async (projectId) => {
+    set({ projectVideosLoading: true });
+    try {
+      const res = await fetch(`${API_BASE}/api/projects/${projectId}/videos`);
+      if (!res.ok) throw new Error(await res.text());
+      const videos: ProjectVideo[] = await res.json();
+      const resolved = videos.map((vid) => ({
+        ...vid,
+        url: vid.url.startsWith("http")
+          ? vid.url
+          : `http://localhost:${(window as any).PORT}${vid.url}`,
+      }));
+      set({ projectVideos: resolved, projectVideosLoading: false });
+    } catch {
+      set({ projectVideosLoading: false });
+    }
+  },
+
+  selectVideo: (vid) => {
+    if (!vid) {
+      set({ selectedVideo: null });
+      return;
+    }
+    const fullUrl = vid.url.startsWith("http")
+      ? vid.url
+      : `http://localhost:${(window as any).PORT}${vid.url}`;
+    set({
+      selectedVideo: { ...vid, url: fullUrl },
+      video: {
+        ...get().video,
+        result: fullUrl,
+      },
+    });
+  },
+
   // ---- Reset ----
   resetAll: () =>
     set({
@@ -434,5 +488,8 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       uploadedImagePath: null,
       projectImages: [],
       selectedImage: null,
+      projectVideos: [],
+      projectVideosLoading: false,
+      selectedVideo: null,
     }),
 }));

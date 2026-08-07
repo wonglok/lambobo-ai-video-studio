@@ -258,6 +258,48 @@ export async function renderMediaRoutes({
     res.json(results);
   });
 
+  // List project videos (from generated outputs)
+  app.get("/api/projects/:id/videos", (req, res) => {
+    const { id } = req.params;
+    const videoExts = new Set([".mp4"]);
+    const results: { filename: string; url: string }[] = [];
+
+    const projectDir = join(OUTPUT_DIR, id);
+    if (!existsSync(projectDir)) {
+      res.json(results);
+      return;
+    }
+
+    let entries: string[];
+    try {
+      entries = readdirSync(projectDir);
+    } catch {
+      res.json(results);
+      return;
+    }
+
+    for (const entry of entries) {
+      const ext = entry.slice(entry.lastIndexOf(".")).toLowerCase();
+      if (!videoExts.has(ext)) continue;
+
+      const fullPath = join(projectDir, entry);
+      try {
+        if (!statSync(fullPath).isFile()) continue;
+      } catch {
+        continue;
+      }
+
+      results.push({
+        filename: entry,
+        url: `/api/files?path=${encodeURIComponent(fullPath)}`,
+      });
+    }
+
+    // Sort newest first (by filename which often includes timestamp)
+    results.sort((a, b) => b.filename.localeCompare(a.filename));
+    res.json(results);
+  });
+
   // ========== Render: Text-to-Image ==========
 
   app.post("/api/render/text-to-image", async (req, res) => {

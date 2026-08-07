@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useProjectStore, type Project } from "../stores/projectStore";
 import { useGenerationStore } from "../stores/generationStore";
 
+const API_BASE = `http://localhost:${(window as any).PORT}`;
+
 export default function ProjectEditorPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -41,10 +43,11 @@ export default function ProjectEditorPage() {
     }
   }, [store.video.logs]);
 
-  // Fetch project images when switching to the video tab
+  // Fetch project images and videos when switching to the video tab
   useEffect(() => {
     if (store.activeTab === "video" && id) {
       store.fetchProjectImages(id);
+      store.fetchProjectVideos(id);
     }
   }, [store.activeTab, id]);
 
@@ -58,6 +61,19 @@ export default function ProjectEditorPage() {
     if (id) {
       await store.generateVideo(id);
       document.body.scrollTop = 99999999999;
+    }
+  };
+
+  const handleOpenVideoFolder = async () => {
+    if (!id) return;
+    try {
+      await fetch(`${API_BASE}/api/projects/${id}/open-folder`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "output" }),
+      });
+    } catch (e) {
+      console.error("Failed to open folder:", e);
     }
   };
 
@@ -136,6 +152,33 @@ export default function ProjectEditorPage() {
       strokeWidth="2"
     >
       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+
+  const FolderIcon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+
+  const PlayIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      stroke="none"
+    >
+      <polygon points="5 3 19 12 5 21 5 3" />
     </svg>
   );
 
@@ -535,8 +578,69 @@ export default function ProjectEditorPage() {
                       className="w-full h-auto"
                     />
                   </div>
+                  <button
+                    onClick={handleOpenVideoFolder}
+                    className="flex items-center justify-center gap-2 w-full px-4 py-2.5 mt-3 bg-tiffany-50 hover:bg-tiffany-100 text-tiffany-700 text-sm font-medium rounded-xl border border-tiffany-200 transition-colors"
+                  >
+                    {FolderIcon}
+                    Open Folder
+                  </button>
                 </div>
               )}
+
+              {/* Output Media */}
+              <div>
+                <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+                  Output Media
+                </label>
+                {store.projectVideosLoading ? (
+                  <p className="text-xs text-tiffany-400 italic py-4 text-center">
+                    Loading videos...
+                  </p>
+                ) : store.projectVideos.length === 0 ? (
+                  <p className="text-xs text-tiffany-400 italic py-4 text-center border border-dashed border-tiffany-200 rounded-xl">
+                    No videos generated yet. Generate a video to see it here.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto p-1">
+                    {store.projectVideos.map((vid) => {
+                      const isSelected =
+                        store.selectedVideo?.filename === vid.filename;
+
+                      const fullUrl = vid.url.startsWith("http")
+                        ? vid.url
+                        : `http://localhost:${(window as any).PORT}${vid.url}`;
+
+                      return (
+                        <button
+                          key={vid.filename}
+                          onClick={() => store.selectVideo(vid)}
+                          disabled={store.video.generating}
+                          className={`relative rounded-lg overflow-hidden border-2 transition-all ${
+                            isSelected
+                              ? "border-tiffany-500 ring-2 ring-tiffany-300/40"
+                              : "border-tiffany-200 hover:border-tiffany-300"
+                          } disabled:opacity-50`}
+                        >
+                          <div className="relative bg-black aspect-video flex items-center justify-center">
+                            <video
+                              src={fullUrl}
+                              preload="metadata"
+                              className="absolute inset-0 w-full h-full object-cover opacity-60"
+                            />
+                            <span className="relative z-10 flex items-center justify-center w-10 h-10 rounded-full bg-white/90 text-tiffany-600 shadow-sm">
+                              {PlayIcon}
+                            </span>
+                          </div>
+                          <span className="block px-2 py-1.5 text-[10px] text-tiffany-700 truncate text-center bg-white/80 backdrop-blur-sm">
+                            {vid.filename}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
