@@ -89,7 +89,7 @@ export async function runSetup({}: {}): Promise<SetupState> {
       PORT = ${BACKEND_PORT};
     `,
     title: "Media Studio",
-    url: `${url}?port=${BACKEND_PORT}`,
+    url: `${url}`,
     frame: {
       width: 900,
       height: 700,
@@ -158,7 +158,7 @@ export async function runSetup({}: {}): Promise<SetupState> {
     send("progress", {
       step: "init",
       status: "running",
-      label: "Starting setup...",
+      label: "Running setup...",
     });
 
     // Step 1: Check/install uv
@@ -209,7 +209,7 @@ export async function runSetup({}: {}): Promise<SetupState> {
       return;
     }
 
-    await tryRenderVideo({
+    await testRenderVideo({
       send: send,
     });
 
@@ -234,10 +234,10 @@ export async function runSetup({}: {}): Promise<SetupState> {
     send("progress", {
       step: "init",
       status: "running",
-      label: "Starting setup...",
+      label: "Running Setup...",
     });
 
-    await tryRenderVideo({
+    await testRenderVideo({
       send: send,
     });
 
@@ -439,7 +439,7 @@ async function installPythonDependencies(): Promise<boolean> {
 }
 
 let firstVideoProcess: any;
-async function tryRenderVideo({
+async function testRenderVideo({
   send,
 }: {
   send: (event: string, data: object) => void;
@@ -461,13 +461,27 @@ async function tryRenderVideo({
     }
   }
 
-  if (!existsSync(join(OUTPUT_DIR, "checker"))) {
-    mkdirSync(join(OUTPUT_DIR, "checker"), { recursive: true });
+  if (!existsSync(join(OUTPUT_DIR, "welcome"))) {
+    mkdirSync(join(OUTPUT_DIR, "welcome"), { recursive: true });
   }
 
-  if (existsSync(join(OUTPUT_DIR, "checker", "first-time-setup.mp4"))) {
+  if (existsSync(join(OUTPUT_DIR, "welcome", "first-time-setup.mp4"))) {
     return true;
   }
+
+  let lambobo = join(
+    import.meta.path,
+    "..",
+    "..",
+    "python-src",
+    "images",
+    "lambobo.png",
+  );
+
+  // console.log("lambobo", lambobo);
+  // console.log("lambobo", lambobo);
+  // console.log("lambobo", lambobo);
+  // console.log("lambobo", lambobo);
 
   firstVideoProcess = spawn(
     [
@@ -480,21 +494,28 @@ async function tryRenderVideo({
       "dgrauet/ltx-2.3-mlx-q4",
       //
       "--prompt",
-      `${JSON.stringify("draw me a happy hamster.")}`,
+      `${JSON.stringify("a lamb wanting to have a hug, a lamb with 10 year old boy's voice says: Thank you for using Lambobo AI Studio!")}`,
       //
       "--distilled",
       "--low-ram",
+      //
       "--frames",
-      "9",
+      "97",
+      //
       "--width",
-      "360",
+      "480",
+      //
       "--height",
-      "360",
+      "640",
+      //
       "--frame-rate",
       "24",
       //
+      "--image",
+      `${lambobo}`,
+      //
       "--output",
-      `${join(OUTPUT_DIR, "checker", "first-time-setup.mp4")}`,
+      `${join(OUTPUT_DIR, "welcome", "thank-you.mp4")}`,
     ],
     {
       cwd: ltxFolder,
@@ -502,8 +523,6 @@ async function tryRenderVideo({
       stderr: "pipe",
     },
   );
-
-  //
 
   // Log backend output and forward to UI
   (async () => {
@@ -519,6 +538,8 @@ async function tryRenderVideo({
     }
   })();
 
+  let hasError = "";
+
   // Log backend output and forward to UI
   (async () => {
     const reader = firstVideoProcess?.stderr.getReader();
@@ -529,6 +550,8 @@ async function tryRenderVideo({
       }
       const text = new TextDecoder().decode(value);
       console.log("[Backend]", text);
+      hasError += text;
+      hasError = hasError.trim();
       send("log", { text: text });
     }
   })();
@@ -539,6 +562,10 @@ async function tryRenderVideo({
     if (await proc.exited) {
       if (!(await proc.killed)) {
         proc.kill();
+      }
+
+      if (hasError.length >= 10) {
+        throw new Error(hasError);
       }
       resolve(null);
     }
