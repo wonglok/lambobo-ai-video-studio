@@ -673,6 +673,14 @@ export default function ProjectEditorPage() {
                 )}
               </button>
 
+              <button
+                onClick={handleOpenVideoFolder}
+                className="flex items-center justify-center gap-2 w-full px-4 py-2.5 mb-3 bg-tiffany-50 hover:bg-tiffany-100 text-tiffany-700 text-sm font-medium rounded-xl border border-tiffany-200 transition-colors"
+              >
+                {FolderIcon}
+                Open Output Folder
+              </button>
+
               {/* Batch generate button */}
               {store.csvRows.length > 0 && (
                 <div className="space-y-2">
@@ -749,13 +757,7 @@ export default function ProjectEditorPage() {
                   <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
                     Generated Video
                   </label>
-                  <button
-                    onClick={handleOpenVideoFolder}
-                    className="flex items-center justify-center gap-2 w-full px-4 py-2.5 mb-3 bg-tiffany-50 hover:bg-tiffany-100 text-tiffany-700 text-sm font-medium rounded-xl border border-tiffany-200 transition-colors"
-                  >
-                    {FolderIcon}
-                    Open Folder
-                  </button>
+
                   <div className="relative rounded-xl overflow-hidden border border-tiffany-200 shadow-card bg-black w-[500px]">
                     <video
                       src={store.video.result}
