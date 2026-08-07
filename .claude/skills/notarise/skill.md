@@ -1,6 +1,4 @@
-# Notarize Audio TTS macOS App
-
-> **Team**: `CY8MDF5N35` (Loki Wong)
+# Notarize macOS App
 
 ## Prerequisites
 
@@ -24,11 +22,11 @@ xcrun notarytool history --keychain-profile "WONG_LOK_PROFILE"
 bun run build
 ```
 
-The build outputs to `build/dev-macos-arm64/Audio TTS-dev.app` (the Electrobun config has `codesign: false` and `notarize: false`, so the app is ad-hoc signed only — we handle signing manually below).
+The build outputs to `build/[...]/[APP_NAME].app` (the Electrobun config has `codesign: false` and `notarize: false`, so the app is ad-hoc signed only — we handle signing manually below).
 
 ### 2. Create/verify entitlements file
 
-Create `build/dev-macos-arm64/entitlements.plist`:
+Create `build/[...]/entitlements.plist`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -56,9 +54,9 @@ Create `build/dev-macos-arm64/entitlements.plist`:
 ### 3. Clean and sign
 
 ```bash
-APP="build/dev-macos-arm64/Audio TTS-dev.app"
-ENTITLEMENTS="build/dev-macos-arm64/entitlements.plist"
-IDENTITY="Developer ID Application: Loki Wong (CY8MDF5N35)"
+APP="build/[...]/[APP_NAME].app"
+ENTITLEMENTS="build/[...]/entitlements.plist"
+IDENTITY="Developer ID Application: Loki Wong ([teamID])"
 
 # Remove extended attributes (prevents signing issues)
 xattr -cr "$APP"
@@ -108,8 +106,8 @@ codesign -dvvv "$APP" | grep -E "Authority|TeamIdentifier|Runtime|flags"
 ### 4. Package and submit for notarization
 
 ```bash
-APP="build/dev-macos-arm64/Audio TTS-dev.app"
-ZIP="build/dev-macos-arm64/Audio TTS-dev.zip"
+APP="build/[...]/[APP_NAME].app"
+ZIP="build/[...]/[APP_NAME].zip"
 
 # Remove old zip if present
 rm -f "$ZIP"
@@ -129,7 +127,7 @@ xcrun notarytool submit "$ZIP" \
 ### 5. Staple the notarization ticket
 
 ```bash
-APP="build/dev-macos-arm64/Audio TTS-dev.app"
+APP="build/[...]/[APP_NAME].app"
 
 xcrun stapler staple "$APP"
 xcrun stapler validate "$APP"
@@ -141,7 +139,7 @@ Expected output:
 ```
 The staple and validate action worked!
 The validate action worked!
-Audio TTS-dev.app: accepted
+[APP_NAME].app: accepted
 source=Notarized Developer ID
 ```
 
@@ -157,14 +155,14 @@ source=Notarized Developer ID
 
 ## Key identities and profiles
 
-| Purpose                    | Value                                              |
-| -------------------------- | -------------------------------------------------- |
-| Signing identity           | `Developer ID Application: Loki Wong (CY8MDF5N35)` |
-| Apple Development identity | `Apple Development: Loki Wong (GJH63YE9D7)`        |
-| Team ID                    | `CY8MDF5N35`                                       |
-| Notary keychain profile    | `WONG_LOK_PROFILE`                                 |
-| Bundle ID                  | `sh.blackboard.audio-tts`                          |
-| App name                   | `Audio TTS-dev` (dev)                              |
+| Purpose                    | Value                                            |
+| -------------------------- | ------------------------------------------------ |
+| Signing identity           | `Developer ID Application: Loki Wong ([teamID])` |
+| Apple Development identity | `Apple Development: Loki Wong (GJH63YE9D7)`      |
+| Team ID                    | `[teamID]`                                       |
+| Notary keychain profile    | `WONG_LOK_PROFILE`                               |
+| Bundle ID                  | `...`                                            |
+| App name                   | `[APP_NAME]` (dev)                               |
 
 ## Architecture notes
 
