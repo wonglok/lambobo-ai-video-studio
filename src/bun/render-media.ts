@@ -220,10 +220,24 @@ export async function renderMediaRoutes({
   // List project images (from uploads and generated outputs)
   app.get("/api/projects/:id/images", (req, res) => {
     const { id } = req.params;
-    const imageExts = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"]);
-    const results: { filename: string; url: string; source: "upload" | "generated" }[] = [];
+    const imageExts = new Set([
+      ".png",
+      ".jpg",
+      ".jpeg",
+      ".webp",
+      ".gif",
+      ".bmp",
+    ]);
+    const results: {
+      filename: string;
+      url: string;
+      source: "upload" | "generated";
+    }[] = [];
 
-    for (const [source, dir] of [["upload", UPLOAD_DIR], ["generated", OUTPUT_DIR]] as const) {
+    for (const [source, dir] of [
+      ["upload", UPLOAD_DIR],
+      ["generated", OUTPUT_DIR],
+    ] as const) {
       const projectDir = join(dir, id);
       if (!existsSync(projectDir)) continue;
 
@@ -298,6 +312,13 @@ export async function renderMediaRoutes({
     // Sort newest first (by filename which often includes timestamp)
     results.sort((a, b) => b.filename.localeCompare(a.filename));
     res.json(results);
+  });
+
+  // ========== Render: Audio to Video =========
+  app.post("/api/render/audio-to-video", async (req, res) => {
+    //
+    // please work on a2v
+    //
   });
 
   // ========== Render: Text-to-Image ==========
