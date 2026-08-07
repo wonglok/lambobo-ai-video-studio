@@ -31,13 +31,13 @@ export default function ProjectEditorPage() {
   // Auto-scroll logs to bottom
   useEffect(() => {
     if (imageLogRef.current) {
-      imageLogRef.current.scrollTop = imageLogRef.current.scrollHeight;
+      imageLogRef.current.scrollTop = 99999999999999999;
     }
   }, [store.image.logs]);
 
   useEffect(() => {
     if (videoLogRef.current) {
-      videoLogRef.current.scrollTop = videoLogRef.current.scrollHeight;
+      videoLogRef.current.scrollTop = 99999999999999999;
     }
   }, [store.video.logs]);
 
@@ -54,9 +54,10 @@ export default function ProjectEditorPage() {
     if (id) store.generateImage(id);
   };
 
-  const handleGenerateVideo = () => {
+  const handleGenerateVideo = async () => {
     if (id) {
-      store.generateVideo(id);
+      await store.generateVideo(id);
+      document.body.scrollTop = 99999999999;
     }
   };
 
