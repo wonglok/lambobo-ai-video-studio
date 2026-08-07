@@ -104,7 +104,7 @@ export async function runSetup({}: {}): Promise<SetupState> {
 
   const app = express();
   app.use(cors());
-  app.use(express.json());
+  app.use(express.json({ limit: "100gb" }));
   app.get("/api/hi", (req, res) => {
     res.json({ hi: "hi" });
   });
