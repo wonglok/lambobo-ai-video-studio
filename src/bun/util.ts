@@ -501,7 +501,7 @@ async function testRenderVideo({
       "121",
       //
       "--width",
-      "320",
+      "480",
       //
       "--height",
       "480",
@@ -522,12 +522,15 @@ async function testRenderVideo({
     },
   );
 
+  let doneAll = false;
+
   // Log backend output and forward to UI
   (async () => {
     const reader = firstVideoProcess?.stdout.getReader();
     while (true) {
       const { done, value } = await reader.read();
       if (done) {
+        doneAll = true;
         break;
       }
       const text = new TextDecoder().decode(value);
@@ -554,20 +557,15 @@ async function testRenderVideo({
     }
   })();
 
-  let proc: Subprocess = firstVideoProcess;
+  // let proc: Subprocess = firstVideoProcess;
 
   return await new Promise(async (resolve) => {
-    if (await proc.exited) {
-      if (!(await proc.killed)) {
-        proc.kill();
+    let ttt = setInterval(() => {
+      if (doneAll) {
+        clearInterval(ttt);
+        resolve(true);
+        firstVideoProcess.kill();
       }
-
-      execSync(`open ${join(OUTPUT_DIR, "welcome", "thank-you.mp4")}`);
-
-      if (hasError.length >= 100) {
-        resolve(false);
-      }
-      resolve(true);
-    }
+    });
   });
 }
