@@ -571,7 +571,7 @@ export default function ProjectEditorPage() {
                   <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
                     Generated Video
                   </label>
-                  <div className="relative rounded-xl overflow-hidden border border-tiffany-200 shadow-card bg-black">
+                  <div className="relative rounded-xl overflow-hidden border border-tiffany-200 shadow-card bg-black w-[500px]">
                     <video
                       src={store.video.result}
                       controls
@@ -602,7 +602,7 @@ export default function ProjectEditorPage() {
                     No videos generated yet. Generate a video to see it here.
                   </p>
                 ) : (
-                  <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto p-1">
+                  <div className="grid grid-cols-5 gap-2 max-h-64 overflow-y-auto p-1">
                     {store.projectVideos.map((vid) => {
                       const isSelected =
                         store.selectedVideo?.filename === vid.filename;
@@ -626,7 +626,7 @@ export default function ProjectEditorPage() {
                             <video
                               src={fullUrl}
                               preload="metadata"
-                              className="absolute inset-0 w-full h-full object-cover opacity-60"
+                              className="absolute inset-0 w-[256px] h-full object-cover opacity-60"
                             />
                             <span className="relative z-10 flex items-center justify-center w-10 h-10 rounded-full bg-white/90 text-tiffany-600 shadow-sm">
                               {PlayIcon}
