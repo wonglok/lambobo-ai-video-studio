@@ -655,7 +655,7 @@ export default function ProjectEditorPage() {
                 ) : (
                   <>
                     {SparkleIcon}
-                    Generate Video
+                    Generate 1 Video {`(No Template support)`}
                   </>
                 )}
               </button>
