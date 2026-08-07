@@ -2,8 +2,8 @@ import type { ElectrobunConfig } from "electrobun";
 
 export default {
   app: {
-    name: "BunMediaStudio",
-    identifier: "com.wonglok.bun-media",
+    name: "LamboboStudio",
+    identifier: "com.wonglok.lambobo.studio",
     version: "0.0.1",
   },
   build: {
