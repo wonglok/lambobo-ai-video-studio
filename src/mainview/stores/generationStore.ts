@@ -6,152 +6,6 @@ const API_BASE = `http://localhost:${(window as any).PORT}`;
 
 export type GenerationTab = "image" | "video";
 
-// ========== kokoro-js Voice List ==========
-
-export interface VoiceInfo {
-  id: string;
-  name: string;
-  language: string;
-  gender: string;
-}
-
-export const KOKORO_VOICE_GROUPS: { group: string; voices: VoiceInfo[] }[] = [
-  {
-    group: "American Female",
-    voices: [
-      { id: "af_heart", name: "Heart", language: "en-us", gender: "female" },
-      { id: "af_alloy", name: "Alloy", language: "en-us", gender: "female" },
-      { id: "af_aoede", name: "Aoede", language: "en-us", gender: "female" },
-      { id: "af_bella", name: "Bella", language: "en-us", gender: "female" },
-      { id: "af_jessica", name: "Jessica", language: "en-us", gender: "female" },
-      { id: "af_kore", name: "Kore", language: "en-us", gender: "female" },
-      { id: "af_nicole", name: "Nicole", language: "en-us", gender: "female" },
-      { id: "af_nova", name: "Nova", language: "en-us", gender: "female" },
-      { id: "af_river", name: "River", language: "en-us", gender: "female" },
-      { id: "af_sarah", name: "Sarah", language: "en-us", gender: "female" },
-      { id: "af_sky", name: "Sky", language: "en-us", gender: "female" },
-    ],
-  },
-  {
-    group: "American Male",
-    voices: [
-      { id: "am_adam", name: "Adam", language: "en-us", gender: "male" },
-      { id: "am_echo", name: "Echo", language: "en-us", gender: "male" },
-      { id: "am_eric", name: "Eric", language: "en-us", gender: "male" },
-      { id: "am_fenrir", name: "Fenrir", language: "en-us", gender: "male" },
-      { id: "am_liam", name: "Liam", language: "en-us", gender: "male" },
-      { id: "am_michael", name: "Michael", language: "en-us", gender: "male" },
-      { id: "am_onyx", name: "Onyx", language: "en-us", gender: "male" },
-      { id: "am_puck", name: "Puck", language: "en-us", gender: "male" },
-      { id: "am_santa", name: "Santa", language: "en-us", gender: "male" },
-    ],
-  },
-  {
-    group: "British Female",
-    voices: [
-      { id: "bf_alice", name: "Alice", language: "en-gb", gender: "female" },
-      { id: "bf_emma", name: "Emma", language: "en-gb", gender: "female" },
-      { id: "bf_isabella", name: "Isabella", language: "en-gb", gender: "female" },
-      { id: "bf_lily", name: "Lily", language: "en-gb", gender: "female" },
-    ],
-  },
-  {
-    group: "British Male",
-    voices: [
-      { id: "bm_daniel", name: "Daniel", language: "en-gb", gender: "male" },
-      { id: "bm_fable", name: "Fable", language: "en-gb", gender: "male" },
-      { id: "bm_george", name: "George", language: "en-gb", gender: "male" },
-      { id: "bm_lewis", name: "Lewis", language: "en-gb", gender: "male" },
-    ],
-  },
-];
-
-/** Flattened list of all voice IDs for quick lookup */
-export const KOKORO_VOICE_IDS = KOKORO_VOICE_GROUPS.flatMap((g) =>
-  g.voices.map((v) => v.id),
-);
-
-// ========== WAV Helper ==========
-
-function float32ToWavBlob(data: Float32Array, sampleRate: number): Blob {
-  const numChannels = 1;
-  const bitsPerSample = 16;
-  const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
-  const blockAlign = numChannels * (bitsPerSample / 8);
-  const dataLength = data.length * (bitsPerSample / 8);
-  const buffer = new ArrayBuffer(44 + dataLength);
-  const view = new DataView(buffer);
-
-  // RIFF header
-  writeString(view, 0, "RIFF");
-  view.setUint32(4, 36 + dataLength, true);
-  writeString(view, 8, "WAVE");
-
-  // fmt subchunk
-  writeString(view, 12, "fmt ");
-  view.setUint32(16, 16, true); // PCM
-  view.setUint16(20, 1, true); // PCM format
-  view.setUint16(22, numChannels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, byteRate, true);
-  view.setUint16(32, blockAlign, true);
-  view.setUint16(34, bitsPerSample, true);
-
-  // data subchunk
-  writeString(view, 36, "data");
-  view.setUint32(40, dataLength, true);
-
-  // Convert Float32 to Int16
-  let offset = 44;
-  for (let i = 0; i < data.length; i++) {
-    const sample = Math.max(-1, Math.min(1, data[i]));
-    const int16 = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
-    view.setInt16(offset, int16, true);
-    offset += 2;
-  }
-
-  return new Blob([buffer], { type: "audio/wav" });
-}
-
-function writeString(view: DataView, offset: number, str: string) {
-  for (let i = 0; i < str.length; i++) {
-    view.setUint8(offset + i, str.charCodeAt(i));
-  }
-}
-
-// ========== Module-level TTS cache ==========
-
-let ttsInstance: any = null;
-let ttsLoading: boolean = false;
-let ttsLoadPromise: Promise<any> | null = null;
-
-async function getTTSInstance(onLog?: (msg: string) => void): Promise<any> {
-  if (ttsInstance) return ttsInstance;
-  if (ttsLoadPromise) return ttsLoadPromise;
-
-  ttsLoading = true;
-  ttsLoadPromise = (async () => {
-    try {
-      const { KokoroTTS } = await import("kokoro-js");
-      onLog?.("Downloading kokoro-js model from Hugging Face...");
-      const tts = await KokoroTTS.from_pretrained(
-        "onnx-community/Kokoro-82M-v1.0-ONNX",
-        {
-          dtype: "q8",
-          device: "wasm",
-        },
-      );
-      onLog?.("kokoro-js model loaded successfully.");
-      ttsInstance = tts;
-      return tts;
-    } finally {
-      ttsLoading = false;
-    }
-  })();
-
-  return ttsLoadPromise;
-}
-
 interface ImageState {
   prompt: string;
   generating: boolean;
@@ -165,17 +19,6 @@ interface VideoState {
   duration: number;
   generating: boolean;
   result: string | null;
-  error: string | null;
-  logs: string[];
-}
-
-interface AudioState {
-  text: string;
-  voice: string;
-  speed: number;
-  generating: boolean;
-  modelLoading: boolean;
-  result: string | null; // blob URL for playback
   error: string | null;
   logs: string[];
 }
@@ -217,34 +60,14 @@ interface GenerationStore {
   selectedImage: ProjectImage | null;
   selectImage: (img: ProjectImage | null) => void;
 
-  // Project videos (output media)
-  projectVideos: ProjectVideo[];
-  projectVideosLoading: boolean;
-  fetchProjectVideos: (projectId: string) => Promise<void>;
-  selectedVideo: ProjectVideo | null;
-  selectVideo: (vid: ProjectVideo | null) => void;
-
   // Reset
   resetAll: () => void;
-
-  // Audio (kokoro-js TTS)
-  audio: AudioState;
-  setAudioText: (v: string) => void;
-  setAudioVoice: (v: string) => void;
-  setAudioSpeed: (v: number) => void;
-  clearAudioResult: () => void;
-  generateAudio: () => Promise<void>;
 }
 
 export interface ProjectImage {
   filename: string;
   url: string;
   source: "upload" | "generated";
-}
-
-export interface ProjectVideo {
-  filename: string;
-  url: string;
 }
 
 // ========== SSE Stream Reader ==========
@@ -299,21 +122,9 @@ const initialImage: ImageState = {
 };
 
 const initialVideo: VideoState = {
-  prompt:
-    "a 20 years old cute beaver says: Hi {{name}}, how are you? im beaver atlas.",
+  prompt: `a beaver guy says: "Hi John Wayne, how are you? my name is beaver atlas.” `,
   duration: 5,
   generating: false,
-  result: null,
-  error: null,
-  logs: [],
-};
-
-const initialAudio: AudioState = {
-  text: "Life is like a box of chocolates. You never know what you're gonna get.",
-  voice: "af_heart",
-  speed: 1,
-  generating: false,
-  modelLoading: false,
   result: null,
   error: null,
   logs: [],
@@ -324,91 +135,6 @@ const initialAudio: AudioState = {
 export const useGenerationStore = create<GenerationStore>((set, get) => ({
   activeTab: "video",
   setActiveTab: (tab) => set({ activeTab: tab }),
-
-  // ---- Audio (kokoro-js TTS) ----
-  audio: { ...initialAudio },
-
-  setAudioText: (text) =>
-    set((s) => ({ audio: { ...s.audio, text, error: null } })),
-  setAudioVoice: (voice) =>
-    set((s) => ({ audio: { ...s.audio, voice } })),
-  setAudioSpeed: (speed) =>
-    set((s) => ({ audio: { ...s.audio, speed } })),
-  clearAudioResult: () =>
-    set((s) => ({
-      audio: { ...s.audio, result: null, error: null, logs: [] },
-    })),
-
-  generateAudio: async () => {
-    const { audio } = get();
-    if (!audio.text.trim() || audio.generating) return;
-
-    set((s) => ({
-      audio: {
-        ...s.audio,
-        generating: true,
-        modelLoading: true,
-        error: null,
-        result: null,
-        logs: [],
-      },
-    }));
-
-    try {
-      // Load TTS model (cached after first load)
-      const tts = await getTTSInstance((msg) =>
-        set((s) => ({
-          audio: { ...s.audio, logs: [...s.audio.logs, msg] },
-        })),
-      );
-
-      set((s) => ({
-        audio: { ...s.audio, modelLoading: false },
-      }));
-
-      // Generate audio
-      const logMsg = `Generating speech with voice "${audio.voice}"...`;
-      set((s) => ({
-        audio: { ...s.audio, logs: [...s.audio.logs, logMsg] },
-      }));
-
-      const rawAudio = await tts.generate(audio.text.trim(), {
-        voice: audio.voice,
-        speed: audio.speed,
-      });
-
-      // Convert RawAudio to WAV blob URL for browser playback
-      const sampleRate = rawAudio.sampling_rate ?? 24000;
-      const wavBlob = float32ToWavBlob(rawAudio.data, sampleRate);
-      const blobUrl = URL.createObjectURL(wavBlob);
-
-      // Revoke previous blob URL if any
-      if (audio.result?.startsWith("blob:")) {
-        URL.revokeObjectURL(audio.result);
-      }
-
-      set((s) => ({
-        audio: {
-          ...s.audio,
-          generating: false,
-          result: blobUrl,
-          logs: [
-            ...s.audio.logs,
-            `Done! Audio generated (${sampleRate} Hz, ${rawAudio.data.length} samples).`,
-          ],
-        },
-      }));
-    } catch (e: any) {
-      set((s) => ({
-        audio: {
-          ...s.audio,
-          generating: false,
-          modelLoading: false,
-          error: e?.message || String(e),
-        },
-      }));
-    }
-  },
 
   // ---- Image ----
   image: { ...initialImage },
@@ -660,11 +386,6 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
   projectImagesLoading: false,
   selectedImage: null,
 
-  // ---- Project Videos ----
-  projectVideos: [],
-  projectVideosLoading: false,
-  selectedVideo: null,
-
   fetchProjectImages: async (projectId) => {
     set({ projectImagesLoading: true });
     try {
@@ -699,50 +420,12 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     });
   },
 
-  // ---- Project Videos ----
-
-  fetchProjectVideos: async (projectId) => {
-    set({ projectVideosLoading: true });
-    try {
-      const res = await fetch(`${API_BASE}/api/projects/${projectId}/videos`);
-      if (!res.ok) throw new Error(await res.text());
-      const videos: ProjectVideo[] = await res.json();
-      const resolved = videos.map((vid) => ({
-        ...vid,
-        url: vid.url.startsWith("http")
-          ? vid.url
-          : `http://localhost:${(window as any).PORT}${vid.url}`,
-      }));
-      set({ projectVideos: resolved, projectVideosLoading: false });
-    } catch {
-      set({ projectVideosLoading: false });
-    }
-  },
-
-  selectVideo: (vid) => {
-    if (!vid) {
-      set({ selectedVideo: null });
-      return;
-    }
-    const fullUrl = vid.url.startsWith("http")
-      ? vid.url
-      : `http://localhost:${(window as any).PORT}${vid.url}`;
-    set({
-      selectedVideo: { ...vid, url: fullUrl },
-      video: {
-        ...get().video,
-        result: fullUrl,
-      },
-    });
-  },
-
   // ---- Reset ----
   resetAll: () =>
     set({
       activeTab: "image",
       image: { ...initialImage },
       video: { ...initialVideo },
-      audio: { ...initialAudio },
       uploading: false,
       uploadError: null,
       uploadedImageUrl: null,

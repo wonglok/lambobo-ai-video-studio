@@ -10,7 +10,7 @@ import {
 import { type Application } from "express";
 import { homedir } from "node:os";
 import { join, sep } from "node:path";
-import { execFileSync } from "node:child_process";
+import { execSync } from "node:child_process";
 import { spawn } from "bun";
 
 const APP_DATA_DIR = join(homedir(), "media-studio");
@@ -62,7 +62,7 @@ function makeId(): string {
 }
 
 function openInFinder(dirPath: string) {
-  execFileSync("open", [dirPath]);
+  execSync(`open "${dirPath}"`);
 }
 
 // ========== SSE Helper ==========
@@ -314,158 +314,6 @@ export async function renderMediaRoutes({
     res.json(results);
   });
 
-  // ========== Render: Audio to Video =========
-  app.post("/api/render/audio-to-video", async (req, res) => {
-    //
-    // please work on a2v
-    //
-
-    const {
-      prompt,
-      imagePath,
-      projectId,
-      width = 480,
-      height = 480,
-      frames = 121,
-      frameRate = 24,
-    } = req.body || {};
-
-    if (!prompt) {
-      res.status(400).json({ error: "Prompt is required" });
-      return;
-    }
-    if (!imagePath) {
-      res.status(400).json({ error: "Image path is required" });
-      return;
-    }
-    if (!projectId) {
-      res.status(400).json({ error: "Project ID is required" });
-      return;
-    }
-
-    // Resolve image path — only allow project-relative paths (no absolute paths)
-    const resolvedImage = resolveSafePath(imagePath, projectId);
-    if (!resolvedImage) {
-      res.status(400).json({
-        error:
-          "Invalid image path. Provide a filename previously uploaded to this project.",
-      });
-      return;
-    }
-
-    // SSE headers
-    res.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no",
-    });
-
-    const send = (event: string, data: object) => {
-      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-    };
-
-    try {
-      const ltxFolder = join(PYTHON_DIR, "ltx-2-mlx");
-      if (!existsSync(ltxFolder)) {
-        send("error", { error: "ltx-2-mlx not found. Run setup first." });
-        res.end();
-        return;
-      }
-
-      const uvPath = await getUvPath();
-      const projectOutputDir = join(OUTPUT_DIR, projectId);
-      ensureDir(projectOutputDir);
-
-      const outputFile = `video-${Date.now()}.mp4`;
-      const outputPath = join(projectOutputDir, outputFile);
-
-      const videoWidth = Number(width) || 480;
-      const videoHeight = Number(height) || 480;
-      const videoFrames = Number(frames) || 121;
-      const videoFps = Number(frameRate) || 24;
-
-      send("progress", {
-        status: "starting",
-        label: "Generating video...",
-        outputFile,
-        settings: {
-          width: videoWidth,
-          height: videoHeight,
-          frames: videoFrames,
-          fps: videoFps,
-        },
-      });
-
-      const proc = spawn(
-        [
-          uvPath,
-          "run",
-          "ltx-2-mlx",
-          "a2v",
-          "--model",
-          "dgrauet/ltx-2.3-mlx-q4",
-          "--prompt",
-          JSON.stringify(prompt),
-          "--audio",
-          JSON.stringify(""), // wire the audio
-          "--distilled",
-          "--low-ram",
-          "--frames",
-          String(videoFrames),
-          "--width",
-          String(videoWidth),
-          "--height",
-          String(videoHeight),
-          "--frame-rate",
-          String(videoFps),
-          "--image",
-          resolvedImage,
-          "--output",
-          outputPath,
-        ],
-        {
-          cwd: ltxFolder,
-          stdout: "pipe",
-          stderr: "pipe",
-        },
-      );
-
-      // Stream stdout/stderr concurrently
-      const stdoutPromise = streamToSSE(
-        proc.stdout as ReadableStream<Uint8Array>,
-        "Video",
-        send,
-      );
-      const stderrText = await streamToSSE(
-        proc.stderr as ReadableStream<Uint8Array>,
-        "Video",
-        send,
-      );
-      await stdoutPromise;
-
-      const exitCode = await proc.exited;
-      const success = exitCode === 0 && existsSync(outputPath);
-
-      if (success) {
-        send("complete", {
-          success: true,
-          path: outputPath,
-          filename: outputFile,
-        });
-      } else {
-        send("error", {
-          error: stderrText || `Process exited with code ${exitCode}`,
-          exitCode,
-        });
-      }
-    } catch (e) {
-      send("error", { error: String(e) });
-    } finally {
-      res.end();
-    }
-  });
-
   // ========== Render: Text-to-Image ==========
 
   app.post("/api/render/text-to-image", async (req, res) => {
@@ -714,6 +562,12 @@ export async function renderMediaRoutes({
           path: outputPath,
           filename: outputFile,
         });
+        // Auto-open the output folder so the user can find the generated video
+        try {
+          openInFinder(projectOutputDir);
+        } catch (_) {
+          // silently ignore if we can't open Finder
+        }
       } else {
         send("error", {
           error: stderrText || `Process exited with code ${exitCode}`,

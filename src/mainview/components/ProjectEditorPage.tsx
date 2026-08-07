@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useProjectStore, type Project } from "../stores/projectStore";
-import { useGenerationStore, KOKORO_VOICE_GROUPS } from "../stores/generationStore";
+import { useGenerationStore } from "../stores/generationStore";
 
 const API_BASE = `http://localhost:${(window as any).PORT}`;
 
@@ -33,21 +33,20 @@ export default function ProjectEditorPage() {
   // Auto-scroll logs to bottom
   useEffect(() => {
     if (imageLogRef.current) {
-      imageLogRef.current.scrollTop = 99999999999999999;
+      imageLogRef.current.scrollTop = 100000;
     }
   }, [store.image.logs]);
 
   useEffect(() => {
     if (videoLogRef.current) {
-      videoLogRef.current.scrollTop = 99999999999999999;
+      videoLogRef.current.scrollTop = 100000;
     }
   }, [store.video.logs]);
 
-  // Fetch project images and videos when switching to the video tab
+  // Fetch project images when switching to the video tab
   useEffect(() => {
     if (store.activeTab === "video" && id) {
       store.fetchProjectImages(id);
-      store.fetchProjectVideos(id);
     }
   }, [store.activeTab, id]);
 
@@ -167,34 +166,6 @@ export default function ProjectEditorPage() {
       strokeLinejoin="round"
     >
       <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-    </svg>
-  );
-
-  const PlayIcon = (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      stroke="none"
-    >
-      <polygon points="5 3 19 12 5 21 5 3" />
-    </svg>
-  );
-
-  const AudioIcon = (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
-      <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
     </svg>
   );
 
@@ -604,209 +575,6 @@ export default function ProjectEditorPage() {
                 </div>
               )}
 
-              {/* Output Media */}
-              <div>
-                <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-                  Output Media
-                </label>
-                {store.projectVideosLoading ? (
-                  <p className="text-xs text-tiffany-400 italic py-4 text-center">
-                    Loading videos...
-                  </p>
-                ) : store.projectVideos.length === 0 ? (
-                  <p className="text-xs text-tiffany-400 italic py-4 text-center border border-dashed border-tiffany-200 rounded-xl">
-                    No videos generated yet. Generate a video to see it here.
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-5 gap-2 max-h-64 overflow-y-auto p-1">
-                    {store.projectVideos.map((vid) => {
-                      const isSelected =
-                        store.selectedVideo?.filename === vid.filename;
-
-                      const fullUrl = vid.url.startsWith("http")
-                        ? vid.url
-                        : `http://localhost:${(window as any).PORT}${vid.url}`;
-
-                      return (
-                        <button
-                          key={vid.filename}
-                          onClick={() => store.selectVideo(vid)}
-                          disabled={store.video.generating}
-                          className={`relative rounded-lg overflow-hidden border-2 transition-all ${
-                            isSelected
-                              ? "border-tiffany-500 ring-2 ring-tiffany-300/40"
-                              : "border-tiffany-200 hover:border-tiffany-300"
-                          } disabled:opacity-50`}
-                        >
-                          <div className="relative bg-black aspect-video flex items-center justify-center">
-                            <video
-                              src={fullUrl}
-                              preload="metadata"
-                              className="absolute inset-0 w-[256px] h-full object-cover opacity-60"
-                            />
-                            <span className="relative z-10 flex items-center justify-center w-10 h-10 rounded-full bg-white/90 text-tiffany-600 shadow-sm">
-                              {PlayIcon}
-                            </span>
-                          </div>
-                          <span className="block px-2 py-1.5 text-[10px] text-tiffany-700 truncate text-center bg-white/80 backdrop-blur-sm">
-                            {vid.filename}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* ========== AUDIO (kokoro-js TTS) ========== */}
-              <div className="border-t border-tiffany-200 pt-5">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-tiffany-500">{AudioIcon}</span>
-                  <h2 className="text-base font-semibold text-tiffany-900">
-                    Audio
-                  </h2>
-                  <span className="text-[10px] font-bold text-tiffany-400 uppercase tracking-widest bg-tiffany-50 px-2 py-0.5 rounded-md border border-tiffany-200">
-                    kokoro-js
-                  </span>
-                </div>
-                <p className="text-xs text-tiffany-600/50 mb-4">
-                  Text-to-speech powered by kokoro-js running locally via WASM.
-                </p>
-
-                {/* Voice selector */}
-                <div className="mb-4">
-                  <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-                    Voice
-                  </label>
-                  <select
-                    value={store.audio.voice}
-                    onChange={(e) => store.setAudioVoice(e.target.value)}
-                    disabled={store.audio.generating}
-                    className="w-full px-3 py-2 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all disabled:opacity-50 appearance-none"
-                  >
-                    {KOKORO_VOICE_GROUPS.map((group) => (
-                      <optgroup key={group.group} label={group.group}>
-                        {group.voices.map((voice) => (
-                          <option key={voice.id} value={voice.id}>
-                            {voice.name} ({voice.id})
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Speed selector */}
-                <div className="mb-4">
-                  <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-                    Speed: {store.audio.speed.toFixed(1)}x
-                  </label>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="2"
-                    step="0.1"
-                    value={store.audio.speed}
-                    onChange={(e) =>
-                      store.setAudioSpeed(parseFloat(e.target.value))
-                    }
-                    disabled={store.audio.generating}
-                    className="w-full h-2 bg-tiffany-200 rounded-lg appearance-none cursor-pointer accent-tiffany-600 disabled:opacity-50"
-                  />
-                  <div className="flex justify-between text-[10px] text-tiffany-600/40 mt-0.5">
-                    <span>0.5x</span>
-                    <span>1.0x</span>
-                    <span>2.0x</span>
-                  </div>
-                </div>
-
-                {/* Text */}
-                <div className="mb-4">
-                  <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-                    Text to Speak
-                  </label>
-                  <textarea
-                    value={store.audio.text}
-                    onChange={(e) => store.setAudioText(e.target.value)}
-                    placeholder="Enter text to convert to speech..."
-                    rows={4}
-                    disabled={store.audio.generating}
-                    className="w-full px-4 py-3 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
-                  />
-                </div>
-
-                {/* Generate button */}
-                <button
-                  onClick={() => store.generateAudio()}
-                  disabled={
-                    store.audio.generating || !store.audio.text.trim()
-                  }
-                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-600 hover:bg-tiffany-700 active:bg-tiffany-800 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
-                >
-                  {store.audio.generating ? (
-                    <>
-                      <svg
-                        className="animate-spin"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
-                        <path
-                          d="M12 2a10 10 0 0 1 10 10"
-                          strokeOpacity="0.75"
-                        />
-                      </svg>
-                      {store.audio.modelLoading
-                        ? "Loading model..."
-                        : "Generating..."}
-                    </>
-                  ) : (
-                    <>
-                      {AudioIcon}
-                      Generate Speech
-                    </>
-                  )}
-                </button>
-
-                {/* Error */}
-                {store.audio.error && (
-                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
-                    {store.audio.error}
-                  </div>
-                )}
-
-                {/* Logs */}
-                {store.audio.logs.length > 0 && (
-                  <div className="mt-4 p-4 bg-tiffany-50 border border-tiffany-200 rounded-xl max-h-40 overflow-y-auto">
-                    <p className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-                      Logs
-                    </p>
-                    <pre className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap">
-                      {store.audio.logs.join("\n")}
-                    </pre>
-                  </div>
-                )}
-
-                {/* Audio player */}
-                {store.audio.result && (
-                  <div className="mt-4">
-                    <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-                      Generated Audio
-                    </label>
-                    <div className="rounded-xl overflow-hidden border border-tiffany-200 bg-tiffany-50 p-3">
-                      <audio
-                        src={store.audio.result}
-                        controls
-                        className="w-full"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           )}
         </div>
