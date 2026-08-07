@@ -1,3 +1,3 @@
-import { runSetup } from "./util";
+import { runSetup } from "./core";
 
 await runSetup({});
