@@ -44,6 +44,8 @@ interface GenerationStore {
   // Upload
   uploading: boolean;
   uploadError: string | null;
+  uploadedImageUrl: string | null;
+  uploadedImageFilename: string | null;
   uploadImage: (
     projectId: string,
     base64: string,
@@ -323,6 +325,8 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
   // ---- Upload ----
   uploading: false,
   uploadError: null,
+  uploadedImageUrl: null,
+  uploadedImageFilename: null,
 
   uploadImage: async (projectId, base64, filename) => {
     set({ uploading: true, uploadError: null });
@@ -344,7 +348,12 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       }
 
       const data = await res.json();
-      set({ uploading: false });
+      const url = `http://localhost:${(window as any).PORT}/api/files?path=${encodeURIComponent(data.path)}`;
+      set({
+        uploading: false,
+        uploadedImageUrl: url,
+        uploadedImageFilename: data.filename,
+      });
       return data.path as string;
     } catch (e) {
       set({ uploading: false, uploadError: String(e) });
@@ -360,5 +369,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       video: { ...initialVideo },
       uploading: false,
       uploadError: null,
+      uploadedImageUrl: null,
+      uploadedImageFilename: null,
     }),
 }));

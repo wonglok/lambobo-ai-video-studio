@@ -342,6 +342,20 @@ export default function ProjectEditorPage() {
                     {store.uploadError}
                   </p>
                 )}
+                {store.uploadedImageUrl && (
+                  <div className="mt-3 rounded-xl overflow-hidden border border-tiffany-200 bg-tiffany-100">
+                    <img
+                      src={store.uploadedImageUrl}
+                      alt={store.uploadedImageFilename || "Uploaded image"}
+                      className="w-full h-40 object-cover"
+                    />
+                    {store.uploadedImageFilename && (
+                      <p className="px-3 py-1.5 text-xs text-tiffany-600 truncate">
+                        {store.uploadedImageFilename}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Prompt */}
