@@ -70,8 +70,8 @@ export default function ProjectEditorPage() {
       const base64 = reader.result as string;
       const uploadedPath = await store.uploadImage(id, base64, file.name);
       if (uploadedPath) {
-        // Auto-trigger video generation with uploaded image
-        store.generateVideo(id, uploadedPath);
+        // Refresh the project images list so the new upload appears
+        store.fetchProjectImages(id);
       }
     };
     reader.readAsDataURL(file);
@@ -222,7 +222,7 @@ export default function ProjectEditorPage() {
       </div>
 
       {/* Tab content */}
-      <div className="flex-1 px-6 pb-6 overflow-y-auto">
+      <div className="flex-1 px-6 pb-6">
         <div className="bg-white border border-tiffany-200 rounded-b-2xl rounded-tr-2xl shadow-card p-6 min-h-full">
           {store.activeTab === "image" ? (
             /* ========== IMAGE GENERATION PANEL ========== */
@@ -352,11 +352,11 @@ export default function ProjectEditorPage() {
                   </p>
                 )}
                 {store.uploadedImageUrl && (
-                  <div className="mt-3 rounded-xl overflow-hidden border border-tiffany-200 bg-tiffany-100">
+                  <div className="mt-3 rounded-xl overflow-hidden border border-tiffany-200 bg-tiffany-100  inline-block">
                     <img
                       src={store.uploadedImageUrl}
                       alt={store.uploadedImageFilename || "Uploaded image"}
-                      className="w-full h-40 object-cover"
+                      className="w-full h-32 object-cover"
                     />
                     {store.uploadedImageFilename && (
                       <p className="px-3 py-1.5 text-xs text-tiffany-600 truncate">
@@ -368,16 +368,30 @@ export default function ProjectEditorPage() {
               </div>
 
               {/* Project images picker */}
-              {store.projectImages.length > 0 && (
-                <div>
-                  <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-                    Project Images
-                  </label>
-                  <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1">
+              <div>
+                <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+                  Project Images
+                </label>
+                {store.projectImagesLoading ? (
+                  <p className="text-xs text-tiffany-400 italic py-4 text-center">
+                    Loading images...
+                  </p>
+                ) : store.projectImages.length === 0 ? (
+                  <p className="text-xs text-tiffany-400 italic py-4 text-center border border-dashed border-tiffany-200 rounded-xl">
+                    No images yet. Upload one above, or generate an image in the
+                    Image tab.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1">
                     {store.projectImages.map((img) => {
                       const isSelected =
                         store.selectedImage?.filename === img.filename &&
                         store.selectedImage?.source === img.source;
+
+                      const fullUrl = img.url.startsWith("http")
+                        ? img.url
+                        : `http://localhost:${(window as any).PORT}${img.url}`;
+
                       return (
                         <button
                           key={`${img.source}-${img.filename}`}
@@ -390,9 +404,9 @@ export default function ProjectEditorPage() {
                           } disabled:opacity-50`}
                         >
                           <img
-                            src={img.url}
+                            src={`${fullUrl}`}
                             alt={img.filename}
-                            className="w-full h-20 object-cover"
+                            className="w-full h-20 object-cover object-center"
                           />
                           <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-tiffany-700 truncate text-center">
                             {img.source === "generated" ? "✦ " : "↑ "}
@@ -402,16 +416,16 @@ export default function ProjectEditorPage() {
                       );
                     })}
                   </div>
-                  {store.selectedImage && (
-                    <p className="text-xs text-tiffany-600/60 mt-1.5">
-                      Selected:{" "}
-                      <span className="font-medium text-tiffany-700">
-                        {store.selectedImage.filename}
-                      </span>
-                    </p>
-                  )}
-                </div>
-              )}
+                )}
+                {store.selectedImage && (
+                  <p className="text-xs text-tiffany-600/60 mt-1.5">
+                    Selected:{" "}
+                    <span className="font-medium text-tiffany-700">
+                      {store.selectedImage.filename}
+                    </span>
+                  </p>
+                )}
+              </div>
 
               {/* Prompt */}
               <div>

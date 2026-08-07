@@ -465,6 +465,40 @@ async function installPythonDependencies(): Promise<boolean> {
     return false;
   }
 
+  const qwenImageMpsFolder = join(pythonAppSrcDir, "qwen-image-mps");
+  if (!existsSync(qwenImageMpsFolder)) {
+    let cloneCMD = await runCommand(
+      "git",
+      [
+        `clone`,
+        `https://github.com/ivanfioravanti/qwen-image-mps`,
+        "qwen-image-mps",
+      ],
+      { cwd: pythonAppSrcDir },
+    );
+
+    console.log(cloneCMD.success, cloneCMD.output);
+  }
+
+  const uvQwenImageMps = await runCommand(
+    uvPathZimage,
+    [
+      //
+      "pip",
+      "install",
+      "-e",
+      ".",
+    ],
+    {
+      cwd: qwenImageMpsFolder,
+    },
+  );
+
+  if (!uvQwenImageMps.success) {
+    console.error("Failed to install z image pip", uvQwenImageMps.error);
+    return false;
+  }
+
   console.log("Python dependencies installed");
   return true;
 }

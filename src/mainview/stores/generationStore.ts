@@ -392,7 +392,14 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       const res = await fetch(`${API_BASE}/api/projects/${projectId}/images`);
       if (!res.ok) throw new Error(await res.text());
       const images: ProjectImage[] = await res.json();
-      set({ projectImages: images, projectImagesLoading: false });
+      // Resolve relative URLs to absolute so they work regardless of page origin
+      const resolved = images.map((img) => ({
+        ...img,
+        url: img.url.startsWith("http")
+          ? img.url
+          : `http://localhost:${(window as any).PORT}${img.url}`,
+      }));
+      set({ projectImages: resolved, projectImagesLoading: false });
     } catch {
       set({ projectImagesLoading: false });
     }
