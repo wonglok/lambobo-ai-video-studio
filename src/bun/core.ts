@@ -10,6 +10,7 @@ import Electrobun, {
 import { homedir } from "node:os";
 import express from "express";
 import cors from "cors";
+import { renderMediaRoutes } from "./render-media";
 // import { execSync } from "node:child_process";
 
 const DEV_SERVER_PORT = 5173;
@@ -37,6 +38,8 @@ async function getMainViewUrl(): Promise<string> {
 const APP_DATA_DIR = join(homedir(), "media-studio");
 const PYTHON_DIR = join(APP_DATA_DIR, "python-src");
 const OUTPUT_DIR = join(APP_DATA_DIR, "output");
+const UPLOAD_DIR = join(APP_DATA_DIR, "upload");
+const JSON_DIR = join(APP_DATA_DIR, "json");
 const BACKEND_PORT_START = 8765;
 let BACKEND_PORT = BACKEND_PORT_START;
 
@@ -68,11 +71,13 @@ let setupState: SetupState = {
 };
 
 export async function runSetup({}: {}): Promise<SetupState> {
-  [APP_DATA_DIR, PYTHON_DIR, OUTPUT_DIR].forEach((dir) => {
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
-    }
-  });
+  [APP_DATA_DIR, PYTHON_DIR, OUTPUT_DIR, JSON_DIR, UPLOAD_DIR].forEach(
+    (dir) => {
+      if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+      }
+    },
+  );
 
   BACKEND_PORT = await findFreePort(BACKEND_PORT_START);
 
@@ -236,6 +241,7 @@ export async function runSetup({}: {}): Promise<SetupState> {
     res.end();
   });
 
+  renderMediaRoutes({ app });
   //
   //
   //
