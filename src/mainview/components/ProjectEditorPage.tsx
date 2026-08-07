@@ -114,36 +114,6 @@ export default function ProjectEditorPage() {
     </svg>
   );
 
-  const DownloadIcon = (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <polyline points="7 10 12 15 17 10" />
-      <line x1="12" y1="15" x2="12" y2="3" />
-    </svg>
-  );
-
-  const UploadIcon = (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <polyline points="17 8 12 3 7 8" />
-      <line x1="12" y1="3" x2="12" y2="15" />
-    </svg>
-  );
-
   // ========== Loading / Not Found ==========
 
   if (!project) {
@@ -255,37 +225,7 @@ export default function ProjectEditorPage() {
                 />
               </div>
 
-              {/* Style selector */}
-              <div>
-                <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-                  Image Style
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    "photorealistic",
-                    "anime",
-                    "oil painting",
-                    "sketch",
-                    "3d render",
-                    "cinematic",
-                  ].map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => store.setImageStyle(s)}
-                      disabled={store.image.generating}
-                      className={`px-4 py-1.5 text-xs font-medium rounded-lg border transition-all capitalize ${
-                        store.image.style === s
-                          ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
-                          : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
-                      } disabled:opacity-50`}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Generate button */}
+              {/* Generate button (image) */}
               <button
                 onClick={handleGenerateImage}
                 disabled={store.image.generating || !store.image.prompt.trim()}
@@ -329,7 +269,7 @@ export default function ProjectEditorPage() {
                     Logs
                   </p>
                   <pre className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap">
-                    {store.image.logs.join("")}
+                    {store.image.logs.join("\n")}
                   </pre>
                 </div>
               )}
@@ -424,37 +364,7 @@ export default function ProjectEditorPage() {
                 </div>
               </div>
 
-              {/* Style selector */}
-              <div>
-                <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-                  Video Style
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    "cinematic",
-                    "anime",
-                    "realistic",
-                    "stop motion",
-                    "watercolor",
-                    "3d animation",
-                  ].map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => store.setVideoStyle(s)}
-                      disabled={store.video.generating}
-                      className={`px-4 py-1.5 text-xs font-medium rounded-lg border transition-all capitalize ${
-                        store.video.style === s
-                          ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
-                          : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
-                      } disabled:opacity-50`}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Generate button */}
+              {/* Generate button (video) */}
               <button
                 onClick={handleGenerateVideo}
                 disabled={
@@ -502,7 +412,7 @@ export default function ProjectEditorPage() {
                     Logs
                   </p>
                   <pre className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap">
-                    {store.video.logs.join("")}
+                    {store.video.logs.join("\n")}
                   </pre>
                 </div>
               )}

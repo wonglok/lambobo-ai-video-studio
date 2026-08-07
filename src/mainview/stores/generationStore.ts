@@ -8,7 +8,6 @@ export type GenerationTab = "image" | "video";
 
 interface ImageState {
   prompt: string;
-  style: string;
   generating: boolean;
   result: string | null;
   error: string | null;
@@ -18,7 +17,6 @@ interface ImageState {
 interface VideoState {
   prompt: string;
   duration: number;
-  style: string;
   generating: boolean;
   result: string | null;
   error: string | null;
@@ -33,7 +31,6 @@ interface GenerationStore {
   // Image generation
   image: ImageState;
   setImagePrompt: (v: string) => void;
-  setImageStyle: (v: string) => void;
   clearImageResult: () => void;
   generateImage: (projectId: string) => Promise<void>;
 
@@ -41,7 +38,6 @@ interface GenerationStore {
   video: VideoState;
   setVideoPrompt: (v: string) => void;
   setVideoDuration: (v: number) => void;
-  setVideoStyle: (v: string) => void;
   clearVideoResult: () => void;
   generateVideo: (projectId: string, imagePath?: string) => Promise<void>;
 
@@ -103,7 +99,6 @@ async function readSSEStream(
 
 const initialImage: ImageState = {
   prompt: "",
-  style: "photorealistic",
   generating: false,
   result: null,
   error: null,
@@ -113,7 +108,6 @@ const initialImage: ImageState = {
 const initialVideo: VideoState = {
   prompt: "",
   duration: 5,
-  style: "cinematic",
   generating: false,
   result: null,
   error: null,
@@ -131,7 +125,6 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
 
   setImagePrompt: (prompt) =>
     set((s) => ({ image: { ...s.image, prompt, error: null } })),
-  setImageStyle: (style) => set((s) => ({ image: { ...s.image, style } })),
   clearImageResult: () =>
     set((s) => ({
       image: { ...s.image, result: null, error: null, logs: [] },
@@ -217,7 +210,6 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     set((s) => ({ video: { ...s.video, prompt, error: null } })),
   setVideoDuration: (duration) =>
     set((s) => ({ video: { ...s.video, duration } })),
-  setVideoStyle: (style) => set((s) => ({ video: { ...s.video, style } })),
   clearVideoResult: () =>
     set((s) => ({
       video: { ...s.video, result: null, error: null, logs: [] },
