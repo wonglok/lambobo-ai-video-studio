@@ -145,12 +145,6 @@ Audio TTS-dev.app: accepted
 source=Notarized Developer ID
 ```
 
-### 6. Clean up
-
-```bash
-rm -f "build/dev-macos-arm64/Audio TTS-dev.zip"
-```
-
 ## Troubleshooting
 
 | Issue                                                            | Fix                                                                                        |
