@@ -1,7 +1,9 @@
+import ProjectManager from "./components/ProjectManager";
+
 export default function MediaStudio() {
   return (
-    <div>
-      <h1>Media Studio</h1>
+    <div className="flex flex-col h-screen p-6 bg-tiffany-50">
+      <ProjectManager />
     </div>
   );
 }
