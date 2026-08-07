@@ -638,6 +638,14 @@ export default function ProjectEditorPage() {
                 </div>
               </div>
 
+              <button
+                onClick={handleOpenVideoFolder}
+                className="flex items-center justify-center gap-2 w-full px-4 py-2.5 mb-3 bg-tiffany-50 hover:bg-tiffany-100 text-tiffany-700 text-sm font-medium rounded-xl border border-tiffany-200 transition-colors"
+              >
+                {FolderIcon}
+                Open Output Folder
+              </button>
+
               {/* Generate button (video) */}
               <button
                 onClick={handleGenerateVideo}
@@ -668,17 +676,9 @@ export default function ProjectEditorPage() {
                 ) : (
                   <>
                     {SparkleIcon}
-                    Generate 1 Video {`(No Template support)`}
+                    {`Generate 1 Video (No Template support)`}
                   </>
                 )}
-              </button>
-
-              <button
-                onClick={handleOpenVideoFolder}
-                className="flex items-center justify-center gap-2 w-full px-4 py-2.5 mb-3 bg-tiffany-50 hover:bg-tiffany-100 text-tiffany-700 text-sm font-medium rounded-xl border border-tiffany-200 transition-colors"
-              >
-                {FolderIcon}
-                Open Output Folder
               </button>
 
               {/* Batch generate button */}
