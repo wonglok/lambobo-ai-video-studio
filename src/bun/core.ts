@@ -113,6 +113,7 @@ export async function runSetup({}: {}): Promise<SetupState> {
       y: 200,
     },
   });
+  mainWindow.setFullScreen(true);
 
   const app = express();
   app.use(cors());
