@@ -563,7 +563,12 @@ async function testRenderVideo({
     let ttt = setInterval(() => {
       if (doneAll) {
         clearInterval(ttt);
-        resolve(true);
+
+        if (hasError.length >= 10) {
+          resolve(false);
+        } else {
+          resolve(true);
+        }
         firstVideoProcess.kill();
       }
     });
