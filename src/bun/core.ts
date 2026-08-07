@@ -8,7 +8,9 @@ import {
 import { dirname, join } from "node:path";
 import { type Subprocess, spawn } from "bun";
 import Electrobun, {
+  ApplicationMenu,
   BrowserWindow,
+  Screen,
   // type RPCSchema,
   // Utils,
   Updater,
@@ -113,7 +115,10 @@ export async function runSetup({}: {}): Promise<SetupState> {
       y: 200,
     },
   });
-  mainWindow.setFullScreen(true);
+
+  let primary = Screen.getPrimaryDisplay();
+  // mainWindow.setFullScreen(true);
+  mainWindow.setFrame(0, 0, primary.bounds.width, primary.bounds.height);
 
   const app = express();
   app.use(cors());
@@ -1015,3 +1020,38 @@ async function testRenderVideo({
 
 //   return success;
 // }
+
+// ========== Application Menu ==========
+
+ApplicationMenu.setApplicationMenu([
+  {
+    label: `Lambobo AI Studio`,
+    submenu: [
+      { role: "about" },
+      { type: "separator" },
+      { role: "hide" },
+      { role: "hideOthers" },
+      { role: "showAll" },
+      { type: "separator" },
+      { role: "quit" },
+    ],
+  },
+  {
+    label: "Edit",
+    submenu: [
+      { role: "undo" },
+      { role: "redo" },
+      { type: "separator" },
+      { role: "cut" },
+      { role: "copy" },
+      { role: "paste" },
+      { role: "pasteAndMatchStyle" },
+      { role: "delete" },
+      { role: "selectAll" },
+    ],
+  },
+  {
+    label: "Window",
+    submenu: [{ role: "minimize" }, { role: "zoom" }, { role: "close" }],
+  },
+]);

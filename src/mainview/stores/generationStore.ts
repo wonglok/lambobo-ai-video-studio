@@ -122,7 +122,8 @@ const initialImage: ImageState = {
 };
 
 const initialVideo: VideoState = {
-  prompt: "",
+  prompt:
+    "a 20 years old cute beaver says: Hi {{name}}, how are you? im beaver atlas.",
   duration: 5,
   generating: false,
   result: null,
@@ -133,7 +134,7 @@ const initialVideo: VideoState = {
 // ========== Store ==========
 
 export const useGenerationStore = create<GenerationStore>((set, get) => ({
-  activeTab: "image",
+  activeTab: "video",
   setActiveTab: (tab) => set({ activeTab: tab }),
 
   // ---- Image ----
