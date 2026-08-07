@@ -12,8 +12,10 @@ export default function ProjectEditorPage() {
   // Zustand generation store
   const store = useGenerationStore();
 
-  // Local ref for file input
+  // Local refs
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageLogRef = useRef<HTMLPreElement>(null);
+  const videoLogRef = useRef<HTMLPreElement>(null);
 
   useEffect(() => {
     if (projects.length === 0) {
@@ -25,6 +27,19 @@ export default function ProjectEditorPage() {
     const found = projects.find((p) => p.id === id) || null;
     setProject(found);
   }, [id, projects]);
+
+  // Auto-scroll logs to bottom
+  useEffect(() => {
+    if (imageLogRef.current) {
+      imageLogRef.current.scrollTop = imageLogRef.current.scrollHeight;
+    }
+  }, [store.image.logs]);
+
+  useEffect(() => {
+    if (videoLogRef.current) {
+      videoLogRef.current.scrollTop = videoLogRef.current.scrollHeight;
+    }
+  }, [store.video.logs]);
 
   // ========== Handlers ==========
 
@@ -268,7 +283,10 @@ export default function ProjectEditorPage() {
                   <p className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
                     Logs
                   </p>
-                  <pre className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap">
+                  <pre
+                    ref={imageLogRef}
+                    className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap"
+                  >
                     {store.image.logs.join("\n")}
                   </pre>
                 </div>
@@ -411,7 +429,10 @@ export default function ProjectEditorPage() {
                   <p className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
                     Logs
                   </p>
-                  <pre className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap">
+                  <pre
+                    ref={videoLogRef}
+                    className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap"
+                  >
                     {store.video.logs.join("\n")}
                   </pre>
                 </div>
