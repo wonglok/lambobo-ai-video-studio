@@ -48,7 +48,10 @@ export default function ProjectEditorPage() {
   };
 
   const handleGenerateVideo = () => {
-    if (id) store.generateVideo(id);
+    if (id) {
+      const { uploadedImagePath, uploadedImageUrl } = store;
+      store.generateVideo(id, uploadedImagePath || uploadedImageUrl || undefined);
+    }
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -379,7 +382,7 @@ export default function ProjectEditorPage() {
                   Duration (seconds)
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {[3, 5, 10, 15, 30].map((d) => (
+                  {[3, 5, 10, 15, 20].map((d) => (
                     <button
                       key={d}
                       onClick={() => store.setVideoDuration(d)}

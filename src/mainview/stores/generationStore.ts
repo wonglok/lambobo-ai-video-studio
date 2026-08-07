@@ -46,6 +46,7 @@ interface GenerationStore {
   uploadError: string | null;
   uploadedImageUrl: string | null;
   uploadedImageFilename: string | null;
+  uploadedImagePath: string | null;
   uploadImage: (
     projectId: string,
     base64: string,
@@ -221,8 +222,12 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     const { video } = get();
     if (!video.prompt.trim() || video.generating) return;
 
-    // Use the provided imagePath, or fall back to the last generated image
-    let resolvedImagePath = imagePath || get().image.result;
+    // Use the provided imagePath, or fall back to uploaded image, or generated image
+    let resolvedImagePath =
+      imagePath ||
+      get().uploadedImagePath ||
+      get().uploadedImageUrl ||
+      get().image.result;
 
     if (!resolvedImagePath) {
       set((s) => ({
@@ -272,7 +277,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
           projectId,
           width: 480,
           height: 480,
-          frames: video.duration * 24,
+          frames: video.duration * 24 + 1,
           frameRate: 24,
         }),
       });
@@ -327,6 +332,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
   uploadError: null,
   uploadedImageUrl: null,
   uploadedImageFilename: null,
+  uploadedImagePath: null,
 
   uploadImage: async (projectId, base64, filename) => {
     set({ uploading: true, uploadError: null });
@@ -353,6 +359,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
         uploading: false,
         uploadedImageUrl: url,
         uploadedImageFilename: data.filename,
+        uploadedImagePath: data.path,
       });
       return data.path as string;
     } catch (e) {
@@ -371,5 +378,6 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       uploadError: null,
       uploadedImageUrl: null,
       uploadedImageFilename: null,
+      uploadedImagePath: null,
     }),
 }));
