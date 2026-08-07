@@ -41,6 +41,13 @@ export default function ProjectEditorPage() {
     }
   }, [store.video.logs]);
 
+  // Fetch project images when switching to the video tab
+  useEffect(() => {
+    if (store.activeTab === "video" && id) {
+      store.fetchProjectImages(id);
+    }
+  }, [store.activeTab, id]);
+
   // ========== Handlers ==========
 
   const handleGenerateImage = () => {
@@ -49,8 +56,7 @@ export default function ProjectEditorPage() {
 
   const handleGenerateVideo = () => {
     if (id) {
-      const { uploadedImagePath, uploadedImageUrl } = store;
-      store.generateVideo(id, uploadedImagePath || uploadedImageUrl || undefined);
+      store.generateVideo(id);
     }
   };
 
@@ -360,6 +366,52 @@ export default function ProjectEditorPage() {
                   </div>
                 )}
               </div>
+
+              {/* Project images picker */}
+              {store.projectImages.length > 0 && (
+                <div>
+                  <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+                    Project Images
+                  </label>
+                  <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1">
+                    {store.projectImages.map((img) => {
+                      const isSelected =
+                        store.selectedImage?.filename === img.filename &&
+                        store.selectedImage?.source === img.source;
+                      return (
+                        <button
+                          key={`${img.source}-${img.filename}`}
+                          onClick={() => store.selectImage(img)}
+                          disabled={store.video.generating}
+                          className={`relative rounded-lg overflow-hidden border-2 transition-all ${
+                            isSelected
+                              ? "border-tiffany-500 ring-2 ring-tiffany-300/40"
+                              : "border-tiffany-200 hover:border-tiffany-300"
+                          } disabled:opacity-50`}
+                        >
+                          <img
+                            src={img.url}
+                            alt={img.filename}
+                            className="w-full h-20 object-cover"
+                          />
+                          <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-tiffany-700 truncate text-center">
+                            {img.source === "generated" ? "✦ " : "↑ "}
+                            {img.filename}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {store.selectedImage && (
+                    <p className="text-xs text-tiffany-600/60 mt-1.5">
+                      Selected:{" "}
+                      <span className="font-medium text-tiffany-700">
+                        {store.selectedImage.filename}
+                      </span>
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Prompt */}
               <div>

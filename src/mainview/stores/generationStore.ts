@@ -53,8 +53,21 @@ interface GenerationStore {
     filename?: string,
   ) => Promise<string | null>;
 
+  // Project images picker
+  projectImages: ProjectImage[];
+  projectImagesLoading: boolean;
+  fetchProjectImages: (projectId: string) => Promise<void>;
+  selectedImage: ProjectImage | null;
+  selectImage: (img: ProjectImage | null) => void;
+
   // Reset
   resetAll: () => void;
+}
+
+export interface ProjectImage {
+  filename: string;
+  url: string;
+  source: "upload" | "generated";
 }
 
 // ========== SSE Stream Reader ==========
@@ -368,6 +381,38 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     }
   },
 
+  // ---- Project Images ----
+  projectImages: [],
+  projectImagesLoading: false,
+  selectedImage: null,
+
+  fetchProjectImages: async (projectId) => {
+    set({ projectImagesLoading: true });
+    try {
+      const res = await fetch(`${API_BASE}/api/projects/${projectId}/images`);
+      if (!res.ok) throw new Error(await res.text());
+      const images: ProjectImage[] = await res.json();
+      set({ projectImages: images, projectImagesLoading: false });
+    } catch {
+      set({ projectImagesLoading: false });
+    }
+  },
+
+  selectImage: (img) => {
+    if (!img) {
+      set({ selectedImage: null });
+      return;
+    }
+    const fullUrl = img.url.startsWith("http")
+      ? img.url
+      : `http://localhost:${(window as any).PORT}${img.url}`;
+    set({
+      selectedImage: { ...img, url: fullUrl },
+      uploadedImageUrl: fullUrl,
+      uploadedImageFilename: img.filename,
+    });
+  },
+
   // ---- Reset ----
   resetAll: () =>
     set({
@@ -379,5 +424,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       uploadedImageUrl: null,
       uploadedImageFilename: null,
       uploadedImagePath: null,
+      projectImages: [],
+      selectedImage: null,
     }),
 }));

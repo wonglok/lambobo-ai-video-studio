@@ -4,6 +4,8 @@ import {
   readFileSync,
   writeFileSync,
   realpathSync,
+  readdirSync,
+  statSync,
 } from "node:fs";
 import { type Application } from "express";
 import { homedir } from "node:os";
@@ -213,6 +215,47 @@ export async function renderMediaRoutes({
         .status(500)
         .json({ error: "Failed to save image", details: String(e) });
     }
+  });
+
+  // List project images (from uploads and generated outputs)
+  app.get("/api/projects/:id/images", (req, res) => {
+    const { id } = req.params;
+    const imageExts = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"]);
+    const results: { filename: string; url: string; source: "upload" | "generated" }[] = [];
+
+    for (const [source, dir] of [["upload", UPLOAD_DIR], ["generated", OUTPUT_DIR]] as const) {
+      const projectDir = join(dir, id);
+      if (!existsSync(projectDir)) continue;
+
+      let entries: string[];
+      try {
+        entries = readdirSync(projectDir);
+      } catch {
+        continue;
+      }
+
+      for (const entry of entries) {
+        const ext = entry.slice(entry.lastIndexOf(".")).toLowerCase();
+        if (!imageExts.has(ext)) continue;
+
+        const fullPath = join(projectDir, entry);
+        try {
+          if (!statSync(fullPath).isFile()) continue;
+        } catch {
+          continue;
+        }
+
+        results.push({
+          filename: entry,
+          url: `/api/files?path=${encodeURIComponent(fullPath)}`,
+          source,
+        });
+      }
+    }
+
+    // Sort newest first (by filename which often includes timestamp)
+    results.sort((a, b) => b.filename.localeCompare(a.filename));
+    res.json(results);
   });
 
   // ========== Render: Text-to-Image ==========
