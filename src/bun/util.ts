@@ -207,6 +207,10 @@ export async function runSetup({}: {}): Promise<SetupState> {
       return;
     }
 
+    await testRenderImage({
+      send: send,
+    });
+
     await testRenderVideo({
       send: send,
     });
@@ -216,32 +220,11 @@ export async function runSetup({}: {}): Promise<SetupState> {
     res.end();
   });
 
-  app.get("/api/render-video", async (req, res) => {
-    // Set SSE headers
-    res.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no",
-    });
-
-    const send = (event: string, data: object) => {
-      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-    };
-
-    send("progress", {
-      step: "init",
-      status: "running",
-      label: "Running Setup...",
-    });
-
-    await testRenderVideo({
-      send: send,
-    });
-
-    send("complete", { success: true, port: BACKEND_PORT });
-    res.end();
-  });
+  //
+  //
+  //
+  //
+  //
 
   app.listen(BACKEND_PORT);
 
@@ -398,10 +381,6 @@ async function installPythonDependencies(): Promise<boolean> {
 
   const ltxFolder = join(pythonAppSrcDir, "ltx-2-mlx");
 
-  // if (!existsSync(ltxFolder)) {
-  //   mkdirSync(ltxFolder, { recursive: true });
-  // }
-
   if (!existsSync(ltxFolder)) {
     let cloneCMD = await runCommand(
       "git",
@@ -413,8 +392,6 @@ async function installPythonDependencies(): Promise<boolean> {
   }
 
   const uvPath = await getUvPath();
-
-  // uv sync --all-extras
 
   const uvSyncResult = await runCommand(
     uvPath,
@@ -432,8 +409,161 @@ async function installPythonDependencies(): Promise<boolean> {
     return false;
   }
 
+  const zImagePath = join(pythonAppSrcDir, "z-image-mps");
+
+  if (!existsSync(zImagePath)) {
+    let cloneCMD = await runCommand(
+      "git",
+      [`clone`, `https://github.com/ivanfioravanti/z-image-mps`, "z-image-mps"],
+      { cwd: pythonAppSrcDir },
+    );
+
+    console.log(cloneCMD.success, cloneCMD.output);
+  }
+
+  const uvPathZimage = await getUvPath();
+
+  const uvInstallZimage = await runCommand(
+    uvPathZimage,
+    [
+      //
+      "pip",
+      "install",
+      "-e",
+      ".",
+    ],
+    {
+      cwd: zImagePath,
+    },
+  );
+
+  if (!uvInstallZimage.success) {
+    console.error("Failed to install z image pip", uvInstallZimage.error);
+    return false;
+  }
+
   console.log("Python dependencies installed");
   return true;
+}
+
+let firstImageProcess: any;
+async function testRenderImage({
+  send,
+}: {
+  send: (event: string, data: object) => void;
+}): Promise<boolean> {
+  console.log("Try Render Image...");
+
+  const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
+  if (!existsSync(pythonAppSrcDir)) {
+    mkdirSync(pythonAppSrcDir, { recursive: true });
+  }
+
+  const zImageFolder = join(pythonAppSrcDir, "z-image-mps");
+
+  const uvPath = await getUvPath();
+
+  if (firstImageProcess) {
+    if (!firstImageProcess?.killed) {
+      firstImageProcess.kill();
+    }
+  }
+
+  if (!existsSync(join(OUTPUT_DIR, "welcome"))) {
+    mkdirSync(join(OUTPUT_DIR, "welcome"), { recursive: true });
+  }
+
+  if (existsSync(join(OUTPUT_DIR, "welcome", "thank-you.png"))) {
+    return true;
+  }
+
+  // let lambobo = join(
+  //   import.meta.path,
+  //   "..",
+  //   "..",
+  //   "python-src",
+  //   "images",
+  //   "lambobo.png",
+  // );
+
+  // console.log("lambobo", lambobo);
+
+  firstImageProcess = spawn(
+    [
+      uvPath,
+
+      //
+      "run",
+      "z-image-mps.py",
+      "-p",
+      "A happy little lamb in cartoon 3d movie style. a line of text that says: thank you so much for using AI Studio!",
+      "--aspect",
+      "1:1",
+      "--output",
+      join(OUTPUT_DIR, "welcome", "thank-you.png"),
+      "--device",
+      "mps",
+
+      //
+    ],
+    {
+      cwd: zImageFolder,
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  );
+
+  let doneAll = false;
+
+  // Log backend output and forward to UI
+  (async () => {
+    const reader = firstImageProcess?.stdout.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        doneAll = true;
+        break;
+      }
+      const text = new TextDecoder().decode(value);
+      console.log("[Backend Image]", text);
+      send("log", { text: text });
+    }
+  })();
+
+  let hasError = "";
+
+  // Log backend output and forw ard to UI
+  (async () => {
+    const reader = firstImageProcess?.stderr.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      const text = new TextDecoder().decode(value);
+      console.log("[Backend Image]", text);
+      hasError += text;
+      hasError = hasError.trim();
+      send("log", { text: text });
+    }
+  })();
+
+  // let proc: Subprocess = firstImageProcess;
+
+  return await new Promise(async (resolve) => {
+    let ttt = setInterval(() => {
+      if (doneAll) {
+        clearInterval(ttt);
+
+        if (hasError.length >= 10) {
+          resolve(false);
+        } else {
+          resolve(true);
+        }
+        firstImageProcess.kill();
+      }
+    });
+  });
 }
 
 let firstVideoProcess: any;
