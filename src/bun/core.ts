@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { type Subprocess, spawn } from "bun";
 import Electrobun, {
   BrowserWindow,
@@ -817,7 +817,7 @@ async function testQwenImageEditGeneration({
       lambobo,
       "-p",
       "Change the background to sunset",
-      "-o",
+      "--output",
       outputPath,
     ],
     {
@@ -893,8 +893,12 @@ async function testQwenImageGeneration({
   }
 
   //
-  const outputPath = join(OUTPUT_DIR, "welcome", "thank-you-qwen-image.png");
-  const outputFolderPath = join(OUTPUT_DIR, "welcome");
+  const outputPath = join(
+    OUTPUT_DIR,
+    "welcome",
+    "thank-you-qwen-image-gen.png",
+  );
+  // const outputFolderPath = join(OUTPUT_DIR, "welcome");
   if (existsSync(outputPath)) {
     console.log("Image already rendered, skipping.");
     return true;
@@ -918,10 +922,10 @@ async function testQwenImageGeneration({
       "-p",
       "Draw a sunset",
       "--ultra-fast",
-      "--outdir",
-      outputFolderPath,
       "--aspect",
-      "1:1",
+      "16:9",
+      "--outdir",
+      dirname(outputPath),
     ],
     {
       cwd: binaryFolder,
@@ -946,7 +950,7 @@ async function testQwenImageGeneration({
   await stdoutPromise;
 
   // Wait for process to exit and check result
-  const exitCode = await proc.exited;
+  const exitCode = await proc.exitCode;
   const success = exitCode === 0 && existsSync(outputPath);
 
   if (success) {
