@@ -122,7 +122,7 @@ const initialImage: ImageState = {
 };
 
 const initialVideo: VideoState = {
-  prompt: `a beaver guy says: "Hi John Wayne, how are you? my name is beaver atlas.” `,
+  prompt: `a teenage beaver boy says: "Hi John Wayne, how are you? my name is beaver atlas.” `,
   duration: 5,
   generating: false,
   result: null,
@@ -433,8 +433,5 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       uploadedImagePath: null,
       projectImages: [],
       selectedImage: null,
-      projectVideos: [],
-      projectVideosLoading: false,
-      selectedVideo: null,
     }),
 }));

@@ -229,17 +229,6 @@ export default function ProjectEditorPage() {
       {/* Tab bar */}
       <div className="flex gap-0 px-6 pt-5 pb-0 bg-tiffany-50">
         <button
-          onClick={() => store.setActiveTab("image")}
-          className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-t-xl transition-all duration-150 ${
-            store.activeTab === "image"
-              ? "bg-white text-tiffany-700 shadow-sm border border-b-0 border-tiffany-200"
-              : "text-tiffany-600/60 hover:text-tiffany-700 hover:bg-tiffany-100/60"
-          }`}
-        >
-          {ImageIcon}
-          Scene Image Generation
-        </button>
-        <button
           onClick={() => store.setActiveTab("video")}
           className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-t-xl transition-all duration-150 ${
             store.activeTab === "video"
@@ -249,6 +238,17 @@ export default function ProjectEditorPage() {
         >
           {VideoIcon}
           Scene Video Generation
+        </button>
+        <button
+          onClick={() => store.setActiveTab("image")}
+          className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-t-xl transition-all duration-150 ${
+            store.activeTab === "image"
+              ? "bg-white text-tiffany-700 shadow-sm border border-b-0 border-tiffany-200"
+              : "text-tiffany-600/60 hover:text-tiffany-700 hover:bg-tiffany-100/60"
+          }`}
+        >
+          {ImageIcon}
+          Scene Image Generation
         </button>
       </div>
 
@@ -558,6 +558,13 @@ export default function ProjectEditorPage() {
                   <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
                     Generated Video
                   </label>
+                  <button
+                    onClick={handleOpenVideoFolder}
+                    className="flex items-center justify-center gap-2 w-full px-4 py-2.5 mb-3 bg-tiffany-50 hover:bg-tiffany-100 text-tiffany-700 text-sm font-medium rounded-xl border border-tiffany-200 transition-colors"
+                  >
+                    {FolderIcon}
+                    Open Folder
+                  </button>
                   <div className="relative rounded-xl overflow-hidden border border-tiffany-200 shadow-card bg-black w-[500px]">
                     <video
                       src={store.video.result}
@@ -565,16 +572,8 @@ export default function ProjectEditorPage() {
                       className="w-full h-auto"
                     />
                   </div>
-                  <button
-                    onClick={handleOpenVideoFolder}
-                    className="flex items-center justify-center gap-2 w-full px-4 py-2.5 mt-3 bg-tiffany-50 hover:bg-tiffany-100 text-tiffany-700 text-sm font-medium rounded-xl border border-tiffany-200 transition-colors"
-                  >
-                    {FolderIcon}
-                    Open Folder
-                  </button>
                 </div>
               )}
-
             </div>
           )}
         </div>
