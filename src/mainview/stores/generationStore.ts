@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import Mustache from "mustache";
 
 const API_BASE = `http://localhost:${(window as any).PORT}`;
 
@@ -60,6 +61,18 @@ interface GenerationStore {
   selectedImage: ProjectImage | null;
   selectImage: (img: ProjectImage | null) => void;
 
+  // CSV batch generation
+  csvRows: Record<string, string>[];
+  csvColumns: string[];
+  csvFilename: string | null;
+  batchRunning: boolean;
+  batchProgress: { current: number; total: number } | null;
+  batchCancelRequested: boolean;
+  uploadCsv: (base64: string, filename: string) => void;
+  clearCsvData: () => void;
+  generateBatchVideos: (projectId: string) => Promise<void>;
+  cancelBatch: () => void;
+
   // Reset
   resetAll: () => void;
 }
@@ -109,6 +122,59 @@ async function readSSEStream(
   } finally {
     reader.releaseLock();
   }
+}
+
+// ========== CSV Parser ==========
+
+function parseCsv(text: string): { rows: Record<string, string>[]; columns: string[] } {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length === 0) return { rows: [], columns: [] };
+
+  const parseLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"') {
+          if (i + 1 < line.length && line[i + 1] === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          current += ch;
+        }
+      } else {
+        if (ch === '"') {
+          inQuotes = true;
+        } else if (ch === ",") {
+          result.push(current.trim());
+          current = "";
+        } else {
+          current += ch;
+        }
+      }
+    }
+    result.push(current.trim());
+    return result;
+  };
+
+  const headers = parseLine(lines[0]);
+  const rows: Record<string, string>[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const values = parseLine(lines[i]);
+    const row: Record<string, string> = {};
+    headers.forEach((h, idx) => {
+      row[h] = values[idx] || "";
+    });
+    rows.push(row);
+  }
+
+  return { rows, columns: headers };
 }
 
 // ========== Initial State ==========
@@ -405,6 +471,156 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     }
   },
 
+  // ---- CSV Batch ----
+  csvRows: [],
+  csvColumns: [],
+  csvFilename: null,
+  batchRunning: false,
+  batchProgress: null,
+  batchCancelRequested: false,
+
+  uploadCsv: (base64, filename) => {
+    try {
+      // Decode base64 (strip data URL prefix if present)
+      const raw = base64.replace(/^data:text\/csv;base64,/, "").replace(/^data:application\/csv;base64,/, "").replace(/^data:text\/plain;base64,/, "");
+      const text = atob(raw);
+      const { rows, columns } = parseCsv(text);
+      set({
+        csvRows: rows,
+        csvColumns: columns,
+        csvFilename: filename,
+      });
+    } catch {
+      set({ csvRows: [], csvColumns: [], csvFilename: null });
+    }
+  },
+
+  clearCsvData: () =>
+    set({
+      csvRows: [],
+      csvColumns: [],
+      csvFilename: null,
+      batchRunning: false,
+      batchProgress: null,
+      batchCancelRequested: false,
+    }),
+
+  generateBatchVideos: async (projectId) => {
+    const { video, csvRows, batchRunning } = get();
+    if (batchRunning || csvRows.length === 0) return;
+
+    set({ batchRunning: true, batchProgress: { current: 0, total: csvRows.length }, batchCancelRequested: false });
+
+    for (let i = 0; i < csvRows.length; i++) {
+      if (get().batchCancelRequested) break;
+
+      set({ batchProgress: { current: i + 1, total: csvRows.length } });
+
+      const rowData = csvRows[i];
+      const renderedPrompt = Mustache.render(video.prompt, rowData);
+
+      // Build a name-tagged prompt suffix so the output filename reflects the row
+      const nameTag = rowData.name ? ` [${rowData.name}]` : "";
+
+      // Call the single-video generation with the rendered prompt
+      // We use the existing generateVideo logic but inline it here for batch
+      let resolvedImagePath =
+        get().uploadedImagePath ||
+        get().uploadedImageUrl ||
+        get().image.result;
+
+      if (!resolvedImagePath) continue;
+
+      if (resolvedImagePath.includes("/api/files?path=")) {
+        try {
+          const url = new URL(resolvedImagePath);
+          resolvedImagePath = url.searchParams.get("path") || resolvedImagePath;
+        } catch {
+          // not a valid URL, use as-is
+        }
+      }
+      if (resolvedImagePath.startsWith("file://")) {
+        resolvedImagePath = resolvedImagePath.slice(7);
+      }
+      resolvedImagePath = resolvedImagePath.split("/").pop() || resolvedImagePath;
+
+      set((s) => ({
+        video: {
+          ...s.video,
+          generating: true,
+          error: null,
+          result: null,
+          logs: [],
+        },
+      }));
+
+      try {
+        const res = await fetch(`${API_BASE}/api/render/image-to-video`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompt: `${renderedPrompt}${nameTag}`,
+            imagePath: resolvedImagePath,
+            projectId,
+            width: 480,
+            height: 480,
+            frames: video.duration * 24 + 1,
+            frameRate: 24,
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.text();
+          set((s) => ({
+            video: { ...s.video, generating: false, error: err },
+          }));
+          continue;
+        }
+
+        await readSSEStream(res, (event, data) => {
+          switch (event) {
+            case "log":
+              set((s) => ({
+                video: {
+                  ...s.video,
+                  logs: [...s.video.logs, `[${i + 1}/${csvRows.length}] ${data.text as string}`],
+                },
+              }));
+              break;
+            case "complete":
+              set((s) => ({
+                video: {
+                  ...s.video,
+                  generating: false,
+                  result: `http://localhost:${(window as any).PORT}/api/files?path=${encodeURIComponent(data.path)}`,
+                },
+              }));
+              break;
+            case "error":
+              set((s) => ({
+                video: {
+                  ...s.video,
+                  generating: false,
+                  error: data.error || "Video generation failed",
+                },
+              }));
+              break;
+          }
+        });
+      } catch (e) {
+        set((s) => ({
+          video: { ...s.video, generating: false, error: String(e) },
+        }));
+      }
+    }
+
+    set({ batchRunning: false, batchProgress: null, batchCancelRequested: false });
+  },
+
+  cancelBatch: () => {
+    set({ batchCancelRequested: true });
+  },
+
   selectImage: (img) => {
     if (!img) {
       set({ selectedImage: null });
@@ -433,5 +649,11 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       uploadedImagePath: null,
       projectImages: [],
       selectedImage: null,
+      csvRows: [],
+      csvColumns: [],
+      csvFilename: null,
+      batchRunning: false,
+      batchProgress: null,
+      batchCancelRequested: false,
     }),
 }));

@@ -16,6 +16,7 @@ export default function ProjectEditorPage() {
 
   // Local refs
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
   const imageLogRef = useRef<HTMLPreElement>(null);
   const videoLogRef = useRef<HTMLPreElement>(null);
 
@@ -63,6 +64,12 @@ export default function ProjectEditorPage() {
     }
   };
 
+  const handleBatchGenerate = async () => {
+    if (id) {
+      await store.generateBatchVideos(id);
+    }
+  };
+
   const handleOpenVideoFolder = async () => {
     if (!id) return;
     try {
@@ -93,6 +100,20 @@ export default function ProjectEditorPage() {
     reader.readAsDataURL(file);
 
     // Reset so the same file can be re-selected
+    e.target.value = "";
+  };
+
+  const handleCsvSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      store.uploadCsv(base64, file.name);
+    };
+    reader.readAsDataURL(file);
+
     e.target.value = "";
   };
 
@@ -166,6 +187,43 @@ export default function ProjectEditorPage() {
       strokeLinejoin="round"
     >
       <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+
+  const CsvIcon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="8" y1="13" x2="16" y2="13" />
+      <line x1="8" y1="17" x2="16" y2="17" />
+      <line x1="8" y1="9" x2="10" y2="9" />
+    </svg>
+  );
+
+  const TableIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+      <line x1="3" y1="9" x2="21" y2="9" />
+      <line x1="3" y1="15" x2="21" y2="15" />
+      <line x1="9" y1="3" x2="9" y2="21" />
     </svg>
   );
 
@@ -398,6 +456,63 @@ export default function ProjectEditorPage() {
                 )}
               </div>
 
+              {/* CSV upload for batch generation */}
+              <div>
+                <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+                  CSV Batch Data
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={csvInputRef}
+                    type="file"
+                    accept=".csv"
+                    onChange={handleCsvSelect}
+                    disabled={store.batchRunning}
+                    className="flex-1 text-sm text-tiffany-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-tiffany-100 file:text-tiffany-700 hover:file:bg-tiffany-200 file:cursor-pointer file:transition-colors disabled:opacity-50"
+                  />
+                  {store.csvFilename && (
+                    <button
+                      onClick={() => store.clearCsvData()}
+                      disabled={store.batchRunning}
+                      className="px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                {store.csvFilename && (
+                  <div className="mt-2 p-3 bg-tiffany-50 border border-tiffany-200 rounded-xl">
+                    <div className="flex items-center gap-2 text-xs text-tiffany-700 mb-1">
+                      {CsvIcon}
+                      <span className="font-medium">{store.csvFilename}</span>
+                      <span className="text-tiffany-600/60">
+                        ({store.csvRows.length} rows, {store.csvColumns.length} columns)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                      {store.csvColumns.map((col) => (
+                        <code
+                          key={col}
+                          className="px-1.5 py-0.5 text-[10px] bg-tiffany-100 text-tiffany-700 rounded font-mono"
+                        >
+                          {`{{${col}}}`}
+                        </code>
+                      ))}
+                      <span className="text-[10px] text-tiffany-600/50 ml-1">
+                        — use these in your prompt
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {!store.csvFilename && (
+                  <p className="text-xs text-tiffany-600/50 mt-1.5">
+                    Upload a CSV with a <code className="text-[11px] bg-tiffany-100 px-1 rounded">name</code> column to
+                    batch-generate many videos. Use <code className="text-[11px] bg-tiffany-100 px-1 rounded">{`{{column}}`}</code> in
+                    your prompt as a template.
+                  </p>
+                )}
+              </div>
+
               {/* Project images picker */}
               <div>
                 <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
@@ -462,13 +577,22 @@ export default function ProjectEditorPage() {
               <div>
                 <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
                   Scene Prompt
+                  {store.csvColumns.length > 0 && (
+                    <span className="ml-2 text-[10px] font-normal text-tiffany-500">
+                      — template with {`{{column}}`} placeholders
+                    </span>
+                  )}
                 </label>
                 <textarea
                   value={store.video.prompt}
                   onChange={(e) => store.setVideoPrompt(e.target.value)}
-                  placeholder="Describe the video scene, e.g. a gentle ocean wave rolling onto a sandy beach at golden hour..."
+                  placeholder={
+                    store.csvColumns.length > 0
+                      ? `Use {{name}} and other column placeholders, e.g. a {{name}} says: "Hi John Wayne, how are you? my name is {{name}}."`
+                      : "Describe the video scene, e.g. a gentle ocean wave rolling onto a sandy beach at golden hour..."
+                  }
                   rows={4}
-                  disabled={store.video.generating}
+                  disabled={store.video.generating || store.batchRunning}
                   className="w-full px-4 py-3 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
                 />
               </div>
@@ -501,6 +625,7 @@ export default function ProjectEditorPage() {
                 onClick={handleGenerateVideo}
                 disabled={
                   store.video.generating ||
+                  store.batchRunning ||
                   !store.video.prompt.trim() ||
                   store.uploading
                 }
@@ -529,6 +654,51 @@ export default function ProjectEditorPage() {
                   </>
                 )}
               </button>
+
+              {/* Batch generate button */}
+              {store.csvRows.length > 0 && (
+                <div className="space-y-2">
+                  {store.batchProgress && (
+                    <div className="flex items-center gap-3 p-3 bg-tiffany-50 border border-tiffany-200 rounded-xl">
+                      <span className="text-xs font-medium text-tiffany-700">
+                        {store.batchRunning ? "Batch Progress" : "Batch Complete"}
+                      </span>
+                      <div className="flex-1 h-2 bg-tiffany-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-tiffany-500 rounded-full transition-all duration-300"
+                          style={{
+                            width: `${(store.batchProgress.current / store.batchProgress.total) * 100}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs font-semibold text-tiffany-700 tabular-nums">
+                        {store.batchProgress.current}/{store.batchProgress.total}
+                      </span>
+                    </div>
+                  )}
+                  {store.batchRunning ? (
+                    <button
+                      onClick={() => store.cancelBatch()}
+                      className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-red-50 hover:bg-red-100 text-red-600 text-sm font-semibold rounded-xl border border-red-200 transition-colors"
+                    >
+                      Cancel Batch
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleBatchGenerate}
+                      disabled={
+                        store.video.generating ||
+                        !store.video.prompt.trim() ||
+                        store.uploading
+                      }
+                      className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-500 hover:bg-tiffany-600 active:bg-tiffany-700 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
+                    >
+                      {TableIcon}
+                      Generate Batch ({store.csvRows.length} videos)
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Error */}
               {store.video.error && (
