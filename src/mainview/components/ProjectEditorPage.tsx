@@ -416,6 +416,68 @@ export default function ProjectEditorPage() {
                 </h2>
               </div>
 
+              {/* CSV upload for batch generation */}
+              <div>
+                <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+                  CSV Batch Data
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={csvInputRef}
+                    type="file"
+                    accept=".csv"
+                    onChange={handleCsvSelect}
+                    disabled={store.batchRunning}
+                    className="flex-1 text-sm text-tiffany-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-tiffany-100 file:text-tiffany-700 hover:file:bg-tiffany-200 file:cursor-pointer file:transition-colors disabled:opacity-50"
+                  />
+                  {store.csvFilename && (
+                    <button
+                      onClick={() => store.clearCsvData()}
+                      disabled={store.batchRunning}
+                      className="px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                {store.csvFilename && (
+                  <div className="mt-2 p-3 bg-tiffany-50 border border-tiffany-200 rounded-xl">
+                    <div className="flex items-center gap-2 text-xs text-tiffany-700 mb-1">
+                      {CsvIcon}
+                      <span className="font-medium">{store.csvFilename}</span>
+                      <span className="text-tiffany-600/60">
+                        ({store.csvRows.length} rows, {store.csvColumns.length}{" "}
+                        columns)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                      {store.csvColumns.map((col) => (
+                        <code
+                          key={col}
+                          className="px-1.5 py-0.5 text-[10px] bg-tiffany-100 text-tiffany-700 rounded font-mono"
+                        >
+                          {`{{${col}}}`}
+                        </code>
+                      ))}
+                      <span className="text-[10px] text-tiffany-600/50 ml-1">
+                        — use these in your prompt
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {!store.csvFilename && (
+                  <p className="text-xs text-tiffany-600/50 mt-1.5">
+                    Upload a CSV with a{" "}
+                    <code className="text-[11px] bg-tiffany-100 px-1 rounded">
+                      name
+                    </code>{" "}
+                    column to batch-generate many videos. Use{" "}
+                    <code className="text-[11px] bg-tiffany-100 px-1 rounded">{`{{column}}`}</code>{" "}
+                    in your prompt as a template.
+                  </p>
+                )}
+              </div>
+
               {/* Image upload */}
               <div>
                 <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
@@ -453,63 +515,6 @@ export default function ProjectEditorPage() {
                       </p>
                     )}
                   </div>
-                )}
-              </div>
-
-              {/* CSV upload for batch generation */}
-              <div>
-                <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-                  CSV Batch Data
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    ref={csvInputRef}
-                    type="file"
-                    accept=".csv"
-                    onChange={handleCsvSelect}
-                    disabled={store.batchRunning}
-                    className="flex-1 text-sm text-tiffany-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-tiffany-100 file:text-tiffany-700 hover:file:bg-tiffany-200 file:cursor-pointer file:transition-colors disabled:opacity-50"
-                  />
-                  {store.csvFilename && (
-                    <button
-                      onClick={() => store.clearCsvData()}
-                      disabled={store.batchRunning}
-                      className="px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                {store.csvFilename && (
-                  <div className="mt-2 p-3 bg-tiffany-50 border border-tiffany-200 rounded-xl">
-                    <div className="flex items-center gap-2 text-xs text-tiffany-700 mb-1">
-                      {CsvIcon}
-                      <span className="font-medium">{store.csvFilename}</span>
-                      <span className="text-tiffany-600/60">
-                        ({store.csvRows.length} rows, {store.csvColumns.length} columns)
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                      {store.csvColumns.map((col) => (
-                        <code
-                          key={col}
-                          className="px-1.5 py-0.5 text-[10px] bg-tiffany-100 text-tiffany-700 rounded font-mono"
-                        >
-                          {`{{${col}}}`}
-                        </code>
-                      ))}
-                      <span className="text-[10px] text-tiffany-600/50 ml-1">
-                        — use these in your prompt
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {!store.csvFilename && (
-                  <p className="text-xs text-tiffany-600/50 mt-1.5">
-                    Upload a CSV with a <code className="text-[11px] bg-tiffany-100 px-1 rounded">name</code> column to
-                    batch-generate many videos. Use <code className="text-[11px] bg-tiffany-100 px-1 rounded">{`{{column}}`}</code> in
-                    your prompt as a template.
-                  </p>
                 )}
               </div>
 
@@ -661,7 +666,9 @@ export default function ProjectEditorPage() {
                   {store.batchProgress && (
                     <div className="flex items-center gap-3 p-3 bg-tiffany-50 border border-tiffany-200 rounded-xl">
                       <span className="text-xs font-medium text-tiffany-700">
-                        {store.batchRunning ? "Batch Progress" : "Batch Complete"}
+                        {store.batchRunning
+                          ? "Batch Progress"
+                          : "Batch Complete"}
                       </span>
                       <div className="flex-1 h-2 bg-tiffany-200 rounded-full overflow-hidden">
                         <div
@@ -672,7 +679,8 @@ export default function ProjectEditorPage() {
                         />
                       </div>
                       <span className="text-xs font-semibold text-tiffany-700 tabular-nums">
-                        {store.batchProgress.current}/{store.batchProgress.total}
+                        {store.batchProgress.current}/
+                        {store.batchProgress.total}
                       </span>
                     </div>
                   )}
