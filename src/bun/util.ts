@@ -495,7 +495,7 @@ async function testRenderImage({
       "run",
       "z-image-mps.py",
       "-p",
-      "A cute lamb in kids cartoon 3d movie style. a line of text that says: Thank you so much for using Lambobo AI Studio!",
+      "A cute lamb in kids cartoon 3d movie style. a line of text that says: Thank you so much for using Lambobo Studio!",
       "--aspect",
       "1:1",
       "--height",
