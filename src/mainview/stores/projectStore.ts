@@ -18,6 +18,7 @@ interface ProjectStore {
   updateProject: (id: string, data: { name?: string; description?: string }) => Promise<Project | null>;
   deleteProject: (id: string) => Promise<boolean>;
   openInFinder: (id: string) => Promise<boolean>;
+  openFolder: (id: string, type: "upload" | "output") => Promise<boolean>;
 }
 
 const API_BASE = `http://localhost:${(window as any).PORT}`;
@@ -96,6 +97,22 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     try {
       const res = await fetch(`${API_BASE}/api/projects/${id}/open-in-finder`, {
         method: "POST",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return true;
+    } catch (e) {
+      set({ error: String(e) });
+      return false;
+    }
+  },
+
+  openFolder: async (id, type) => {
+    set({ error: null });
+    try {
+      const res = await fetch(`${API_BASE}/api/projects/${id}/open-folder`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type }),
       });
       if (!res.ok) throw new Error(await res.text());
       return true;

@@ -55,12 +55,14 @@ interface SetupState {
   imageTestRendered: boolean;
   imageEditTestRendered: boolean;
   videoTestRendered: boolean;
+  qwenImageTestRendered: boolean;
   allOK: boolean;
   error?: string;
 }
 
 let setupState: SetupState = {
   imageEditTestRendered: false,
+  qwenImageTestRendered: false,
   port: "",
   uvInstalled: false,
   pythonInstalled: false,
@@ -158,7 +160,9 @@ export async function runSetup({}: {}): Promise<SetupState> {
       depsInstalled: false,
       backendRunning: false,
       imageTestRendered: false,
+      imageEditTestRendered: false,
       videoTestRendered: false,
+      qwenImageTestRendered: false,
       error: "",
       allOK: false,
     };
@@ -239,18 +243,26 @@ export async function runSetup({}: {}): Promise<SetupState> {
       console.warn("Test video render failed, continuing...");
     }
 
+    // Step 7: Test qwen image generation
+    setupState.qwenImageTestRendered = await runStep(
+      "qwen-image",
+      "Processing qwen image generation task...",
+      async () => testQwenImageGeneration({ send }),
+    );
+    if (!setupState.qwenImageTestRendered) {
+      console.warn("Test qwen image generation failed, continuing...");
+    }
+
     // Step 6: Test edit image
     setupState.imageEditTestRendered = await runStep(
       "edit-image",
-      "Test editing image task...",
-      async () => testRenderEditImage({ send }),
+      "Processing image editing task...",
+      async () => testQwenImageEditGeneration({ send }),
     );
     if (!setupState.imageEditTestRendered) {
       // Non-fatal: still mark setup as complete
       console.warn("Test image edit failed, continuing...");
     }
-
-    //
 
     setupState.allOK = true;
     send("complete", { success: true, port: BACKEND_PORT });
@@ -755,7 +767,7 @@ async function testRenderVideo({
 
 let firstImageEdit: Subprocess | null = null;
 
-async function testRenderEditImage({
+async function testQwenImageEditGeneration({
   send,
 }: {
   send: (event: string, data: object) => void;
@@ -845,6 +857,109 @@ async function testRenderEditImage({
       step: "edit-image",
       status: "error",
       label: "Processing edit image task...",
+      error: stderrText || `Process exited with code ${exitCode}`,
+    });
+  }
+
+  return success;
+}
+
+// ========== Render Functions ==========
+
+let firstQwenImageGen: Subprocess | null = null;
+
+async function testQwenImageGeneration({
+  send,
+}: {
+  send: (event: string, data: object) => void;
+}): Promise<boolean> {
+  console.log("Try Generate Image...");
+
+  const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
+  if (!existsSync(pythonAppSrcDir)) {
+    mkdirSync(pythonAppSrcDir, { recursive: true });
+  }
+
+  const binaryFolder = join(pythonAppSrcDir, "qwen-image-mps");
+  const uvPath = await getUvPath();
+
+  // Kill any previous image process
+  if (firstQwenImageGen && !firstQwenImageGen.killed) {
+    firstQwenImageGen.kill();
+  }
+
+  if (!existsSync(join(OUTPUT_DIR, "welcome"))) {
+    mkdirSync(join(OUTPUT_DIR, "welcome"), { recursive: true });
+  }
+
+  //
+  const outputPath = join(OUTPUT_DIR, "welcome", "thank-you-qwen-image.png");
+  const outputFolderPath = join(OUTPUT_DIR, "welcome");
+  if (existsSync(outputPath)) {
+    console.log("Image already rendered, skipping.");
+    return true;
+  }
+
+  // const lambobo = join(
+  //   import.meta.path,
+  //   "..",
+  //   "..",
+  //   "python-src",
+  //   "images",
+  //   "lambobo.png",
+  // );
+
+  firstQwenImageGen = spawn(
+    [
+      uvPath,
+      "run",
+      "qwen-image-mps",
+      "generate",
+      "-p",
+      "Draw a sunset",
+      "--ultra-fast",
+      "--outdir",
+      outputFolderPath,
+      "--aspect",
+      "1:1",
+    ],
+    {
+      cwd: binaryFolder,
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  );
+
+  const proc: Subprocess = firstQwenImageGen;
+
+  // Stream stdout and stderr concurrently (cast: we always use "pipe" mode)
+  const stdoutPromise = streamProcessOutput(
+    proc.stdout as ReadableStream<Uint8Array>,
+    "QwenImageGen",
+    send,
+  );
+  const stderrText = await streamProcessOutput(
+    proc.stderr as ReadableStream<Uint8Array>,
+    "QwenImageGen",
+    send,
+  );
+  await stdoutPromise;
+
+  // Wait for process to exit and check result
+  const exitCode = await proc.exited;
+  const success = exitCode === 0 && existsSync(outputPath);
+
+  if (success) {
+    send("progress", {
+      step: "qwen-image",
+      status: "completed",
+      label: "Test qwen image generation...",
+    });
+  } else {
+    send("progress", {
+      step: "qwen-image",
+      status: "error",
+      label: "Test qwen image generation...",
       error: stderrText || `Process exited with code ${exitCode}`,
     });
   }
