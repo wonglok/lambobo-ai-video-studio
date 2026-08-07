@@ -49,6 +49,7 @@ interface SetupState {
   pythonInstalled: boolean;
   depsInstalled: boolean;
   backendRunning: boolean;
+  imageTestRendered: boolean;
   videoTestRendered: boolean;
   allOK: boolean;
   error?: string;
@@ -60,6 +61,7 @@ let setupState: SetupState = {
   pythonInstalled: false,
   depsInstalled: false,
   backendRunning: false,
+  imageTestRendered: false,
   videoTestRendered: false,
   allOK: false,
   error: "",
@@ -147,6 +149,7 @@ export async function runSetup({}: {}): Promise<SetupState> {
       pythonInstalled: false,
       depsInstalled: false,
       backendRunning: false,
+      imageTestRendered: false,
       videoTestRendered: false,
       error: "",
       allOK: false,
@@ -206,13 +209,27 @@ export async function runSetup({}: {}): Promise<SetupState> {
       return;
     }
 
-    await testRenderImage({
-      send: send,
-    });
+    // Step 4: Test render image
+    setupState.imageTestRendered = await runStep(
+      "render-image",
+      "Rendering test image...",
+      async () => testRenderImage({ send }),
+    );
+    if (!setupState.imageTestRendered) {
+      // Non-fatal: continue with video render
+      console.warn("Test image render failed, continuing...");
+    }
 
-    await testRenderVideo({
-      send: send,
-    });
+    // Step 5: Test render video
+    setupState.videoTestRendered = await runStep(
+      "render-video",
+      "Rendering test video...",
+      async () => testRenderVideo({ send }),
+    );
+    if (!setupState.videoTestRendered) {
+      // Non-fatal: still mark setup as complete
+      console.warn("Test video render failed, continuing...");
+    }
 
     setupState.allOK = true;
     send("complete", { success: true, port: BACKEND_PORT });
@@ -445,7 +462,37 @@ async function installPythonDependencies(): Promise<boolean> {
   return true;
 }
 
-let firstImageProcess: any;
+// ========== Render Helpers ==========
+
+/** Stream stdout/stderr from a process to console and SSE logs. Returns all text. */
+async function streamProcessOutput(
+  readable: ReadableStream<Uint8Array> | undefined,
+  prefix: string,
+  send: (event: string, data: object) => void,
+): Promise<string> {
+  let text = "";
+  const reader = readable?.getReader();
+  if (!reader) return text;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = new TextDecoder().decode(value);
+      console.log(`[${prefix}]`, chunk);
+      text += chunk;
+      send("log", { text: chunk });
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return text;
+}
+
+// ========== Render Functions ==========
+
+let firstImageProcess: Subprocess | null = null;
+
 async function testRenderImage({
   send,
 }: {
@@ -459,43 +506,30 @@ async function testRenderImage({
   }
 
   const zImageFolder = join(pythonAppSrcDir, "z-image-mps");
-
   const uvPath = await getUvPath();
 
-  if (firstImageProcess) {
-    if (!firstImageProcess?.killed) {
-      firstImageProcess.kill();
-    }
+  // Kill any previous image process
+  if (firstImageProcess && !firstImageProcess.killed) {
+    firstImageProcess.kill();
   }
 
   if (!existsSync(join(OUTPUT_DIR, "welcome"))) {
     mkdirSync(join(OUTPUT_DIR, "welcome"), { recursive: true });
   }
 
-  if (existsSync(join(OUTPUT_DIR, "welcome", "thank-you.png"))) {
+  const outputPath = join(OUTPUT_DIR, "welcome", "thank-you.png");
+  if (existsSync(outputPath)) {
+    console.log("Image already rendered, skipping.");
     return true;
   }
-
-  // let lambobo = join(
-  //   import.meta.path,
-  //   "..",
-  //   "..",
-  //   "python-src",
-  //   "images",
-  //   "lambobo.png",
-  // );
-
-  // console.log("lambobo", lambobo);
 
   firstImageProcess = spawn(
     [
       uvPath,
-
-      //
       "run",
       "z-image-mps.py",
       "-p",
-      "A cute lamb in kids cartoon 3d movie style. a line of text that says: Thank you so much for using Lambobo Studio!",
+      "A cute lamb stadning on two feet, two hands. the image is render in kids cartoon 3d movie style. a line of text that says: Thank you so much for using Lambobo AI Studio!",
       "--aspect",
       "1:1",
       "--height",
@@ -503,11 +537,9 @@ async function testRenderImage({
       "--width",
       "512",
       "--output",
-      join(OUTPUT_DIR, "welcome", "thank-you.png"),
+      outputPath,
       "--device",
       "mps",
-
-      //
     ],
     {
       cwd: zImageFolder,
@@ -516,60 +548,45 @@ async function testRenderImage({
     },
   );
 
-  let doneAll = false;
+  const proc: Subprocess = firstImageProcess;
 
-  // Log backend output and forward to UI
-  (async () => {
-    const reader = firstImageProcess?.stdout.getReader();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        doneAll = true;
-        break;
-      }
-      const text = new TextDecoder().decode(value);
-      console.log("[Backend Image]", text);
-      send("log", { text: text });
-    }
-  })();
+  // Stream stdout and stderr concurrently (cast: we always use "pipe" mode)
+  const stdoutPromise = streamProcessOutput(
+    proc.stdout as ReadableStream<Uint8Array>,
+    "Image",
+    send,
+  );
+  const stderrText = await streamProcessOutput(
+    proc.stderr as ReadableStream<Uint8Array>,
+    "Image",
+    send,
+  );
+  await stdoutPromise;
 
-  let hasError = "";
+  // Wait for process to exit and check result
+  const exitCode = await proc.exited;
+  const success = exitCode === 0 && existsSync(outputPath);
 
-  // Log backend output and forw ard to UI
-  (async () => {
-    const reader = firstImageProcess?.stderr.getReader();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
-      const text = new TextDecoder().decode(value);
-      console.log("[Backend Image]", text);
-      hasError += text;
-      hasError = hasError.trim();
-      send("log", { text: text });
-    }
-  })();
-
-  // let proc: Subprocess = firstImageProcess;
-
-  return await new Promise(async (resolve) => {
-    let ttt = setInterval(() => {
-      if (doneAll) {
-        clearInterval(ttt);
-
-        if (hasError.length >= 10) {
-          resolve(false);
-        } else {
-          resolve(true);
-        }
-        firstImageProcess.kill();
-      }
+  if (success) {
+    send("progress", {
+      step: "render-image",
+      status: "completed",
+      label: "Rendering test image...",
     });
-  });
+  } else {
+    send("progress", {
+      step: "render-image",
+      status: "error",
+      label: "Rendering test image...",
+      error: stderrText || `Process exited with code ${exitCode}`,
+    });
+  }
+
+  return success;
 }
 
-let firstVideoProcess: any;
+let firstVideoProcess: Subprocess | null = null;
+
 async function testRenderVideo({
   send,
 }: {
@@ -583,24 +600,24 @@ async function testRenderVideo({
   }
 
   const ltxFolder = join(pythonAppSrcDir, "ltx-2-mlx");
-
   const uvPath = await getUvPath();
 
-  if (firstVideoProcess) {
-    if (!firstVideoProcess?.killed) {
-      firstVideoProcess.kill();
-    }
+  // Kill any previous video process
+  if (firstVideoProcess && !firstVideoProcess.killed) {
+    firstVideoProcess.kill();
   }
 
   if (!existsSync(join(OUTPUT_DIR, "welcome"))) {
     mkdirSync(join(OUTPUT_DIR, "welcome"), { recursive: true });
   }
 
-  if (existsSync(join(OUTPUT_DIR, "welcome", "thank-you.mp4"))) {
+  const outputPath = join(OUTPUT_DIR, "welcome", "thank-you.mp4");
+  if (existsSync(outputPath)) {
+    console.log("Video already rendered, skipping.");
     return true;
   }
 
-  let lambobo = join(
+  const lambobo = join(
     import.meta.path,
     "..",
     "..",
@@ -609,44 +626,30 @@ async function testRenderVideo({
     "lambobo.png",
   );
 
-  // console.log("lambobo", lambobo);
-  // console.log("lambobo", lambobo);
-  // console.log("lambobo", lambobo);
-  // console.log("lambobo", lambobo);
-
   firstVideoProcess = spawn(
     [
       uvPath,
       "run",
       "ltx-2-mlx",
       "generate",
-      //
       "--model",
       "dgrauet/ltx-2.3-mlx-q4",
-      //
       "--prompt",
       `${JSON.stringify("a 5 years old cute lamb wanting to have a hug, he says: Hi! Thank you for using Lambobo Studio!")}`,
-      //
       "--distilled",
       "--low-ram",
-      //
       "--frames",
       "121",
-      //
       "--width",
       "480",
-      //
       "--height",
       "480",
-      //
       "--frame-rate",
       "24",
-      //
       "--image",
       `${lambobo}`,
-      //
       "--output",
-      `${join(OUTPUT_DIR, "welcome", "thank-you.mp4")}`,
+      outputPath,
     ],
     {
       cwd: ltxFolder,
@@ -655,55 +658,39 @@ async function testRenderVideo({
     },
   );
 
-  let doneAll = false;
+  const proc: Subprocess = firstVideoProcess;
 
-  // Log backend output and forward to UI
-  (async () => {
-    const reader = firstVideoProcess?.stdout.getReader();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        doneAll = true;
-        break;
-      }
-      const text = new TextDecoder().decode(value);
-      console.log("[Backend]", text);
-      send("log", { text: text });
-    }
-  })();
+  // Stream stdout and stderr concurrently (cast: we always use "pipe" mode)
+  const stdoutPromise = streamProcessOutput(
+    proc.stdout as ReadableStream<Uint8Array>,
+    "Video",
+    send,
+  );
+  const stderrText = await streamProcessOutput(
+    proc.stderr as ReadableStream<Uint8Array>,
+    "Video",
+    send,
+  );
+  await stdoutPromise;
 
-  let hasError = "";
+  // Wait for process to exit and check result
+  const exitCode = await proc.exited;
+  const success = exitCode === 0 && existsSync(outputPath);
 
-  // Log backend output and forw ard to UI
-  (async () => {
-    const reader = firstVideoProcess?.stderr.getReader();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
-      const text = new TextDecoder().decode(value);
-      console.log("[Backend]", text);
-      hasError += text;
-      hasError = hasError.trim();
-      send("log", { text: text });
-    }
-  })();
-
-  // let proc: Subprocess = firstVideoProcess;
-
-  return await new Promise(async (resolve) => {
-    let ttt = setInterval(() => {
-      if (doneAll) {
-        clearInterval(ttt);
-
-        if (hasError.length >= 10) {
-          resolve(false);
-        } else {
-          resolve(true);
-        }
-        firstVideoProcess.kill();
-      }
+  if (success) {
+    send("progress", {
+      step: "render-video",
+      status: "completed",
+      label: "Rendering test video...",
     });
-  });
+  } else {
+    send("progress", {
+      step: "render-video",
+      status: "error",
+      label: "Rendering test video...",
+      error: stderrText || `Process exited with code ${exitCode}`,
+    });
+  }
+
+  return success;
 }

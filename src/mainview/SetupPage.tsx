@@ -4,8 +4,10 @@ import { PORT } from "./main";
 import { useLogStore, type LogEntry } from "./stores/logStore";
 
 interface StepStatus {
+  step: string;
   label: string;
   status: "pending" | "running" | "completed" | "error";
+  error?: string;
 }
 
 function SetupPage() {
@@ -23,16 +25,23 @@ function SetupPage() {
     eventSource.addEventListener("progress", (e: MessageEvent) => {
       const data = JSON.parse(e.data);
       setSteps((prev) => {
-        const existing = prev.findIndex((s) => s.label === data.label);
+        const existing = prev.findIndex((s) => s.step === data.step);
         if (existing >= 0) {
           const updated = [...prev];
           updated[existing] = {
+            step: data.step,
             label: data.label,
             status: data.status,
+            error: data.error,
           };
           return updated;
         }
-        return [...prev, { label: data.label, status: data.status }];
+        return [...prev, {
+          step: data.step,
+          label: data.label,
+          status: data.status,
+          error: data.error,
+        }];
       });
     });
 
