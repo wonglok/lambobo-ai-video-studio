@@ -494,19 +494,19 @@ async function testRenderVideo({
       "dgrauet/ltx-2.3-mlx-q4",
       //
       "--prompt",
-      `${JSON.stringify("a lamb wanting to have a hug, a lamb with 10 year old boy's voice says: Thank you for using Lambobo AI Studio!")}`,
+      `${JSON.stringify("a 5 years old cute lamb wanting to have a hug, he says: Thank you dear for using Lambobo AI Studio!")}`,
       //
       "--distilled",
       "--low-ram",
       //
       "--frames",
-      "97",
+      "121",
       //
       "--width",
-      "480",
+      "320",
       //
       "--height",
-      "640",
+      "480",
       //
       "--frame-rate",
       "24",
