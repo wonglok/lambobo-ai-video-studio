@@ -492,7 +492,7 @@ async function testRenderVideo({
       "dgrauet/ltx-2.3-mlx-q4",
       //
       "--prompt",
-      `${JSON.stringify("a 5 years old cute lamb wanting to have a hug, he says: Hi! I'm Lambobo. Thank you for using my AI Studio!")}`,
+      `${JSON.stringify("a 5 years old cute lamb wanting to have a hug, he says: Hi! Thank you for using Lambobo Studio!")}`,
       //
       "--distilled",
       "--low-ram",
@@ -538,7 +538,7 @@ async function testRenderVideo({
 
   let hasError = "";
 
-  // Log backend output and forward to UI
+  // Log backend output and forw ard to UI
   (async () => {
     const reader = firstVideoProcess?.stderr.getReader();
     while (true) {
@@ -556,7 +556,7 @@ async function testRenderVideo({
 
   let proc: Subprocess = firstVideoProcess;
 
-  await new Promise(async (resolve) => {
+  return await new Promise(async (resolve) => {
     if (await proc.exited) {
       if (!(await proc.killed)) {
         proc.kill();
@@ -564,12 +564,10 @@ async function testRenderVideo({
 
       execSync(`open ${join(OUTPUT_DIR, "welcome", "thank-you.mp4")}`);
 
-      if (hasError.length >= 10) {
-        throw new Error(hasError);
+      if (hasError.length >= 100) {
+        resolve(false);
       }
-      resolve(null);
+      resolve(true);
     }
   });
-
-  return true;
 }
