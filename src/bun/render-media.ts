@@ -562,12 +562,6 @@ export async function renderMediaRoutes({
           path: outputPath,
           filename: outputFile,
         });
-        // Auto-open the output folder so the user can find the generated video
-        try {
-          openInFinder(projectOutputDir);
-        } catch (_) {
-          // silently ignore if we can't open Finder
-        }
       } else {
         send("error", {
           error: stderrText || `Process exited with code ${exitCode}`,
@@ -579,6 +573,15 @@ export async function renderMediaRoutes({
     } finally {
       res.end();
     }
+  });
+
+  // List all projects
+  app.get("/api/open-output", (_req, res) => {
+    try {
+      openInFinder(`${OUTPUT_DIR}`);
+    } catch {}
+
+    res.json({ ok: true });
   });
 
   // ========== Project CRUD ==========

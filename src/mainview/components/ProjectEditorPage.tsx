@@ -17,8 +17,8 @@ export default function ProjectEditorPage() {
   // Local refs
   const fileInputRef = useRef<HTMLInputElement>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
-  const imageLogRef = useRef<HTMLPreElement>(null);
-  const videoLogRef = useRef<HTMLPreElement>(null);
+  const imageLogRef = useRef<HTMLPreElement | any>(null);
+  const videoLogRef = useRef<HTMLPreElement | any>(null);
 
   useEffect(() => {
     if (projects.length === 0) {
@@ -43,6 +43,19 @@ export default function ProjectEditorPage() {
       videoLogRef.current.scrollTop = 100000;
     }
   }, [store.video.logs]);
+
+  useEffect(() => {
+    let ttt = setInterval(() => {
+      let dom = document.querySelector("#video-logs");
+      if (dom) {
+        dom.scrollTop = 99999999;
+      }
+    });
+
+    return () => {
+      clearInterval(ttt);
+    };
+  }, []);
 
   // Fetch project images when switching to the video tab
   useEffect(() => {
@@ -717,14 +730,14 @@ export default function ProjectEditorPage() {
 
               {/* Logs */}
               {store.video.logs.length > 0 && (
-                <div className="p-4 bg-tiffany-50 border border-tiffany-200 rounded-xl max-h-40 overflow-y-auto">
+                <div
+                  ref={videoLogRef}
+                  className="p-4 bg-tiffany-50 border border-tiffany-200 rounded-xl max-h-40 overflow-y-auto"
+                >
                   <p className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
                     Logs
                   </p>
-                  <pre
-                    ref={videoLogRef}
-                    className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap"
-                  >
+                  <pre className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap">
                     {store.video.logs.join("\n")}
                   </pre>
                 </div>

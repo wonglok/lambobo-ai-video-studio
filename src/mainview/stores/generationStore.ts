@@ -191,7 +191,7 @@ const initialImage: ImageState = {
 };
 
 const initialVideo: VideoState = {
-  prompt: `A Hong Kong teenage beaver boy says: "Greetings {{name}}! I'm beaver atlas." (MUST NOT render any text.)`,
+  prompt: `A Hong Kong teenage beaver boy says: "Greetings {{name}}! I'm beaver atlas." Make the view as clean as possible`,
   duration: 5,
   generating: false,
   result: null,
