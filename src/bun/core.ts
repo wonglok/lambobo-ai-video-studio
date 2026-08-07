@@ -251,26 +251,26 @@ export async function runSetup({}: {}): Promise<SetupState> {
       console.warn("Test video render failed, continuing...");
     }
 
-    // Step 7: Test qwen image generation
-    setupState.qwenImageTestRendered = await runStep(
-      "qwen-image",
-      "Processing qwen image generation task...",
-      async () => testQwenImageGeneration({ send }),
-    );
-    if (!setupState.qwenImageTestRendered) {
-      console.warn("Test qwen image generation failed, continuing...");
-    }
+    // // Step 7: Test qwen image generation
+    // setupState.qwenImageTestRendered = await runStep(
+    //   "qwen-image",
+    //   "Processing qwen image generation task...",
+    //   async () => testQwenImageGeneration({ send }),
+    // );
+    // if (!setupState.qwenImageTestRendered) {
+    //   console.warn("Test qwen image generation failed, continuing...");
+    // }
 
-    // Step 6: Test edit image
-    setupState.imageEditTestRendered = await runStep(
-      "edit-image",
-      "Processing image editing task...",
-      async () => testQwenImageEditGeneration({ send }),
-    );
-    if (!setupState.imageEditTestRendered) {
-      // Non-fatal: still mark setup as complete
-      console.warn("Test image edit failed, continuing...");
-    }
+    // // Step 6: Test edit image
+    // setupState.imageEditTestRendered = await runStep(
+    //   "edit-image",
+    //   "Processing image editing task...",
+    //   async () => testQwenImageEditGeneration({ send }),
+    // );
+    // if (!setupState.imageEditTestRendered) {
+    //   // Non-fatal: still mark setup as complete
+    //   console.warn("Test image edit failed, continuing...");
+    // }
 
     setupState.allOK = true;
     send("complete", { success: true, port: BACKEND_PORT });
@@ -500,39 +500,38 @@ async function installPythonDependencies(): Promise<boolean> {
     return false;
   }
 
-  const qwenImageMpsFolder = join(pythonAppSrcDir, "qwen-image-mps");
-  if (!existsSync(qwenImageMpsFolder)) {
-    let cloneCMD = await runCommand(
-      "git",
-      [
-        `clone`,
-        `https://github.com/ivanfioravanti/qwen-image-mps`,
-        "qwen-image-mps",
-      ],
-      { cwd: pythonAppSrcDir },
-    );
+  // const qwenImageMpsFolder = join(pythonAppSrcDir, "qwen-image-mps");
+  // if (!existsSync(qwenImageMpsFolder)) {
+  //   let cloneCMD = await runCommand(
+  //     "git",
+  //     [
+  //       `clone`,
+  //       `https://github.com/ivanfioravanti/qwen-image-mps`,
+  //       "qwen-image-mps",
+  //     ],
+  //     { cwd: pythonAppSrcDir },
+  //   );
 
-    console.log(cloneCMD.success, cloneCMD.output);
-  }
+  //   console.log(cloneCMD.success, cloneCMD.output);
+  // }
+  // const uvQwenImageMps = await runCommand(
+  //   uvPathZimage,
+  //   [
+  //     //
+  //     "pip",
+  //     "install",
+  //     "-e",
+  //     ".",
+  //   ],
+  //   {
+  //     cwd: qwenImageMpsFolder,
+  //   },
+  // );
 
-  const uvQwenImageMps = await runCommand(
-    uvPathZimage,
-    [
-      //
-      "pip",
-      "install",
-      "-e",
-      ".",
-    ],
-    {
-      cwd: qwenImageMpsFolder,
-    },
-  );
-
-  if (!uvQwenImageMps.success) {
-    console.error("Failed to install z image pip", uvQwenImageMps.error);
-    return false;
-  }
+  // if (!uvQwenImageMps.success) {
+  //   console.error("Failed to install z image pip", uvQwenImageMps.error);
+  //   return false;
+  // }
 
   console.log("Python dependencies installed");
   return true;
@@ -771,247 +770,247 @@ async function testRenderVideo({
   return success;
 }
 
-// ========== Render Functions ==========
+// // ========== Render Functions ==========
 
-let firstImageEdit: Subprocess | null = null;
+// let firstImageEdit: Subprocess | null = null;
 
-async function testQwenImageEditGeneration({
-  send,
-}: {
-  send: (event: string, data: object) => void;
-}): Promise<boolean> {
-  console.log("Try Render Image...");
+// async function testQwenImageEditGeneration({
+//   send,
+// }: {
+//   send: (event: string, data: object) => void;
+// }): Promise<boolean> {
+//   console.log("Try Render Image...");
 
-  const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
-  if (!existsSync(pythonAppSrcDir)) {
-    mkdirSync(pythonAppSrcDir, { recursive: true });
-  }
+//   const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
+//   if (!existsSync(pythonAppSrcDir)) {
+//     mkdirSync(pythonAppSrcDir, { recursive: true });
+//   }
 
-  const zImageFolder = join(pythonAppSrcDir, "qwen-image-mps");
-  const uvPath = await getUvPath();
+//   const zImageFolder = join(pythonAppSrcDir, "qwen-image-mps");
+//   const uvPath = await getUvPath();
 
-  // Kill any previous image process
-  if (firstImageEdit && !firstImageEdit.killed) {
-    firstImageEdit.kill();
-  }
+//   // Kill any previous image process
+//   if (firstImageEdit && !firstImageEdit.killed) {
+//     firstImageEdit.kill();
+//   }
 
-  if (!existsSync(join(OUTPUT_DIR, "welcome"))) {
-    mkdirSync(join(OUTPUT_DIR, "welcome"), { recursive: true });
-  }
+//   if (!existsSync(join(OUTPUT_DIR, "welcome"))) {
+//     mkdirSync(join(OUTPUT_DIR, "welcome"), { recursive: true });
+//   }
 
-  //
-  const outputPath = join(OUTPUT_DIR, "welcome", "thank-you-edit.png");
-  if (existsSync(outputPath)) {
-    console.log("Image already rendered, skipping.");
-    return true;
-  }
+//   //
+//   const outputPath = join(OUTPUT_DIR, "welcome", "thank-you-edit.png");
+//   if (existsSync(outputPath)) {
+//     console.log("Image already rendered, skipping.");
+//     return true;
+//   }
 
-  const lambobo = join(
-    import.meta.path,
-    "..",
-    "..",
-    "python-src",
-    "images",
-    "lambobo.png",
-  );
+//   const lambobo = join(
+//     import.meta.path,
+//     "..",
+//     "..",
+//     "python-src",
+//     "images",
+//     "lambobo.png",
+//   );
 
-  firstImageEdit = spawn(
-    [
-      uvPath,
-      "run",
-      "qwen-image-mps",
-      "edit",
-      "-i",
-      JSON.stringify(lambobo),
-      "-p",
-      "Change the background to sunset",
-      "--ultra-fast",
-      "--quantization",
-      "Q4_0",
-      "--output",
-      JSON.stringify(outputPath),
-    ],
-    {
-      cwd: zImageFolder,
-      stdout: "pipe",
-      stderr: "pipe",
-    },
-  );
+//   firstImageEdit = spawn(
+//     [
+//       uvPath,
+//       "run",
+//       "qwen-image-mps",
+//       "edit",
+//       "-i",
+//       JSON.stringify(lambobo),
+//       "-p",
+//       "Change the background to sunset",
+//       "--ultra-fast",
+//       "--quantization",
+//       "Q4_0",
+//       "--output",
+//       JSON.stringify(outputPath),
+//     ],
+//     {
+//       cwd: zImageFolder,
+//       stdout: "pipe",
+//       stderr: "pipe",
+//     },
+//   );
 
-  const proc: Subprocess = firstImageEdit;
+//   const proc: Subprocess = firstImageEdit;
 
-  // Stream stdout and stderr concurrently (cast: we always use "pipe" mode)
-  const stdoutPromise = streamProcessOutput(
-    proc.stdout as ReadableStream<Uint8Array>,
-    "EditImage",
-    send,
-  );
-  const stderrText = await streamProcessOutput(
-    proc.stderr as ReadableStream<Uint8Array>,
-    "EditImage",
-    send,
-  );
-  await stdoutPromise;
+//   // Stream stdout and stderr concurrently (cast: we always use "pipe" mode)
+//   const stdoutPromise = streamProcessOutput(
+//     proc.stdout as ReadableStream<Uint8Array>,
+//     "EditImage",
+//     send,
+//   );
+//   const stderrText = await streamProcessOutput(
+//     proc.stderr as ReadableStream<Uint8Array>,
+//     "EditImage",
+//     send,
+//   );
+//   await stdoutPromise;
 
-  // Wait for process to exit and check result
-  const exitCode = await proc.exited;
-  const success = exitCode === 0 && existsSync(outputPath);
+//   // Wait for process to exit and check result
+//   const exitCode = await proc.exited;
+//   const success = exitCode === 0 && existsSync(outputPath);
 
-  if (success) {
-    send("progress", {
-      step: "edit-image",
-      status: "completed",
-      label: "Processing edit image task...",
-    });
-  } else {
-    send("progress", {
-      step: "edit-image",
-      status: "error",
-      label: "Processing edit image task...",
-      error: stderrText || `Process exited with code ${exitCode}`,
-    });
-  }
+//   if (success) {
+//     send("progress", {
+//       step: "edit-image",
+//       status: "completed",
+//       label: "Processing edit image task...",
+//     });
+//   } else {
+//     send("progress", {
+//       step: "edit-image",
+//       status: "error",
+//       label: "Processing edit image task...",
+//       error: stderrText || `Process exited with code ${exitCode}`,
+//     });
+//   }
 
-  return success;
-}
+//   return success;
+// }
 
-// ========== Render Functions ==========
+// // ========== Render Functions ==========
 
-let firstQwenImageGen: Subprocess | null = null;
+// let firstQwenImageGen: Subprocess | null = null;
 
-async function testQwenImageGeneration({
-  send,
-}: {
-  send: (event: string, data: object) => void;
-}): Promise<boolean> {
-  console.log("Try Generate Image...");
+// async function testQwenImageGeneration({
+//   send,
+// }: {
+//   send: (event: string, data: object) => void;
+// }): Promise<boolean> {
+//   console.log("Try Generate Image...");
 
-  const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
-  if (!existsSync(pythonAppSrcDir)) {
-    mkdirSync(pythonAppSrcDir, { recursive: true });
-  }
+//   const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
+//   if (!existsSync(pythonAppSrcDir)) {
+//     mkdirSync(pythonAppSrcDir, { recursive: true });
+//   }
 
-  const binaryFolder = join(pythonAppSrcDir, "qwen-image-mps");
-  const uvPath = await getUvPath();
+//   const binaryFolder = join(pythonAppSrcDir, "qwen-image-mps");
+//   const uvPath = await getUvPath();
 
-  // Kill any previous image process
-  if (firstQwenImageGen && !firstQwenImageGen.killed) {
-    firstQwenImageGen.kill();
-  }
+//   // Kill any previous image process
+//   if (firstQwenImageGen && !firstQwenImageGen.killed) {
+//     firstQwenImageGen.kill();
+//   }
 
-  if (!existsSync(join(OUTPUT_DIR, "welcome"))) {
-    mkdirSync(join(OUTPUT_DIR, "welcome"), { recursive: true });
-  }
+//   if (!existsSync(join(OUTPUT_DIR, "welcome"))) {
+//     mkdirSync(join(OUTPUT_DIR, "welcome"), { recursive: true });
+//   }
 
-  //
-  const outputPath = join(
-    OUTPUT_DIR,
-    "welcome",
-    "thank-you-qwen-image-gen.png",
-  );
-  // const outputFolderPath = join(OUTPUT_DIR, "welcome");
-  if (existsSync(outputPath)) {
-    console.log("Image already rendered, skipping.");
-    return true;
-  }
+//   //
+//   const outputPath = join(
+//     OUTPUT_DIR,
+//     "welcome",
+//     "thank-you-qwen-image-gen.png",
+//   );
+//   // const outputFolderPath = join(OUTPUT_DIR, "welcome");
+//   if (existsSync(outputPath)) {
+//     console.log("Image already rendered, skipping.");
+//     return true;
+//   }
 
-  // const lambobo = join(
-  //   import.meta.path,
-  //   "..",
-  //   "..",
-  //   "python-src",
-  //   "images",
-  //   "lambobo.png",
-  // );
+//   // const lambobo = join(
+//   //   import.meta.path,
+//   //   "..",
+//   //   "..",
+//   //   "python-src",
+//   //   "images",
+//   //   "lambobo.png",
+//   // );
 
-  let tempFolder = join(
-    OUTPUT_DIR,
-    "welcome",
-    "generation-temp",
-    `_${Math.random().toString(36).slice(2, 9)}`,
-  );
-  mkdirSync(tempFolder, { recursive: true });
+//   let tempFolder = join(
+//     OUTPUT_DIR,
+//     "welcome",
+//     "generation-temp",
+//     `_${Math.random().toString(36).slice(2, 9)}`,
+//   );
+//   mkdirSync(tempFolder, { recursive: true });
 
-  firstQwenImageGen = spawn(
-    [
-      uvPath,
-      "run",
-      "qwen-image-mps",
-      "generate",
+//   firstQwenImageGen = spawn(
+//     [
+//       uvPath,
+//       "run",
+//       "qwen-image-mps",
+//       "generate",
 
-      "-p",
-      "Draw a sunset",
-      "--outdir",
-      JSON.stringify(tempFolder),
-      "--ultra-fast",
-      "--quantization",
-      "Q4_0",
-      "--aspect",
-      "16:9",
-    ],
-    {
-      cwd: binaryFolder,
-      stdout: "pipe",
-      stderr: "pipe",
-    },
-  );
+//       "-p",
+//       "Draw a sunset",
+//       "--outdir",
+//       JSON.stringify(tempFolder),
+//       "--ultra-fast",
+//       "--quantization",
+//       "Q4_0",
+//       "--aspect",
+//       "16:9",
+//     ],
+//     {
+//       cwd: binaryFolder,
+//       stdout: "pipe",
+//       stderr: "pipe",
+//     },
+//   );
 
-  const proc: Subprocess = firstQwenImageGen;
+//   const proc: Subprocess = firstQwenImageGen;
 
-  // Stream stdout and stderr concurrently (cast: we always use "pipe" mode)
-  const stdoutPromise = streamProcessOutput(
-    proc.stdout as ReadableStream<Uint8Array>,
-    "QwenImageGen",
-    send,
-  );
-  const stderrText = await streamProcessOutput(
-    proc.stderr as ReadableStream<Uint8Array>,
-    "QwenImageGen",
-    send,
-  );
-  await stdoutPromise;
+//   // Stream stdout and stderr concurrently (cast: we always use "pipe" mode)
+//   const stdoutPromise = streamProcessOutput(
+//     proc.stdout as ReadableStream<Uint8Array>,
+//     "QwenImageGen",
+//     send,
+//   );
+//   const stderrText = await streamProcessOutput(
+//     proc.stderr as ReadableStream<Uint8Array>,
+//     "QwenImageGen",
+//     send,
+//   );
+//   await stdoutPromise;
 
-  // Wait for process to exit and check result
-  const exitCode = await proc.exitCode;
-  const success = exitCode === 0;
+//   // Wait for process to exit and check result
+//   const exitCode = await proc.exitCode;
+//   const success = exitCode === 0;
 
-  if (success) {
-    // please list the first file in tempFolder
+//   if (success) {
+//     // please list the first file in tempFolder
 
-    async function listFiles(directoryPath: string) {
-      try {
-        const files = await readdir(directoryPath);
-        console.log(files); // Array of file and folder names
+//     async function listFiles(directoryPath: string) {
+//       try {
+//         const files = await readdir(directoryPath);
+//         console.log(files); // Array of file and folder names
 
-        return files;
-      } catch (err) {
-        console.error("Error reading directory:", err);
-        return [];
-      }
-    }
+//         return files;
+//       } catch (err) {
+//         console.error("Error reading directory:", err);
+//         return [];
+//       }
+//     }
 
-    const items = await listFiles(`${tempFolder}`);
+//     const items = await listFiles(`${tempFolder}`);
 
-    for await (let item of items) {
-      if (item.includes(".mp4")) {
-        await rename(item, join(outputPath));
-      }
-    }
-    unlinkSync(tempFolder);
+//     for await (let item of items) {
+//       if (item.includes(".png")) {
+//         await rename(item, join(outputPath));
+//       }
+//     }
+//     unlinkSync(tempFolder);
 
-    send("progress", {
-      step: "qwen-image",
-      status: "completed",
-      label: "Test qwen image generation...",
-    });
-  } else {
-    send("progress", {
-      step: "qwen-image",
-      status: "error",
-      label: "Test qwen image generation...",
-      error: stderrText || `Process exited with code ${exitCode}`,
-    });
-  }
+//     send("progress", {
+//       step: "qwen-image",
+//       status: "completed",
+//       label: "Test qwen image generation...",
+//     });
+//   } else {
+//     send("progress", {
+//       step: "qwen-image",
+//       status: "error",
+//       label: "Test qwen image generation...",
+//       error: stderrText || `Process exited with code ${exitCode}`,
+//     });
+//   }
 
-  return success;
-}
+//   return success;
+// }
