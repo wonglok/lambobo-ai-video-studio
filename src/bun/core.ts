@@ -242,7 +242,7 @@ export async function runSetup({}: {}): Promise<SetupState> {
     res.end();
   });
 
-  renderMediaRoutes({ app });
+  renderMediaRoutes({ app, getUvPath });
   //
   //
   //
@@ -350,7 +350,7 @@ async function installUv(): Promise<boolean> {
   }
 }
 
-async function getUvPath(): Promise<string> {
+export async function getUvPath(): Promise<string> {
   if (await checkCommand("uv")) {
     return "uv";
   }

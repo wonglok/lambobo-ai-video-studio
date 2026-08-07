@@ -1,13 +1,21 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  realpathSync,
+} from "node:fs";
 import { type Application } from "express";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { execFileSync } from "node:child_process";
+import { spawn } from "bun";
 
 const APP_DATA_DIR = join(homedir(), "media-studio");
 const OUTPUT_DIR = join(APP_DATA_DIR, "output");
 const UPLOAD_DIR = join(APP_DATA_DIR, "upload");
 const JSON_DIR = join(APP_DATA_DIR, "json");
+const PYTHON_DIR = join(APP_DATA_DIR, "python-src");
 const PROJECTS_FILE = join(JSON_DIR, "projects.json");
 
 // ========== Project Types ==========
@@ -55,24 +63,417 @@ function openInFinder(dirPath: string) {
   execFileSync("open", [dirPath]);
 }
 
+// ========== SSE Helper ==========
+
+// Allowed directories for file serving and path resolution.
+// Lazily resolved on first use because dirs may not exist at import time.
+let _allowedRealDirs: string[] | null = null;
+function getAllowedRealDirs(): string[] {
+  if (_allowedRealDirs) return _allowedRealDirs;
+  [OUTPUT_DIR, UPLOAD_DIR].forEach((d) => ensureDir(d));
+  _allowedRealDirs = [
+    realpathSync(OUTPUT_DIR) + sep,
+    realpathSync(UPLOAD_DIR) + sep,
+  ];
+  return _allowedRealDirs;
+}
+
+/** Validate that `resolvedPath` is inside an allowed directory. */
+function isPathAllowed(resolvedPath: string): boolean {
+  return getAllowedRealDirs().some((dir) => resolvedPath.startsWith(dir));
+}
+
+/** Resolve and validate a user-supplied filename. Looks in both upload and output dirs. */
+function resolveSafePath(candidate: string, projectId: string): string | null {
+  // Reject anything that looks like a path — only bare filenames allowed
+  const base = candidate.split(/[/\\]/).pop() || candidate;
+  if (base !== candidate || base.includes("..") || base.startsWith(".")) {
+    return null;
+  }
+
+  // Try upload dir first, then output dir (for previously generated images)
+  for (const dir of [UPLOAD_DIR, OUTPUT_DIR]) {
+    const candidatePath = join(dir, projectId, base);
+    if (existsSync(candidatePath)) {
+      const resolved = realpathSync(candidatePath);
+      if (isPathAllowed(resolved)) return resolved;
+    }
+  }
+
+  return null;
+}
+
+/** Stream stdout/stderr from a Bun subprocess to an SSE response. */
+async function streamToSSE(
+  readable: ReadableStream<Uint8Array> | undefined,
+  prefix: string,
+  send: (event: string, data: object) => void,
+): Promise<string> {
+  let text = "";
+  const reader = readable?.getReader();
+  if (!reader) return text;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = new TextDecoder().decode(value);
+      console.log(`[${prefix}]`, chunk);
+      text += chunk;
+      send("log", { text: chunk });
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return text;
+}
+
 // ========== Routes ==========
 
-export async function renderMediaRoutes({ app }: { app: Application }) {
-  //
+export async function renderMediaRoutes({
+  app,
+  getUvPath,
+}: {
+  app: Application;
+  getUvPath: () => Promise<string>;
+}) {
   // ========== Upload ==========
 
-  app.post("/api/upload/image", (_req, _res) => {
-    // save to upload dir
+  // Serve generated files so the browser can display them
+  app.get("/api/files", async (req, res) => {
+    const filePath = req.query.path as string;
+    if (!filePath) {
+      res.status(404).json({ error: "File not found" });
+      return;
+    }
+
+    // Resolve and verify the path is within allowed directories
+    let resolved: string;
+    try {
+      resolved = realpathSync(filePath);
+    } catch {
+      res.status(404).json({ error: "File not found" });
+      return;
+    }
+
+    if (!isPathAllowed(resolved)) {
+      res.status(403).json({ error: "Access denied" });
+      return;
+    }
+
+    try {
+      const file = Bun.file(resolved);
+      const arrayBuffer = await file.arrayBuffer();
+      res.setHeader("Content-Type", file.type || "application/octet-stream");
+      res.setHeader("Content-Length", String(file.size));
+      res.setHeader("Cache-Control", "no-cache");
+      res.end(Buffer.from(arrayBuffer));
+    } catch (e) {
+      res
+        .status(500)
+        .json({ error: "Failed to read file", details: String(e) });
+    }
   });
 
-  // ========== Render ==========
+  app.post("/api/upload/image", async (req, res) => {
+    const { image, filename, projectId } = req.body || {};
 
-  app.post("/api/render/text-to-image", (_req, _res) => {
-    // please refer to src/bun/core.ts for "testRenderImage"
+    if (!image) {
+      res.status(400).json({ error: "Image data is required (base64)" });
+      return;
+    }
+    if (!projectId) {
+      res.status(400).json({ error: "Project ID is required" });
+      return;
+    }
+
+    try {
+      // Decode base64 (strip data URL prefix if present)
+      const base64 = image.replace(/^data:image\/\w+;base64,/, "");
+      const buffer = Buffer.from(base64, "base64");
+
+      const projectUploadDir = join(UPLOAD_DIR, projectId);
+      ensureDir(projectUploadDir);
+
+      const safeName = (filename || `upload-${Date.now()}.png`).replace(
+        /[^a-zA-Z0-9._-]/g,
+        "_",
+      );
+      const filePath = join(projectUploadDir, safeName);
+
+      writeFileSync(filePath, buffer);
+
+      res.json({
+        success: true,
+        path: filePath,
+        filename: safeName,
+        size: buffer.length,
+      });
+    } catch (e) {
+      res
+        .status(500)
+        .json({ error: "Failed to save image", details: String(e) });
+    }
   });
 
-  app.post("/api/render/image-to-video", (_req, _res) => {
-    // please refer to src/bun/core.ts for "testRenderVideo"
+  // ========== Render: Text-to-Image ==========
+
+  app.post("/api/render/text-to-image", async (req, res) => {
+    const {
+      prompt,
+      projectId,
+      aspect = "1:1",
+      width = 512,
+      height = 512,
+      device = "mps",
+    } = req.body || {};
+
+    if (!prompt) {
+      res.status(400).json({ error: "Prompt is required" });
+      return;
+    }
+    if (!projectId) {
+      res.status(400).json({ error: "Project ID is required" });
+      return;
+    }
+
+    // SSE headers
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: string, data: object) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      const zImageFolder = join(PYTHON_DIR, "z-image-mps");
+      if (!existsSync(zImageFolder)) {
+        send("error", { error: "z-image-mps not found. Run setup first." });
+        res.end();
+        return;
+      }
+
+      const uvPath = await getUvPath();
+      const projectOutputDir = join(OUTPUT_DIR, projectId);
+      ensureDir(projectOutputDir);
+
+      const outputFile = `img-${Date.now()}.png`;
+      const outputPath = join(projectOutputDir, outputFile);
+
+      send("progress", {
+        status: "starting",
+        label: "Generating image...",
+        outputFile,
+      });
+
+      const proc = spawn(
+        [
+          uvPath,
+          "run",
+          "z-image-mps.py",
+          "-p",
+          prompt,
+          "--aspect",
+          String(aspect),
+          "--height",
+          String(height),
+          "--width",
+          String(width),
+          "--output",
+          outputPath,
+          "--device",
+          device,
+        ],
+        {
+          cwd: zImageFolder,
+          stdout: "pipe",
+          stderr: "pipe",
+        },
+      );
+
+      // Stream stdout/stderr concurrently
+      const stdoutPromise = streamToSSE(
+        proc.stdout as ReadableStream<Uint8Array>,
+        "Image",
+        send,
+      );
+      const stderrText = await streamToSSE(
+        proc.stderr as ReadableStream<Uint8Array>,
+        "Image",
+        send,
+      );
+      await stdoutPromise;
+
+      const exitCode = await proc.exited;
+      const success = exitCode === 0 && existsSync(outputPath);
+
+      if (success) {
+        send("complete", {
+          success: true,
+          path: outputPath,
+          filename: outputFile,
+        });
+      } else {
+        send("error", {
+          error: stderrText || `Process exited with code ${exitCode}`,
+          exitCode,
+        });
+      }
+    } catch (e) {
+      send("error", { error: String(e) });
+    } finally {
+      res.end();
+    }
+  });
+
+  // ========== Render: Image-to-Video ==========
+
+  app.post("/api/render/image-to-video", async (req, res) => {
+    const {
+      prompt,
+      imagePath,
+      projectId,
+      width = 480,
+      height = 480,
+      frames = 121,
+      frameRate = 24,
+    } = req.body || {};
+
+    if (!prompt) {
+      res.status(400).json({ error: "Prompt is required" });
+      return;
+    }
+    if (!imagePath) {
+      res.status(400).json({ error: "Image path is required" });
+      return;
+    }
+    if (!projectId) {
+      res.status(400).json({ error: "Project ID is required" });
+      return;
+    }
+
+    // Resolve image path — only allow project-relative paths (no absolute paths)
+    const resolvedImage = resolveSafePath(imagePath, projectId);
+    if (!resolvedImage) {
+      res.status(400).json({
+        error:
+          "Invalid image path. Provide a filename previously uploaded to this project.",
+      });
+      return;
+    }
+
+    // SSE headers
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: string, data: object) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      const ltxFolder = join(PYTHON_DIR, "ltx-2-mlx");
+      if (!existsSync(ltxFolder)) {
+        send("error", { error: "ltx-2-mlx not found. Run setup first." });
+        res.end();
+        return;
+      }
+
+      const uvPath = await getUvPath();
+      const projectOutputDir = join(OUTPUT_DIR, projectId);
+      ensureDir(projectOutputDir);
+
+      const outputFile = `video-${Date.now()}.mp4`;
+      const outputPath = join(projectOutputDir, outputFile);
+
+      const videoWidth = Number(width) || 480;
+      const videoHeight = Number(height) || 480;
+      const videoFrames = Number(frames) || 121;
+      const videoFps = Number(frameRate) || 24;
+
+      send("progress", {
+        status: "starting",
+        label: "Generating video...",
+        outputFile,
+        settings: {
+          width: videoWidth,
+          height: videoHeight,
+          frames: videoFrames,
+          fps: videoFps,
+        },
+      });
+
+      const proc = spawn(
+        [
+          uvPath,
+          "run",
+          "ltx-2-mlx",
+          "generate",
+          "--model",
+          "dgrauet/ltx-2.3-mlx-q4",
+          "--prompt",
+          JSON.stringify(prompt),
+          "--distilled",
+          "--low-ram",
+          "--frames",
+          String(videoFrames),
+          "--width",
+          String(videoWidth),
+          "--height",
+          String(videoHeight),
+          "--frame-rate",
+          String(videoFps),
+          "--image",
+          resolvedImage,
+          "--output",
+          outputPath,
+        ],
+        {
+          cwd: ltxFolder,
+          stdout: "pipe",
+          stderr: "pipe",
+        },
+      );
+
+      // Stream stdout/stderr concurrently
+      const stdoutPromise = streamToSSE(
+        proc.stdout as ReadableStream<Uint8Array>,
+        "Video",
+        send,
+      );
+      const stderrText = await streamToSSE(
+        proc.stderr as ReadableStream<Uint8Array>,
+        "Video",
+        send,
+      );
+      await stdoutPromise;
+
+      const exitCode = await proc.exited;
+      const success = exitCode === 0 && existsSync(outputPath);
+
+      if (success) {
+        send("complete", {
+          success: true,
+          path: outputPath,
+          filename: outputFile,
+        });
+      } else {
+        send("error", {
+          error: stderrText || `Process exited with code ${exitCode}`,
+          exitCode,
+        });
+      }
+    } catch (e) {
+      send("error", { error: String(e) });
+    } finally {
+      res.end();
+    }
   });
 
   // ========== Project CRUD ==========
@@ -133,7 +534,8 @@ export async function renderMediaRoutes({ app }: { app: Application }) {
 
     const { name, description } = req.body || {};
     if (name !== undefined) projects[index].name = String(name);
-    if (description !== undefined) projects[index].description = String(description);
+    if (description !== undefined)
+      projects[index].description = String(description);
     projects[index].updatedAt = new Date().toISOString();
 
     writeProjects(projects);
@@ -181,7 +583,9 @@ export async function renderMediaRoutes({ app }: { app: Application }) {
       openInFinder(targetPath);
       res.json({ success: true, path: targetPath });
     } catch (e) {
-      res.status(500).json({ error: "Failed to open folder", details: String(e) });
+      res
+        .status(500)
+        .json({ error: "Failed to open folder", details: String(e) });
     }
   });
 
@@ -200,7 +604,9 @@ export async function renderMediaRoutes({ app }: { app: Application }) {
       openInFinder(projectOutputDir);
       res.json({ success: true, path: projectOutputDir });
     } catch (e) {
-      res.status(500).json({ error: "Failed to open in Finder", details: String(e) });
+      res
+        .status(500)
+        .json({ error: "Failed to open in Finder", details: String(e) });
     }
   });
 }
