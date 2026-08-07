@@ -3,9 +3,9 @@ import { join } from "node:path";
 import { type Subprocess, spawn } from "bun";
 import Electrobun, {
   BrowserWindow,
-  type RPCSchema,
+  // type RPCSchema,
+  // Utils,
   Updater,
-  Utils,
 } from "electrobun/bun";
 import { homedir } from "node:os";
 import express from "express";
@@ -35,7 +35,6 @@ async function getMainViewUrl(): Promise<string> {
 // const APP_NAME = "Media Studio by loklok";
 const APP_DATA_DIR = join(homedir(), "media-studio");
 const PYTHON_DIR = join(APP_DATA_DIR, "python-src");
-const MODELS_DIR = join(APP_DATA_DIR, "models");
 const VOICES_DIR = join(APP_DATA_DIR, "voices");
 const OUTPUT_DIR = join(APP_DATA_DIR, "output");
 const BACKEND_PORT_START = 8765;
@@ -67,13 +66,11 @@ let setupState: SetupState = {
 };
 
 export async function runSetup({}: {}): Promise<SetupState> {
-  [APP_DATA_DIR, PYTHON_DIR, MODELS_DIR, VOICES_DIR, OUTPUT_DIR].forEach(
-    (dir) => {
-      if (!existsSync(dir)) {
-        mkdirSync(dir, { recursive: true });
-      }
-    },
-  );
+  [APP_DATA_DIR, PYTHON_DIR, VOICES_DIR, OUTPUT_DIR].forEach((dir) => {
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+  });
 
   BACKEND_PORT = await findFreePort(BACKEND_PORT_START);
 
@@ -494,7 +491,7 @@ async function testRenderVideo({
       "dgrauet/ltx-2.3-mlx-q4",
       //
       "--prompt",
-      `${JSON.stringify("a 5 years old cute lamb wanting to have a hug, he says: Thank you dear for using Lambobo AI Studio!")}`,
+      `${JSON.stringify("a 5 years old cute lamb wanting to have a hug, he says: Thank you dear for using Lok Lok AI Studio!")}`,
       //
       "--distilled",
       "--low-ram",
