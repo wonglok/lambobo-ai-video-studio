@@ -58,6 +58,8 @@ let BACKEND_PORT = BACKEND_PORT_START;
 // Setup state
 interface SetupState {
   port: string;
+  homebrewInstalled: boolean;
+  ffmpegInstalled: boolean;
   uvInstalled: boolean;
   pythonInstalled: boolean;
   depsInstalled: boolean;
@@ -74,6 +76,8 @@ let setupState: SetupState = {
   imageEditTestRendered: false,
   qwenImageTestRendered: false,
   port: "",
+  homebrewInstalled: false,
+  ffmpegInstalled: false,
   uvInstalled: false,
   pythonInstalled: false,
   depsInstalled: false,
@@ -169,6 +173,8 @@ export async function runSetup({}: {}): Promise<SetupState> {
     // Reset state
     setupState = {
       port: `${BACKEND_PORT}`,
+      homebrewInstalled: false,
+      ffmpegInstalled: false,
       uvInstalled: false,
       pythonInstalled: false,
       depsInstalled: false,
@@ -186,6 +192,48 @@ export async function runSetup({}: {}): Promise<SetupState> {
       status: "running",
       label: "Running setup...",
     });
+
+    // Step 0a: Check/install Homebrew
+    setupState.homebrewInstalled = await checkHomebrewInstalled();
+    if (!setupState.homebrewInstalled) {
+      setupState.homebrewInstalled = await runStep(
+        "homebrew",
+        "Installing Homebrew package manager...",
+        installHomebrew,
+      );
+      if (!setupState.homebrewInstalled) {
+        setupState.error = "Failed to install Homebrew";
+        send("error", { error: setupState.error });
+        res.end();
+        return;
+      }
+    } else {
+      send("progress", {
+        step: "homebrew",
+        status: "completed",
+        label: "Homebrew package manager found",
+      });
+    }
+
+    // Step 0b: Check/install ffmpeg
+    setupState.ffmpegInstalled = await checkFfmpegInstalled();
+    if (!setupState.ffmpegInstalled) {
+      setupState.ffmpegInstalled = await runStep(
+        "ffmpeg",
+        "Installing ffmpeg via Homebrew...",
+        installFfmpeg,
+      );
+      if (!setupState.ffmpegInstalled) {
+        // Non-fatal: ffmpeg is useful but the app may still function
+        console.warn("Failed to install ffmpeg, continuing...");
+      }
+    } else {
+      send("progress", {
+        step: "ffmpeg",
+        status: "completed",
+        label: "ffmpeg found",
+      });
+    }
 
     // Step 1: Check/install uv
     setupState.uvInstalled = await checkUvInstalled();
@@ -350,6 +398,92 @@ async function runCommand(
 async function checkCommand(command: string): Promise<boolean> {
   const result = await runCommand("which", [command]);
   return result.success;
+}
+
+// ========== Homebrew Functions ==========
+
+async function checkHomebrewInstalled(): Promise<boolean> {
+  // Check common Homebrew paths first (faster than spawning a process)
+  const brewPaths = [
+    "/opt/homebrew/bin/brew",     // Apple Silicon
+    "/usr/local/bin/brew",         // Intel Mac
+    join(homedir(), "homebrew", "bin", "brew"),
+  ];
+
+  for (const path of brewPaths) {
+    if (existsSync(path)) {
+      return true;
+    }
+  }
+
+  // Fall back to which
+  return await checkCommand("brew");
+}
+
+async function installHomebrew(): Promise<boolean> {
+  console.log("Installing Homebrew...");
+
+  const result = await runCommand("/bin/bash", [
+    "-c",
+    '"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"',
+  ]);
+
+  if (result.success) {
+    console.log("Homebrew installed successfully");
+    // After install, Homebrew may be at different paths depending on architecture
+    // The user may need to add it to PATH, but we try common paths
+    return true;
+  } else {
+    console.error("Failed to install Homebrew:", result.error);
+    return false;
+  }
+}
+
+// ========== ffmpeg Functions ==========
+
+async function checkFfmpegInstalled(): Promise<boolean> {
+  // Check common ffmpeg paths
+  const ffmpegPaths = [
+    "/opt/homebrew/bin/ffmpeg",    // Apple Silicon Homebrew
+    "/usr/local/bin/ffmpeg",        // Intel Mac Homebrew
+  ];
+
+  for (const path of ffmpegPaths) {
+    if (existsSync(path)) {
+      return true;
+    }
+  }
+
+  // Fall back to which
+  return await checkCommand("ffmpeg");
+}
+
+async function installFfmpeg(): Promise<boolean> {
+  console.log("Installing ffmpeg via Homebrew...");
+
+  // Resolve brew path
+  let brewPath = "brew";
+  const brewCandidates = [
+    "/opt/homebrew/bin/brew",
+    "/usr/local/bin/brew",
+    join(homedir(), "homebrew", "bin", "brew"),
+  ];
+  for (const candidate of brewCandidates) {
+    if (existsSync(candidate)) {
+      brewPath = candidate;
+      break;
+    }
+  }
+
+  const result = await runCommand(brewPath, ["install", "ffmpeg"]);
+
+  if (result.success) {
+    console.log("ffmpeg installed successfully");
+    return true;
+  } else {
+    console.error("Failed to install ffmpeg:", result.error);
+    return false;
+  }
 }
 
 // ========== Setup Functions ==========
