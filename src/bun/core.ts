@@ -1,8 +1,9 @@
 import {
+  appendFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
-  unlinkSync,
+  // unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
@@ -19,8 +20,8 @@ import { homedir } from "node:os";
 import express from "express";
 import cors from "cors";
 import { renderMediaRoutes } from "./render-media";
-import { readdir } from "node:fs/promises";
-import { rename } from "node:fs/promises";
+// import { readdir } from "node:fs/promises";
+// import { rename } from "node:fs/promises";
 // import { execSync } from "node:child_process";
 
 const DEV_SERVER_PORT = 5173;
@@ -405,8 +406,8 @@ async function checkCommand(command: string): Promise<boolean> {
 async function checkHomebrewInstalled(): Promise<boolean> {
   // Check common Homebrew paths first (faster than spawning a process)
   const brewPaths = [
-    "/opt/homebrew/bin/brew",     // Apple Silicon
-    "/usr/local/bin/brew",         // Intel Mac
+    "/opt/homebrew/bin/brew", // Apple Silicon
+    "/usr/local/bin/brew", // Intel Mac
     join(homedir(), "homebrew", "bin", "brew"),
   ];
 
@@ -444,18 +445,54 @@ async function installHomebrew(): Promise<boolean> {
 async function checkFfmpegInstalled(): Promise<boolean> {
   // Check common ffmpeg paths
   const ffmpegPaths = [
-    "/opt/homebrew/bin/ffmpeg",    // Apple Silicon Homebrew
-    "/usr/local/bin/ffmpeg",        // Intel Mac Homebrew
+    "/opt/homebrew/bin/ffmpeg", // Apple Silicon Homebrew
+    "/usr/local/bin/ffmpeg", // Intel Mac Homebrew
   ];
 
   for (const path of ffmpegPaths) {
     if (existsSync(path)) {
+      const binDir = dirname(path);
+
+      // Ensure the directory is on PATH for child processes
+      if (!process.env.PATH?.includes(binDir)) {
+        process.env.PATH = `${binDir}:${process.env.PATH}`;
+      }
+
+      // Persist to shell config files so it survives terminal restarts
+      persistBinDirToShellRc(binDir);
+
       return true;
     }
   }
 
   // Fall back to which
   return await checkCommand("ffmpeg");
+}
+
+/**
+ * Add a directory to the user's shell config files (~/.bashrc, ~/.zshrc)
+ * if it isn't already there.
+ */
+function persistBinDirToShellRc(binDir: string): void {
+  const home = homedir();
+  const exportLine = `export PATH="${binDir}:$PATH"`;
+  const rcFiles = [join(home, ".zshrc"), join(home, ".bashrc")];
+
+  for (const rcPath of rcFiles) {
+    try {
+      if (!existsSync(rcPath)) continue;
+
+      const content = readFileSync(rcPath, "utf-8");
+      if (content.includes(binDir)) continue; // already configured
+
+      // Append the export line
+      appendFileSync(rcPath, `\n# Added by lambobo-studio\n${exportLine}\n`);
+      console.log(`Added ${binDir} to PATH in ${rcPath}`);
+    } catch (err) {
+      // Non-fatal: the session PATH is already set above
+      console.warn(`Could not update ${rcPath}:`, err);
+    }
+  }
 }
 
 async function installFfmpeg(): Promise<boolean> {
@@ -494,6 +531,7 @@ async function checkUvInstalled(): Promise<boolean> {
   }
 
   const uvPaths = [
+    "/opt/homebrew/bin/uv", // Apple Silicon Homebrew
     join(homedir(), ".local", "bin", "uv"),
     join(homedir(), ".cargo", "bin", "uv"),
     "/usr/local/bin/uv",
@@ -509,15 +547,26 @@ async function checkUvInstalled(): Promise<boolean> {
 }
 
 async function installUv(): Promise<boolean> {
-  console.log("Installing uv...");
+  console.log("Installing uv via Homebrew...");
 
-  const result = await runCommand("sh", [
-    "-c",
-    "curl -LsSf https://astral.sh/uv/install.sh | sh",
-  ]);
+  // Resolve brew path
+  let brewPath = "brew";
+  const brewCandidates = [
+    "/opt/homebrew/bin/brew",
+    "/usr/local/bin/brew",
+    join(homedir(), "homebrew", "bin", "brew"),
+  ];
+  for (const candidate of brewCandidates) {
+    if (existsSync(candidate)) {
+      brewPath = candidate;
+      break;
+    }
+  }
+
+  const result = await runCommand(brewPath, ["install", "uv"]);
 
   if (result.success) {
-    console.log("uv installed successfully");
+    console.log("uv installed successfully via Homebrew");
     return true;
   } else {
     console.error("Failed to install uv:", result.error);
@@ -531,6 +580,7 @@ export async function getUvPath(): Promise<string> {
   }
 
   const uvPaths = [
+    "/opt/homebrew/bin/uv", // Apple Silicon Homebrew
     join(homedir(), ".local", "bin", "uv"),
     join(homedir(), ".cargo", "bin", "uv"),
     "/usr/local/bin/uv",
