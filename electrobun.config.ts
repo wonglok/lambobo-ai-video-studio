@@ -17,6 +17,7 @@ export default {
     // Ignore Vite output in watch mode — HMR handles view rebuilds separately
     watchIgnore: ["dist/**"],
     mac: {
+      icons: "icons/lamb-icon.iconset",
       bundleCEF: false,
     },
     linux: {
