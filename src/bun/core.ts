@@ -539,6 +539,16 @@ async function checkUvInstalled(): Promise<boolean> {
 
   for (const path of uvPaths) {
     if (existsSync(path)) {
+      const binDir = dirname(path);
+
+      // Ensure the directory is on PATH for child processes
+      if (!process.env.PATH?.includes(binDir)) {
+        process.env.PATH = `${binDir}:${process.env.PATH}`;
+      }
+
+      // Persist to shell config files
+      persistBinDirToShellRc(binDir);
+
       return true;
     }
   }
