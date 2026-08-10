@@ -1,61 +1,95 @@
-# React + Tailwind + Vite Electrobun Template
+# 🐑 Lambobo AI Video Studio
 
-A fast Electrobun desktop app template with React, Tailwind CSS, and Vite for hot module replacement (HMR).
+**On-device AI media generation for macOS** — create videos and images from text prompts and reference images, all running locally on your Apple Silicon Mac. No cloud, no API keys, no monthly fees.
 
-## Getting Started
+<p align="center">
+  <img src="src/mainview/lambobo.png" alt="Lambobo mascot" width="160" />
+</p>
+
+## ✨ What It Can Do
+
+### 🎬 Image-to-Video Generation
+Upload an image, write a prompt describing the scene you want, and Lambobo animates it using the **LTX-2.3** video diffusion model running on Apple MLX. Generate videos up to 20 seconds at 24fps.
+
+### 🖼️ Text-to-Image Generation
+Describe an image in words and generate it locally with **Z-Image-MPS**, optimized for Apple Silicon's Metal Performance Shaders.
+
+### 📊 CSV Batch Generation
+Upload a CSV with names and data, then use `{{mustache}}` templates in your prompt to batch-generate personalized videos for every row — perfect for content at scale.
+
+### 📁 Project Management
+Organize your work into projects. Each project keeps its uploaded assets and generated outputs neatly separated, with one-click Finder access.
+
+### ⚡ One-Click Setup
+The app handles everything — installs Homebrew, ffmpeg, uv, Python 3.10, and all ML dependencies automatically. Open the app and follow the setup wizard.
+
+## 🧠 How It Works
+
+All AI inference runs **on your Mac's GPU** using Apple's native ML frameworks:
+
+| Model | Engine | Purpose |
+|-------|--------|---------|
+| [LTX-2.3-MLX](https://github.com/dgrauet/ltx-2-mlx) | MLX (Apple Neural Engine) | Image-to-video generation |
+| Z-Image-MPS | MPS (Metal Performance Shaders) | Text-to-image generation |
+| Qwen-Image-MPS | MPS | Image editing & generation |
+
+The app bundles a Python virtual environment managed by [uv](https://docs.astral.sh/uv/), spawning Python subprocesses for ML inference and streaming progress back to the UI via SSE.
+
+## 📋 Requirements
+
+- **macOS** on Apple Silicon (M1/M2/M3/M4)
+- ~10 GB free disk space (for Python environment and ML models)
+- No cloud account or API key needed
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Desktop Runtime | [Electrobun](https://electrobun.dev) (Bun-based desktop framework) |
+| Frontend | React 18, Tailwind CSS, Vite, React Router |
+| State Management | [Zustand](https://zustand.docs.pmnd.rs) |
+| Backend | Bun + Express |
+| ML Runtime | Python 3.10, uv, MLX, MPS |
+| Package Manager | Bun |
+
+## 🏗️ Development
 
 ```bash
 # Install dependencies
 bun install
 
-# Development without HMR (uses bundled assets)
+# Development (HMR for frontend + Electrobun dev mode)
 bun run dev
-
-# Development with HMR (recommended)
-bun run dev:hmr
 
 # Build for production
 bun run build
 
-# Build for production release
-bun run build:prod
+# Notarize (macOS distribution)
+# See .claude/skills/notarise/skill.md for full instructions
 ```
 
-## How HMR Works
-
-When you run `bun run dev:hmr`:
-
-1. **Vite dev server** starts on `http://localhost:5173` with HMR enabled
-2. **Electrobun** starts and detects the running Vite server
-3. The app loads from the Vite dev server instead of bundled assets
-4. Changes to React components update instantly without full page reload
-
-When you run `bun run dev` (without HMR):
-
-1. Electrobun starts and loads from `views://mainview/index.html`
-2. You need to rebuild (`bun run build`) to see changes
-
-## Project Structure
+### Project Structure
 
 ```
 ├── src/
-│   ├── bun/
-│   │   └── index.ts        # Main process (Electrobun/Bun)
-│   └── mainview/
-│       ├── App.tsx         # React app component
-│       ├── main.tsx        # React entry point
-│       ├── index.html      # HTML template
-│       └── index.css       # Tailwind CSS
-├── electrobun.config.ts    # Electrobun configuration
-├── vite.config.ts          # Vite configuration
-├── tailwind.config.js      # Tailwind configuration
-└── package.json
+│   ├── bun/          # Electrobun main process (Express API, ML orchestration)
+│   │   ├── core.ts        # App lifecycle, setup wizard, menu bar
+│   │   ├── render-media.ts # API routes for generation, upload, projects
+│   │   └── index.ts       # Entry point
+│   └── mainview/      # React renderer (UI)
+│       ├── components/    # ProjectEditorPage, ProjectManager
+│       ├── stores/        # Zustand stores (generation, projects, logs)
+│       └── AppRouter.tsx  # Client-side routing
+├── python-src/        # Python ML scripts & images
+│   └── images/
+├── electrobun.config.ts
+└── CLAUDE.md
 ```
 
-## Customizing
+## 🔐 Distribution
 
-- **React components**: Edit files in `src/mainview/`
-- **Tailwind theme**: Edit `tailwind.config.js`
-- **Vite settings**: Edit `vite.config.ts`
-- **Window settings**: Edit `src/bun/index.ts`
-- **App metadata**: Edit `electrobun.config.ts`
+Lambobo is code-signed with a **Developer ID** certificate, notarized by Apple, and stapled — so macOS Gatekeeper trusts it out of the box. No scary "unidentified developer" warnings.
+
+## 📄 License
+
+MIT
