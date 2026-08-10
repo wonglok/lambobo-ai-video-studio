@@ -397,6 +397,14 @@ Julia Roberts,22`;
               <p className="text-xs text-tiffany-600/50 mt-1.5">
                 Upload an image to animate.
               </p>
+              <a
+                href={`${API_BASE}/lambobo.png`}
+                download="lambobo.png"
+                className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-tiffany-600 hover:text-tiffany-800 transition-colors"
+              >
+                {DownloadIcon}
+                Download example image
+              </a>
               {store.uploading && (
                 <p className="text-xs text-tiffany-600 mt-1">Uploading...</p>
               )}

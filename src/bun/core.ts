@@ -132,6 +132,18 @@ export async function runSetup({}: {}): Promise<SetupState> {
     res.json({ hi: "hi" });
   });
 
+  app.get("/lambobo.png", (req, res) => {
+    const imagePath = join(
+      import.meta.path,
+      "..",
+      "..",
+      "python-src",
+      "images",
+      "lambobo.png",
+    );
+    res.sendFile(imagePath);
+  });
+
   app.get("/api/setup", async (req, res) => {
     // Set SSE headers
     res.writeHead(200, {
