@@ -517,7 +517,7 @@ Julia Roberts,22`;
                 Duration (seconds)
               </label>
               <div className="flex flex-wrap gap-2">
-                {[3, 5, 10, 12.5, 15, 17.5, 20].map((d) => (
+                {[3, 5, 7.5, 10, 12.5, 15, 17.5, 20].map((d) => (
                   <button
                     key={d}
                     onClick={() => store.setVideoDuration(d)}

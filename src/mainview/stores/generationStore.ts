@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import Mustache from "mustache";
+import Papa from "papaparse";
 
 const API_BASE = `http://localhost:${(window as any).PORT}`;
 
@@ -130,54 +131,11 @@ function parseCsv(text: string): {
   rows: Record<string, string>[];
   columns: string[];
 } {
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length === 0) return { rows: [], columns: [] };
-
-  const parseLine = (line: string): string[] => {
-    const result: string[] = [];
-    let current = "";
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (inQuotes) {
-        if (ch === '"') {
-          if (i + 1 < line.length && line[i + 1] === '"') {
-            current += '"';
-            i++;
-          } else {
-            inQuotes = false;
-          }
-        } else {
-          current += ch;
-        }
-      } else {
-        if (ch === '"') {
-          inQuotes = true;
-        } else if (ch === ",") {
-          result.push(current.trim());
-          current = "";
-        } else {
-          current += ch;
-        }
-      }
-    }
-    result.push(current.trim());
-    return result;
-  };
-
-  const headers = parseLine(lines[0]);
-  const rows: Record<string, string>[] = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const values = parseLine(lines[i]);
-    const row: Record<string, string> = {};
-    headers.forEach((h, idx) => {
-      row[h] = values[idx] || "";
-    });
-    rows.push(row);
-  }
-
-  return { rows, columns: headers };
+  const result = Papa.parse<Record<string, string>>(text, {
+    header: true,
+    skipEmptyLines: true,
+  });
+  return { rows: result.data, columns: result.meta.fields || [] };
 }
 
 // ========== Beep ==========
@@ -511,7 +469,11 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
         .replace(/^data:text\/csv;base64,/, "")
         .replace(/^data:application\/csv;base64,/, "")
         .replace(/^data:text\/plain;base64,/, "");
-      const text = atob(raw);
+      // atob() returns a binary string (bytes as Latin-1), which corrupts
+      // multi-byte UTF-8 characters (Chinese, emoji, etc.). Decode properly
+      // via TextDecoder so CSV names render correctly in Mustache templates.
+      const bytes = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
+      const text = new TextDecoder("utf-8").decode(bytes);
       const { rows, columns } = parseCsv(text);
       set({
         csvRows: rows,
@@ -549,7 +511,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       set({ batchProgress: { current: i + 1, total: csvRows.length } });
 
       const rowData = csvRows[i];
-      const renderedPrompt = Mustache.render(video.prompt, rowData);
+      const renderedPrompt = Mustache.render(`${video.prompt}`, { ...rowData });
 
       // Build a name-tagged prompt suffix so the output filename reflects the row
       // const nameTag = rowData.name ? ` [${rowData.name}]` : "";

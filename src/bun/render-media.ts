@@ -114,14 +114,26 @@ async function streamToSSE(
   let text = "";
   const reader = readable?.getReader();
   if (!reader) return text;
+  const decoder = new TextDecoder();
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      const chunk = new TextDecoder().decode(value);
-      console.log(`[${prefix}]`, chunk);
-      text += chunk;
-      send("log", { text: chunk });
+      // Use { stream: true } so multi-byte UTF-8 characters split across
+      // chunks are reassembled correctly instead of producing mojibake.
+      const chunk = decoder.decode(value, { stream: true });
+      if (chunk) {
+        console.log(`[${prefix}]`, chunk);
+        text += chunk;
+        send("log", { text: chunk });
+      }
+    }
+    // Flush any remaining bytes buffered in the decoder.
+    const final = decoder.decode();
+    if (final) {
+      console.log(`[${prefix}]`, final);
+      text += final;
+      send("log", { text: final });
     }
   } finally {
     reader.releaseLock();
@@ -517,7 +529,7 @@ export async function renderMediaRoutes({
           "--model",
           "dgrauet/ltx-2.3-mlx-q4",
           "--prompt",
-          JSON.stringify(prompt),
+          prompt,
           "--distilled",
           "--low-ram",
           "--frames",

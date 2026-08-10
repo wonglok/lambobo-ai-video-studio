@@ -9,29 +9,30 @@
 ## ✨ What It Can Do
 
 ### 🎬 Image-to-Video Generation
+
 Upload an image, write a prompt describing the scene you want, and Lambobo animates it using the **LTX-2.3** video diffusion model running on Apple MLX. Generate videos up to 20 seconds at 24fps.
 
-### 🖼️ Text-to-Image Generation
-Describe an image in words and generate it locally with **Z-Image-MPS**, optimized for Apple Silicon's Metal Performance Shaders.
-
 ### 📊 CSV Batch Generation
+
 Upload a CSV with names and data, then use `{{mustache}}` templates in your prompt to batch-generate personalized videos for every row — perfect for content at scale.
 
 ### 📁 Project Management
+
 Organize your work into projects. Each project keeps its uploaded assets and generated outputs neatly separated, with one-click Finder access.
 
 ### ⚡ One-Click Setup
+
 The app handles everything — installs Homebrew, ffmpeg, uv, Python 3.10, and all ML dependencies automatically. Open the app and follow the setup wizard.
 
 ## 🧠 How It Works
 
 All AI inference runs **on your Mac's GPU** using Apple's native ML frameworks:
 
-| Model | Engine | Purpose |
-|-------|--------|---------|
-| [LTX-2.3-MLX](https://github.com/dgrauet/ltx-2-mlx) | MLX (Apple Neural Engine) | Image-to-video generation |
-| Z-Image-MPS | MPS (Metal Performance Shaders) | Text-to-image generation |
-| Qwen-Image-MPS | MPS | Image editing & generation |
+| Model                                               | Engine                          | Purpose                    |
+| --------------------------------------------------- | ------------------------------- | -------------------------- |
+| [LTX-2.3-MLX](https://github.com/dgrauet/ltx-2-mlx) | MLX (Apple Neural Engine)       | Image-to-video generation  |
+| Z-Image-MPS                                         | MPS (Metal Performance Shaders) | Text-to-image generation   |
+| Qwen-Image-MPS                                      | MPS                             | Image editing & generation |
 
 The app bundles a Python virtual environment managed by [uv](https://docs.astral.sh/uv/), spawning Python subprocesses for ML inference and streaming progress back to the UI via SSE.
 
@@ -43,14 +44,14 @@ The app bundles a Python virtual environment managed by [uv](https://docs.astral
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Desktop Runtime | [Electrobun](https://electrobun.dev) (Bun-based desktop framework) |
-| Frontend | React 18, Tailwind CSS, Vite, React Router |
-| State Management | [Zustand](https://zustand.docs.pmnd.rs) |
-| Backend | Bun + Express |
-| ML Runtime | Python 3.10, uv, MLX, MPS |
-| Package Manager | Bun |
+| Layer            | Technology                                                         |
+| ---------------- | ------------------------------------------------------------------ |
+| Desktop Runtime  | [Electrobun](https://electrobun.dev) (Bun-based desktop framework) |
+| Frontend         | React 18, Tailwind CSS, Vite, React Router                         |
+| State Management | [Zustand](https://zustand.docs.pmnd.rs)                            |
+| Backend          | Bun + Express                                                      |
+| ML Runtime       | Python 3.10, uv, MLX, MPS                                          |
+| Package Manager  | Bun                                                                |
 
 ## 🏗️ Development
 
