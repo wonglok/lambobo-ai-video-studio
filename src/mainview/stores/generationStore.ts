@@ -213,7 +213,7 @@ const initialImage: ImageState = {
 };
 
 const initialVideo: VideoState = {
-  prompt: `[Teenage Beaver Boy]: "Hi {{name}}! I'm beaver." `,
+  prompt: `[Teenage Sheep Boy]: "Hi {{name}}! I'm lambobo." `,
   duration: 5,
   generating: false,
   result: null,
