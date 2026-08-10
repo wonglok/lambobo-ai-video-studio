@@ -7,9 +7,32 @@ const API_BASE = `http://localhost:${(window as any).PORT}`;
 // ========== Types ==========
 
 export type GenerationTab = "image" | "video";
+export type AspectRatio = "1:1" | "16:9" | "9:16" | "4:3" | "3:4";
+export type Resolution = "320p" | "480p" | "640p" | "720p";
+
+function getDimensions(aspect: AspectRatio, resolution: Resolution): {
+  width: number;
+  height: number;
+} {
+  const size = parseInt(resolution);
+  switch (aspect) {
+    case "1:1":
+      return { width: size, height: size };
+    case "16:9":
+      return { width: Math.round((size * 16) / 9), height: size };
+    case "9:16":
+      return { width: size, height: Math.round((size * 16) / 9) };
+    case "4:3":
+      return { width: Math.round((size * 4) / 3), height: size };
+    case "3:4":
+      return { width: size, height: Math.round((size * 4) / 3) };
+  }
+}
 
 interface ImageState {
   prompt: string;
+  aspectRatio: AspectRatio;
+  resolution: Resolution;
   generating: boolean;
   result: string | null;
   error: string | null;
@@ -19,6 +42,8 @@ interface ImageState {
 interface VideoState {
   prompt: string;
   duration: number;
+  aspectRatio: AspectRatio;
+  resolution: Resolution;
   generating: boolean;
   result: string | null;
   error: string | null;
@@ -33,6 +58,8 @@ interface GenerationStore {
   // Image generation
   image: ImageState;
   setImagePrompt: (v: string) => void;
+  setImageAspectRatio: (v: AspectRatio) => void;
+  setImageResolution: (v: Resolution) => void;
   clearImageResult: () => void;
   generateImage: (projectId: string) => Promise<void>;
 
@@ -40,6 +67,8 @@ interface GenerationStore {
   video: VideoState;
   setVideoPrompt: (v: string) => void;
   setVideoDuration: (v: number) => void;
+  setVideoAspectRatio: (v: AspectRatio) => void;
+  setVideoResolution: (v: Resolution) => void;
   clearVideoResult: () => void;
   generateVideo: (projectId: string, imagePath?: string) => Promise<void>;
 
@@ -164,6 +193,8 @@ function playBeep() {
 
 const initialImage: ImageState = {
   prompt: "",
+  aspectRatio: "1:1",
+  resolution: "480p",
   generating: false,
   result: null,
   error: null,
@@ -173,6 +204,8 @@ const initialImage: ImageState = {
 const initialVideo: VideoState = {
   prompt: `(角色)[{{name}}]: {{script}}`,
   duration: 5,
+  aspectRatio: "1:1",
+  resolution: "480p",
   generating: false,
   result: null,
   error: null,
@@ -190,6 +223,10 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
 
   setImagePrompt: (prompt) =>
     set((s) => ({ image: { ...s.image, prompt, error: null } })),
+  setImageAspectRatio: (aspectRatio) =>
+    set((s) => ({ image: { ...s.image, aspectRatio } })),
+  setImageResolution: (resolution) =>
+    set((s) => ({ image: { ...s.image, resolution } })),
   clearImageResult: () =>
     set((s) => ({
       image: { ...s.image, result: null, error: null, logs: [] },
@@ -198,6 +235,8 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
   generateImage: async (projectId) => {
     const { image } = get();
     if (!image.prompt.trim() || image.generating) return;
+
+    const { width, height } = getDimensions(image.aspectRatio, image.resolution);
 
     set((s) => ({
       image: {
@@ -216,9 +255,9 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
         body: JSON.stringify({
           prompt: image.prompt.trim(),
           projectId,
-          aspect: "1:1",
-          width: 512,
-          height: 512,
+          aspect: image.aspectRatio,
+          width,
+          height,
           device: "mps",
         }),
       });
@@ -275,6 +314,10 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     set((s) => ({ video: { ...s.video, prompt, error: null } })),
   setVideoDuration: (duration) =>
     set((s) => ({ video: { ...s.video, duration } })),
+  setVideoAspectRatio: (aspectRatio) =>
+    set((s) => ({ video: { ...s.video, aspectRatio } })),
+  setVideoResolution: (resolution) =>
+    set((s) => ({ video: { ...s.video, resolution } })),
   clearVideoResult: () =>
     set((s) => ({
       video: { ...s.video, result: null, error: null, logs: [] },
@@ -283,6 +326,8 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
   generateVideo: async (projectId, imagePath?) => {
     const { video } = get();
     if (!video.prompt.trim() || video.generating) return;
+
+    const { width, height } = getDimensions(video.aspectRatio, video.resolution);
 
     // Use the provided imagePath, or fall back to uploaded image, or generated image
     let resolvedImagePath =
@@ -337,8 +382,8 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
           prompt: video.prompt.trim(),
           imagePath: resolvedImagePath,
           projectId,
-          width: 480,
-          height: 480,
+          width,
+          height,
           frames: video.duration * 24 + 1,
           frameRate: 24,
         }),
@@ -499,6 +544,8 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     const { video, csvRows, batchRunning } = get();
     if (batchRunning || csvRows.length === 0) return;
 
+    const { width, height } = getDimensions(video.aspectRatio, video.resolution);
+
     set({
       batchRunning: true,
       batchProgress: { current: 0, total: csvRows.length },
@@ -555,8 +602,8 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
             prompt: `${renderedPrompt}`, //${nameTag}
             imagePath: resolvedImagePath,
             projectId,
-            width: 480,
-            height: 480,
+            width,
+            height,
             frames: video.duration * 24 + 1,
             frameRate: 24,
           }),
