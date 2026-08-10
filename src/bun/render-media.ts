@@ -534,6 +534,7 @@ export async function renderMediaRoutes({
           outputPath,
         ],
         {
+          env: process.env,
           cwd: ltxFolder,
           stdout: "pipe",
           stderr: "pipe",
