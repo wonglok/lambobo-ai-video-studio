@@ -670,38 +670,38 @@ async function installPythonDependencies(): Promise<boolean> {
     return false;
   }
 
-  const zImagePath = join(pythonAppSrcDir, "z-image-mps");
+  // const zImagePath = join(pythonAppSrcDir, "z-image-mps");
 
-  if (!existsSync(zImagePath)) {
-    let cloneCMD = await runCommand(
-      "git",
-      [`clone`, `https://github.com/ivanfioravanti/z-image-mps`, "z-image-mps"],
-      { cwd: pythonAppSrcDir },
-    );
+  // if (!existsSync(zImagePath)) {
+  //   let cloneCMD = await runCommand(
+  //     "git",
+  //     [`clone`, `https://github.com/ivanfioravanti/z-image-mps`, "z-image-mps"],
+  //     { cwd: pythonAppSrcDir },
+  //   );
 
-    console.log(cloneCMD.success, cloneCMD.output);
-  }
+  //   console.log(cloneCMD.success, cloneCMD.output);
+  // }
 
-  const uvPathZimage = await getUvPath();
+  // const uvPathZimage = await getUvPath();
 
-  const uvInstallZimage = await runCommand(
-    uvPathZimage,
-    [
-      //
-      "pip",
-      "install",
-      "-e",
-      ".",
-    ],
-    {
-      cwd: zImagePath,
-    },
-  );
+  // const uvInstallZimage = await runCommand(
+  //   uvPathZimage,
+  //   [
+  //     //
+  //     "pip",
+  //     "install",
+  //     "-e",
+  //     ".",
+  //   ],
+  //   {
+  //     cwd: zImagePath,
+  //   },
+  // );
 
-  if (!uvInstallZimage.success) {
-    console.error("Failed to install z image pip", uvInstallZimage.error);
-    return false;
-  }
+  // if (!uvInstallZimage.success) {
+  //   console.error("Failed to install z image pip", uvInstallZimage.error);
+  //   return false;
+  // }
 
   // const qwenImageMpsFolder = join(pythonAppSrcDir, "qwen-image-mps");
   // if (!existsSync(qwenImageMpsFolder)) {

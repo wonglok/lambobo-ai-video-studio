@@ -17,7 +17,6 @@ export default function ProjectEditorPage() {
   // Local refs
   const fileInputRef = useRef<HTMLInputElement>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
-  const imageLogRef = useRef<HTMLPreElement | any>(null);
   const videoLogRef = useRef<HTMLPreElement | any>(null);
 
   useEffect(() => {
@@ -30,13 +29,6 @@ export default function ProjectEditorPage() {
     const found = projects.find((p) => p.id === id) || null;
     setProject(found);
   }, [id, projects]);
-
-  // Auto-scroll logs to bottom
-  useEffect(() => {
-    if (imageLogRef.current) {
-      imageLogRef.current.scrollTop = 100000;
-    }
-  }, [store.image.logs]);
 
   useEffect(() => {
     if (videoLogRef.current) {
@@ -57,18 +49,14 @@ export default function ProjectEditorPage() {
     };
   }, []);
 
-  // Fetch project images when switching to the video tab
+  // Fetch project images on mount
   useEffect(() => {
-    if (store.activeTab === "video" && id) {
+    if (id) {
       store.fetchProjectImages(id);
     }
-  }, [store.activeTab, id]);
+  }, [id]);
 
   // ========== Handlers ==========
-
-  const handleGenerateImage = () => {
-    if (id) store.generateImage(id);
-  };
 
   const handleGenerateVideo = async () => {
     if (id) {
@@ -143,21 +131,6 @@ export default function ProjectEditorPage() {
     >
       <line x1="19" y1="12" x2="5" y2="12" />
       <polyline points="12 19 5 12 12 5" />
-    </svg>
-  );
-
-  const ImageIcon = (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-      <circle cx="8.5" cy="8.5" r="1.5" />
-      <polyline points="21 15 16 10 5 21" />
     </svg>
   );
 
@@ -240,6 +213,23 @@ export default function ProjectEditorPage() {
     </svg>
   );
 
+  const DownloadIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+
   // ========== Loading / Not Found ==========
 
   if (!project) {
@@ -274,7 +264,7 @@ export default function ProjectEditorPage() {
   return (
     <div className="flex flex-col h-screen bg-tiffany-50">
       {/* Top bar */}
-      <div className="flex items-center gap-4 px-6 py-4 bg-white border-b border-tiffany-100">
+      <div className="flex items-center gap-4 px-6 py-4 bg-white border-b border-tiffany-100  mb-6">
         <button
           onClick={() => {
             store.resetAll();
@@ -297,478 +287,371 @@ export default function ProjectEditorPage() {
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div className="flex gap-0 px-6 pt-5 pb-0 bg-tiffany-50">
-        <button
-          onClick={() => store.setActiveTab("video")}
-          className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-t-xl transition-all duration-150 ${
-            store.activeTab === "video"
-              ? "bg-white text-tiffany-700 shadow-sm border border-b-0 border-tiffany-200"
-              : "text-tiffany-600/60 hover:text-tiffany-700 hover:bg-tiffany-100/60"
-          }`}
-        >
-          {VideoIcon}
-          Scene Video Generation
-        </button>
-        <button
-          onClick={() => store.setActiveTab("image")}
-          className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-t-xl transition-all duration-150 ${
-            store.activeTab === "image"
-              ? "bg-white text-tiffany-700 shadow-sm border border-b-0 border-tiffany-200"
-              : "text-tiffany-600/60 hover:text-tiffany-700 hover:bg-tiffany-100/60"
-          }`}
-        >
-          {ImageIcon}
-          Scene Image Generation
-        </button>
-      </div>
-
-      {/* Tab content */}
+      {/* Content */}
       <div className="flex-1 px-6 pb-6">
-        <div className="bg-white border border-tiffany-200 rounded-b-2xl rounded-tr-2xl shadow-card p-6 min-h-full">
-          {store.activeTab === "image" ? (
-            /* ========== IMAGE GENERATION PANEL ========== */
-            <div className="flex flex-col gap-5">
-              <div className="flex items-center gap-2">
-                <span className="text-tiffany-500">{ImageIcon}</span>
-                <h2 className="text-base font-semibold text-tiffany-900">
-                  Scene Image Generation
-                </h2>
-              </div>
-
-              {/* Prompt */}
-              <div>
-                <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-                  Scene Prompt
-                </label>
-                <textarea
-                  value={store.image.prompt}
-                  onChange={(e) => store.setImagePrompt(e.target.value)}
-                  placeholder="Describe the scene you want to generate..."
-                  rows={4}
-                  disabled={store.image.generating}
-                  className="w-full px-4 py-3 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
-                />
-              </div>
-
-              {/* Generate button (image) */}
-              <button
-                onClick={handleGenerateImage}
-                disabled={store.image.generating || !store.image.prompt.trim()}
-                className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-600 hover:bg-tiffany-700 active:bg-tiffany-800 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
-              >
-                {store.image.generating ? (
-                  <>
-                    <svg
-                      className="animate-spin"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
-                      <path d="M12 2a10 10 0 0 1 10 10" strokeOpacity="0.75" />
-                    </svg>
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    {SparkleIcon}
-                    Generate Image
-                  </>
-                )}
-              </button>
-
-              {/* Error */}
-              {store.image.error && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
-                  {store.image.error}
-                </div>
-              )}
-
-              {/* Logs */}
-              {store.image.logs.length > 0 && (
-                <div className="p-4 bg-tiffany-50 border border-tiffany-200 rounded-xl max-h-40 overflow-y-auto">
-                  <p className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-                    Logs
-                  </p>
-                  <pre
-                    ref={imageLogRef}
-                    className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap"
-                  >
-                    {store.image.logs.join("\n")}
-                  </pre>
-                </div>
-              )}
-
-              {/* Result */}
-              {store.image.result && (
-                <div>
-                  <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-                    Generated Image
-                  </label>
-                  <div className="relative rounded-xl overflow-hidden border border-tiffany-200 shadow-card bg-tiffany-100">
-                    <img
-                      src={store.image.result}
-                      alt="Generated scene"
-                      className="w-full h-auto object-cover"
-                    />
-                  </div>
-                </div>
-              )}
+        <div className="bg-white border border-tiffany-200 rounded-2xl shadow-card p-6 min-h-full">
+          {/* ========== VIDEO GENERATION PANEL ========== */}
+          <div className="flex flex-col gap-5">
+            <div className="flex items-center gap-2">
+              <span className="text-tiffany-500">{VideoIcon}</span>
+              <h2 className="text-base font-semibold text-tiffany-900">
+                Scene Video Generation
+              </h2>
             </div>
-          ) : (
-            /* ========== VIDEO GENERATION PANEL ========== */
-            <div className="flex flex-col gap-5">
+
+            {/* CSV upload for batch generation */}
+            <div>
+              <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+                CSV Batch Data
+              </label>
               <div className="flex items-center gap-2">
-                <span className="text-tiffany-500">{VideoIcon}</span>
-                <h2 className="text-base font-semibold text-tiffany-900">
-                  Scene Video Generation
-                </h2>
-              </div>
-
-              {/* CSV upload for batch generation */}
-              <div>
-                <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-                  CSV Batch Data
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    ref={csvInputRef}
-                    type="file"
-                    accept=".csv"
-                    onChange={handleCsvSelect}
-                    disabled={store.batchRunning}
-                    className="flex-1 text-sm text-tiffany-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-tiffany-100 file:text-tiffany-700 hover:file:bg-tiffany-200 file:cursor-pointer file:transition-colors disabled:opacity-50"
-                  />
-                  {store.csvFilename && (
-                    <button
-                      onClick={() => store.clearCsvData()}
-                      disabled={store.batchRunning}
-                      className="px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                {store.csvFilename && (
-                  <div className="mt-2 p-3 bg-tiffany-50 border border-tiffany-200 rounded-xl">
-                    <div className="flex items-center gap-2 text-xs text-tiffany-700 mb-1">
-                      {CsvIcon}
-                      <span className="font-medium">{store.csvFilename}</span>
-                      <span className="text-tiffany-600/60">
-                        ({store.csvRows.length} rows, {store.csvColumns.length}{" "}
-                        columns)
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                      {store.csvColumns.map((col) => (
-                        <code
-                          key={col}
-                          className="px-1.5 py-0.5 text-[10px] bg-tiffany-100 text-tiffany-700 rounded font-mono"
-                        >
-                          {`{{${col}}}`}
-                        </code>
-                      ))}
-                      <span className="text-[10px] text-tiffany-600/50 ml-1">
-                        — use these in your prompt
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {!store.csvFilename && (
-                  <p className="text-xs text-tiffany-600/50 mt-1.5">
-                    Upload a CSV with a{" "}
-                    <code className="text-[11px] bg-tiffany-100 px-1 rounded">
-                      name
-                    </code>{" "}
-                    column to batch-generate many videos. Use{" "}
-                    <code className="text-[11px] bg-tiffany-100 px-1 rounded">{`{{column}}`}</code>{" "}
-                    in your prompt as a template.
-                  </p>
-                )}
-              </div>
-
-              {/* Image upload */}
-              <div>
-                <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-                  Input Image
-                </label>
                 <input
-                  ref={fileInputRef}
+                  ref={csvInputRef}
                   type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  className="w-full text-sm text-tiffany-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-tiffany-100 file:text-tiffany-700 hover:file:bg-tiffany-200 file:cursor-pointer file:transition-colors"
+                  accept=".csv"
+                  onChange={handleCsvSelect}
+                  disabled={store.batchRunning}
+                  className="flex-1 text-sm text-tiffany-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-tiffany-100 file:text-tiffany-700 hover:file:bg-tiffany-200 file:cursor-pointer file:transition-colors disabled:opacity-50"
                 />
+                {store.csvFilename && (
+                  <button
+                    onClick={() => store.clearCsvData()}
+                    disabled={store.batchRunning}
+                    className="px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              {store.csvFilename && (
+                <div className="mt-2 p-3 bg-tiffany-50 border border-tiffany-200 rounded-xl">
+                  <div className="flex items-center gap-2 text-xs text-tiffany-700 mb-1">
+                    {CsvIcon}
+                    <span className="font-medium">{store.csvFilename}</span>
+                    <span className="text-tiffany-600/60">
+                      ({store.csvRows.length} rows, {store.csvColumns.length}{" "}
+                      columns)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                    {store.csvColumns.map((col) => (
+                      <code
+                        key={col}
+                        className="px-1.5 py-0.5 text-[10px] bg-tiffany-100 text-tiffany-700 rounded font-mono"
+                      >
+                        {`{{${col}}}`}
+                      </code>
+                    ))}
+                    <span className="text-[10px] text-tiffany-600/50 ml-1">
+                      — use these in your prompt
+                    </span>
+                  </div>
+                </div>
+              )}
+              {!store.csvFilename && (
                 <p className="text-xs text-tiffany-600/50 mt-1.5">
-                  Upload an image to animate, or generate an image in the Image
-                  tab first.
+                  Upload a CSV with a{" "}
+                  <code className="text-[11px] bg-tiffany-100 px-1 rounded">
+                    name
+                  </code>{" "}
+                  column to batch-generate many videos. Use{" "}
+                  <code className="text-[11px] bg-tiffany-100 px-1 rounded">{`{{column}}`}</code>{" "}
+                  in your prompt as a template.
                 </p>
-                {store.uploading && (
-                  <p className="text-xs text-tiffany-600 mt-1">Uploading...</p>
-                )}
-                {store.uploadError && (
-                  <p className="text-xs text-red-600 mt-1">
-                    {store.uploadError}
-                  </p>
-                )}
-                {store.uploadedImageUrl && (
-                  <div className="mt-3 rounded-xl overflow-hidden border border-tiffany-200 bg-tiffany-100  inline-block">
-                    <img
-                      src={store.uploadedImageUrl}
-                      alt={store.uploadedImageFilename || "Uploaded image"}
-                      className="w-full h-32 object-cover"
-                    />
-                    {store.uploadedImageFilename && (
-                      <p className="px-3 py-1.5 text-xs text-tiffany-600 truncate">
-                        {store.uploadedImageFilename}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Project images picker */}
-              <div>
-                <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-                  Project Images
-                </label>
-                {store.projectImagesLoading ? (
-                  <p className="text-xs text-tiffany-400 italic py-4 text-center">
-                    Loading images...
-                  </p>
-                ) : store.projectImages.length === 0 ? (
-                  <p className="text-xs text-tiffany-400 italic py-4 text-center border border-dashed border-tiffany-200 rounded-xl">
-                    No images yet. Upload one above, or generate an image in the
-                    Image tab.
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1">
-                    {store.projectImages.map((img) => {
-                      const isSelected =
-                        store.selectedImage?.filename === img.filename &&
-                        store.selectedImage?.source === img.source;
-
-                      const fullUrl = img.url.startsWith("http")
-                        ? img.url
-                        : `http://localhost:${(window as any).PORT}${img.url}`;
-
-                      return (
-                        <button
-                          key={`${img.source}-${img.filename}`}
-                          onClick={() => store.selectImage(img)}
-                          disabled={store.video.generating}
-                          className={`relative rounded-lg overflow-hidden border-2 transition-all ${
-                            isSelected
-                              ? "border-tiffany-500 ring-2 ring-tiffany-300/40"
-                              : "border-tiffany-200 hover:border-tiffany-300"
-                          } disabled:opacity-50`}
-                        >
-                          <img
-                            src={`${fullUrl}`}
-                            alt={img.filename}
-                            className="w-full h-20 object-cover object-center"
-                          />
-                          <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-tiffany-700 truncate text-center">
-                            {img.source === "generated" ? "✦ " : "↑ "}
-                            {img.filename}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-                {store.selectedImage && (
-                  <p className="text-xs text-tiffany-600/60 mt-1.5">
-                    Selected:{" "}
-                    <span className="font-medium text-tiffany-700">
-                      {store.selectedImage.filename}
-                    </span>
-                  </p>
-                )}
-              </div>
-
-              {/* Prompt */}
-              <div>
-                <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-                  Scene Prompt
-                  {store.csvColumns.length > 0 && (
-                    <span className="ml-2 text-[10px] font-normal text-tiffany-500">
-                      — template with {`{{column}}`} placeholders
-                    </span>
-                  )}
-                </label>
-                <textarea
-                  value={store.video.prompt}
-                  onChange={(e) => store.setVideoPrompt(e.target.value)}
-                  placeholder={
-                    store.csvColumns.length > 0
-                      ? `Use {{name}} and other column placeholders, e.g. a {{name}} says: "Hi John Wayne, how are you? my name is {{name}}."`
-                      : "Describe the video scene, e.g. a gentle ocean wave rolling onto a sandy beach at golden hour..."
-                  }
-                  rows={4}
-                  disabled={store.video.generating || store.batchRunning}
-                  className="w-full px-4 py-3 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
-                />
-              </div>
-
-              {/* Duration selector */}
-              <div>
-                <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-                  Duration (seconds)
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {[3, 5, 10, 12.5, 15, 17.5, 20].map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => store.setVideoDuration(d)}
-                      disabled={store.video.generating}
-                      className={`px-4 py-1.5 text-xs font-medium rounded-lg border transition-all ${
-                        store.video.duration === d
-                          ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
-                          : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
-                      } disabled:opacity-50`}
-                    >
-                      {d}s
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <button
-                onClick={handleOpenVideoFolder}
-                className="flex items-center justify-center gap-2 w-full px-4 py-2.5 mb-3 bg-tiffany-50 hover:bg-tiffany-100 text-tiffany-700 text-sm font-medium rounded-xl border border-tiffany-200 transition-colors"
+              )}
+              <a
+                href={(() => {
+                  const csv = `name,age
+Alice Smith,36
+Bob Johnson,60
+Charlie Brown,46
+Diana Prince,39
+Evan Davis,33
+Fiona Gallagher,59
+George Miller,58
+Hannah Abbott,43
+Ian Wright,57
+Julia Roberts,22`;
+                  return `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`;
+                })()}
+                download="example.csv"
+                className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-tiffany-600 hover:text-tiffany-800 transition-colors"
               >
-                {FolderIcon}
-                Open Output Folder
-              </button>
+                {DownloadIcon}
+                Download example CSV
+              </a>
+            </div>
 
-              {/* Batch generate button */}
-              {store.csvRows.length > 0 && (
-                <div className="space-y-2">
-                  {store.batchProgress && (
-                    <div className="flex items-center gap-3 p-3 bg-tiffany-50 border border-tiffany-200 rounded-xl">
-                      <span className="text-xs font-medium text-tiffany-700">
-                        {store.batchRunning
-                          ? "Batch Progress"
-                          : "Batch Complete"}
-                      </span>
-                      <div className="flex-1 h-2 bg-tiffany-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-tiffany-500 rounded-full transition-all duration-300"
-                          style={{
-                            width: `${(store.batchProgress.current / store.batchProgress.total) * 100}%`,
-                          }}
-                        />
-                      </div>
-                      <span className="text-xs font-semibold text-tiffany-700 tabular-nums">
-                        {store.batchProgress.current}/
-                        {store.batchProgress.total}
-                      </span>
-                    </div>
+            {/* Image upload */}
+            <div>
+              <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+                Input Image
+              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="w-full text-sm text-tiffany-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-tiffany-100 file:text-tiffany-700 hover:file:bg-tiffany-200 file:cursor-pointer file:transition-colors"
+              />
+              <p className="text-xs text-tiffany-600/50 mt-1.5">
+                Upload an image to animate.
+              </p>
+              {store.uploading && (
+                <p className="text-xs text-tiffany-600 mt-1">Uploading...</p>
+              )}
+              {store.uploadError && (
+                <p className="text-xs text-red-600 mt-1">{store.uploadError}</p>
+              )}
+              {store.uploadedImageUrl && (
+                <div className="mt-3 rounded-xl overflow-hidden border border-tiffany-200 bg-tiffany-100  inline-block">
+                  <img
+                    src={store.uploadedImageUrl}
+                    alt={store.uploadedImageFilename || "Uploaded image"}
+                    className="w-full h-32 object-cover"
+                  />
+                  {store.uploadedImageFilename && (
+                    <p className="px-3 py-1.5 text-xs text-tiffany-600 truncate">
+                      {store.uploadedImageFilename}
+                    </p>
                   )}
-                  {store.batchRunning ? (
-                    <button
-                      onClick={() => store.cancelBatch()}
-                      className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-red-50 hover:bg-red-100 text-red-600 text-sm font-semibold rounded-xl border border-red-200 transition-colors"
-                    >
-                      Cancel Batch
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleBatchGenerate}
-                      disabled={
-                        store.video.generating ||
-                        !store.video.prompt.trim() ||
-                        store.uploading
-                      }
-                      className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-500 hover:bg-tiffany-600 active:bg-tiffany-700 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
-                    >
-                      {TableIcon}
-                      Generate Batch ({store.csvRows.length} videos)
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Generate button (video) */}
-              <button
-                onClick={handleGenerateVideo}
-                disabled={
-                  store.video.generating ||
-                  store.batchRunning ||
-                  !store.video.prompt.trim() ||
-                  store.uploading
-                }
-                className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-600 hover:bg-tiffany-700 active:bg-tiffany-800 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
-              >
-                {store.video.generating ? (
-                  <>
-                    <svg
-                      className="animate-spin"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
-                      <path d="M12 2a10 10 0 0 1 10 10" strokeOpacity="0.75" />
-                    </svg>
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    {SparkleIcon}
-                    {`Generate 1 Video (No Template support)`}
-                  </>
-                )}
-              </button>
-
-              {/* Error */}
-              {store.video.error && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
-                  {store.video.error}
-                </div>
-              )}
-
-              {/* Logs */}
-              {store.video.logs.length > 0 && (
-                <div
-                  ref={videoLogRef}
-                  className="p-4 bg-tiffany-50 border border-tiffany-200 rounded-xl max-h-40 overflow-y-auto"
-                >
-                  <p className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-                    Logs
-                  </p>
-                  <pre className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap">
-                    {store.video.logs.join("\n")}
-                  </pre>
-                </div>
-              )}
-
-              {/* Result */}
-              {store.video.result && (
-                <div>
-                  <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-                    Generated Video
-                  </label>
-
-                  <div className="relative rounded-xl overflow-hidden border border-tiffany-200 shadow-card bg-black w-[500px]">
-                    <video
-                      src={store.video.result}
-                      controls
-                      className="w-full h-auto"
-                    />
-                  </div>
                 </div>
               )}
             </div>
-          )}
+
+            {/* Project images picker */}
+            <div>
+              <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+                Project Images
+              </label>
+              {store.projectImagesLoading ? (
+                <p className="text-xs text-tiffany-400 italic py-4 text-center">
+                  Loading images...
+                </p>
+              ) : store.projectImages.length === 0 ? (
+                <p className="text-xs text-tiffany-400 italic py-4 text-center border border-dashed border-tiffany-200 rounded-xl">
+                  No images yet. Upload one above.
+                </p>
+              ) : (
+                <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1">
+                  {store.projectImages.map((img) => {
+                    const isSelected =
+                      store.selectedImage?.filename === img.filename &&
+                      store.selectedImage?.source === img.source;
+
+                    const fullUrl = img.url.startsWith("http")
+                      ? img.url
+                      : `http://localhost:${(window as any).PORT}${img.url}`;
+
+                    return (
+                      <button
+                        key={`${img.source}-${img.filename}`}
+                        onClick={() => store.selectImage(img)}
+                        disabled={store.video.generating}
+                        className={`relative rounded-lg overflow-hidden border-2 transition-all ${
+                          isSelected
+                            ? "border-tiffany-500 ring-2 ring-tiffany-300/40"
+                            : "border-tiffany-200 hover:border-tiffany-300"
+                        } disabled:opacity-50`}
+                      >
+                        <img
+                          src={`${fullUrl}`}
+                          alt={img.filename}
+                          className="w-full h-20 object-cover object-center"
+                        />
+                        <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-tiffany-700 truncate text-center">
+                          {img.source === "generated" ? "✦ " : "↑ "}
+                          {img.filename}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {store.selectedImage && (
+                <p className="text-xs text-tiffany-600/60 mt-1.5">
+                  Selected:{" "}
+                  <span className="font-medium text-tiffany-700">
+                    {store.selectedImage.filename}
+                  </span>
+                </p>
+              )}
+            </div>
+
+            {/* Prompt */}
+            <div>
+              <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+                Scene Prompt
+                {store.csvColumns.length > 0 && (
+                  <span className="ml-2 text-[10px] font-normal text-tiffany-500">
+                    — template with {`{{column}}`} placeholders
+                  </span>
+                )}
+              </label>
+              <textarea
+                value={store.video.prompt}
+                onChange={(e) => store.setVideoPrompt(e.target.value)}
+                placeholder={
+                  store.csvColumns.length > 0
+                    ? `Use {{name}} and other column placeholders, e.g. a {{name}} says: "Hi John Wayne, how are you? my name is {{name}}."`
+                    : "Describe the video scene, e.g. a gentle ocean wave rolling onto a sandy beach at golden hour..."
+                }
+                rows={4}
+                disabled={store.video.generating || store.batchRunning}
+                className="w-full px-4 py-3 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
+              />
+            </div>
+
+            {/* Duration selector */}
+            <div>
+              <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+                Duration (seconds)
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {[3, 5, 10, 12.5, 15, 17.5, 20].map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => store.setVideoDuration(d)}
+                    disabled={store.video.generating}
+                    className={`px-4 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                      store.video.duration === d
+                        ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
+                        : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+                    } disabled:opacity-50`}
+                  >
+                    {d}s
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={handleOpenVideoFolder}
+              className="flex items-center justify-center gap-2 w-full px-4 py-2.5 mb-3 bg-tiffany-50 hover:bg-tiffany-100 text-tiffany-700 text-sm font-medium rounded-xl border border-tiffany-200 transition-colors"
+            >
+              {FolderIcon}
+              Open Output Folder
+            </button>
+
+            {/* Batch generate button */}
+            {store.csvRows.length > 0 && (
+              <div className="space-y-2">
+                {store.batchProgress && (
+                  <div className="flex items-center gap-3 p-3 bg-tiffany-50 border border-tiffany-200 rounded-xl">
+                    <span className="text-xs font-medium text-tiffany-700">
+                      {store.batchRunning ? "Batch Progress" : "Batch Complete"}
+                    </span>
+                    <div className="flex-1 h-2 bg-tiffany-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-tiffany-500 rounded-full transition-all duration-300"
+                        style={{
+                          width: `${(store.batchProgress.current / store.batchProgress.total) * 100}%`,
+                        }}
+                      />
+                    </div>
+                    <span className="text-xs font-semibold text-tiffany-700 tabular-nums">
+                      {store.batchProgress.current}/{store.batchProgress.total}
+                    </span>
+                  </div>
+                )}
+                {store.batchRunning ? (
+                  <button
+                    onClick={() => store.cancelBatch()}
+                    className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-red-50 hover:bg-red-100 text-red-600 text-sm font-semibold rounded-xl border border-red-200 transition-colors"
+                  >
+                    Cancel Batch
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleBatchGenerate}
+                    disabled={
+                      store.video.generating ||
+                      !store.video.prompt.trim() ||
+                      store.uploading
+                    }
+                    className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-500 hover:bg-tiffany-600 active:bg-tiffany-700 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
+                  >
+                    {TableIcon}
+                    Generate Batch ({store.csvRows.length} videos)
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Generate button (video) */}
+            <button
+              onClick={handleGenerateVideo}
+              disabled={
+                store.video.generating ||
+                store.batchRunning ||
+                !store.video.prompt.trim() ||
+                store.uploading
+              }
+              className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-600 hover:bg-tiffany-700 active:bg-tiffany-800 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
+            >
+              {store.video.generating ? (
+                <>
+                  <svg
+                    className="animate-spin"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                    <path d="M12 2a10 10 0 0 1 10 10" strokeOpacity="0.75" />
+                  </svg>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  {SparkleIcon}
+                  {`Generate 1 Video (No Template support)`}
+                </>
+              )}
+            </button>
+
+            {/* Error */}
+            {store.video.error && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+                {store.video.error}
+              </div>
+            )}
+
+            {/* Logs */}
+            {store.video.logs.length > 0 && (
+              <div
+                ref={videoLogRef}
+                className="p-4 bg-tiffany-50 border border-tiffany-200 rounded-xl max-h-40 overflow-y-auto"
+              >
+                <p className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+                  Logs
+                </p>
+                <pre className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap">
+                  {store.video.logs.join("\n")}
+                </pre>
+              </div>
+            )}
+
+            {/* Result */}
+            {store.video.result && (
+              <div>
+                <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+                  Generated Video
+                </label>
+
+                <div className="relative rounded-xl overflow-hidden border border-tiffany-200 shadow-card bg-black w-[500px]">
+                  <video
+                    src={store.video.result}
+                    controls
+                    className="w-full h-auto"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
