@@ -442,7 +442,7 @@ Julia Roberts,22`;
                   No images yet. Upload one above.
                 </p>
               ) : (
-                <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1">
+                <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 3xl:grid-cols-10 gap-2 p-1">
                   {store.projectImages.map((img) => {
                     const isSelected =
                       store.selectedImage?.filename === img.filename &&
@@ -457,7 +457,7 @@ Julia Roberts,22`;
                         key={`${img.source}-${img.filename}`}
                         onClick={() => store.selectImage(img)}
                         disabled={store.video.generating}
-                        className={`relative rounded-lg overflow-hidden border-2 transition-all ${
+                        className={`relative rounded-lg border-2 transition-all ${
                           isSelected
                             ? "border-tiffany-500 ring-2 ring-tiffany-300/40"
                             : "border-tiffany-200 hover:border-tiffany-300"
@@ -466,7 +466,7 @@ Julia Roberts,22`;
                         <img
                           src={`${fullUrl}`}
                           alt={img.filename}
-                          className="w-full h-20 object-cover object-center"
+                          className="aspect-square object-cover object-center"
                         />
                         <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-tiffany-700 truncate text-center">
                           {img.source === "generated" ? "✦ " : "↑ "}
