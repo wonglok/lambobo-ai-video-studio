@@ -617,7 +617,7 @@ Julia Roberts,22`;
               ) : (
                 <>
                   {SparkleIcon}
-                  {`Generate 1 Video (No Template support)`}
+                  {`Generate 1 Video (No CSV / Template support)`}
                 </>
               )}
             </button>
