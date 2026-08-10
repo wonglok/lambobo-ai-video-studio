@@ -10,7 +10,10 @@ export type GenerationTab = "image" | "video";
 export type AspectRatio = "1:1" | "16:9" | "9:16" | "4:3" | "3:4";
 export type Resolution = "320p" | "480p" | "640p" | "720p";
 
-function getDimensions(aspect: AspectRatio, resolution: Resolution): {
+function getDimensions(
+  aspect: AspectRatio,
+  resolution: Resolution,
+): {
   width: number;
   height: number;
 } {
@@ -95,11 +98,16 @@ interface GenerationStore {
   csvRows: Record<string, string>[];
   csvColumns: string[];
   csvFilename: string | null;
+  csvSelectedIndices: Set<number>;
   batchRunning: boolean;
   batchProgress: { current: number; total: number } | null;
   batchCancelRequested: boolean;
   uploadCsv: (base64: string, filename: string) => void;
   clearCsvData: () => void;
+  toggleCsvRow: (index: number) => void;
+  selectAllCsvRows: () => void;
+  deselectAllCsvRows: () => void;
+  updateCsvCell: (rowIndex: number, column: string, value: string) => void;
   generateBatchVideos: (projectId: string) => Promise<void>;
   cancelBatch: () => void;
 
@@ -202,7 +210,7 @@ const initialImage: ImageState = {
 };
 
 const initialVideo: VideoState = {
-  prompt: `(角色)[{{name}}]: {{script}}`,
+  prompt: `[{{name}} 說話]: {{script}}`,
   duration: 5,
   aspectRatio: "1:1",
   resolution: "480p",
@@ -236,7 +244,10 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     const { image } = get();
     if (!image.prompt.trim() || image.generating) return;
 
-    const { width, height } = getDimensions(image.aspectRatio, image.resolution);
+    const { width, height } = getDimensions(
+      image.aspectRatio,
+      image.resolution,
+    );
 
     set((s) => ({
       image: {
@@ -327,7 +338,10 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     const { video } = get();
     if (!video.prompt.trim() || video.generating) return;
 
-    const { width, height } = getDimensions(video.aspectRatio, video.resolution);
+    const { width, height } = getDimensions(
+      video.aspectRatio,
+      video.resolution,
+    );
 
     // Use the provided imagePath, or fall back to uploaded image, or generated image
     let resolvedImagePath =
@@ -503,6 +517,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
   csvRows: [],
   csvColumns: [],
   csvFilename: null,
+  csvSelectedIndices: new Set<number>(),
   batchRunning: false,
   batchProgress: null,
   batchCancelRequested: false,
@@ -520,13 +535,21 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       const bytes = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
       const text = new TextDecoder("utf-8").decode(bytes);
       const { rows, columns } = parseCsv(text);
+      // Auto-select all rows
+      const allIndices = new Set(rows.map((_, i) => i));
       set({
         csvRows: rows,
         csvColumns: columns,
         csvFilename: filename,
+        csvSelectedIndices: allIndices,
       });
     } catch {
-      set({ csvRows: [], csvColumns: [], csvFilename: null });
+      set({
+        csvRows: [],
+        csvColumns: [],
+        csvFilename: null,
+        csvSelectedIndices: new Set(),
+      });
     }
   },
 
@@ -535,27 +558,62 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       csvRows: [],
       csvColumns: [],
       csvFilename: null,
+      csvSelectedIndices: new Set(),
       batchRunning: false,
       batchProgress: null,
       batchCancelRequested: false,
     }),
 
-  generateBatchVideos: async (projectId) => {
-    const { video, csvRows, batchRunning } = get();
-    if (batchRunning || csvRows.length === 0) return;
+  toggleCsvRow: (index) =>
+    set((s) => {
+      const next = new Set(s.csvSelectedIndices);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return { csvSelectedIndices: next };
+    }),
 
-    const { width, height } = getDimensions(video.aspectRatio, video.resolution);
+  selectAllCsvRows: () =>
+    set((s) => ({
+      csvSelectedIndices: new Set(s.csvRows.map((_, i) => i)),
+    })),
+
+  deselectAllCsvRows: () =>
+    set({ csvSelectedIndices: new Set() }),
+
+  updateCsvCell: (rowIndex, column, value) =>
+    set((s) => {
+      const updated = s.csvRows.map((row, i) =>
+        i === rowIndex ? { ...row, [column]: value } : row,
+      );
+      return { csvRows: updated };
+    }),
+
+  generateBatchVideos: async (projectId) => {
+    const { video, csvRows, csvSelectedIndices, batchRunning } = get();
+    // Only process selected rows
+    const selectedIndices = Array.from(csvSelectedIndices).sort((a, b) => a - b);
+    if (batchRunning || selectedIndices.length === 0) return;
+
+    const { width, height } = getDimensions(
+      video.aspectRatio,
+      video.resolution,
+    );
 
     set({
       batchRunning: true,
-      batchProgress: { current: 0, total: csvRows.length },
+      batchProgress: { current: 0, total: selectedIndices.length },
       batchCancelRequested: false,
     });
 
-    for (let i = 0; i < csvRows.length; i++) {
+    for (let batchIdx = 0; batchIdx < selectedIndices.length; batchIdx++) {
       if (get().batchCancelRequested) break;
 
-      set({ batchProgress: { current: i + 1, total: csvRows.length } });
+      const i = selectedIndices[batchIdx];
+
+      set({ batchProgress: { current: batchIdx + 1, total: selectedIndices.length } });
 
       const rowData = csvRows[i];
       const renderedPrompt = Mustache.render(`${video.prompt}`, { ...rowData });
@@ -625,7 +683,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
                   ...s.video,
                   logs: [
                     ...s.video.logs,
-                    `[${i + 1}/${csvRows.length}] ${data.text as string}`,
+                    `[${batchIdx + 1}/${selectedIndices.length}] ${data.text as string}`,
                   ],
                 },
               }));
@@ -704,6 +762,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       csvRows: [],
       csvColumns: [],
       csvFilename: null,
+      csvSelectedIndices: new Set(),
       batchRunning: false,
       batchProgress: null,
       batchCancelRequested: false,

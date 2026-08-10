@@ -324,27 +324,102 @@ export default function ProjectEditorPage() {
                 )}
               </div>
               {store.csvFilename && (
-                <div className="mt-2 p-3 bg-tiffany-50 border border-tiffany-200 rounded-xl">
-                  <div className="flex items-center gap-2 text-xs text-tiffany-700 mb-1">
-                    {CsvIcon}
-                    <span className="font-medium">{store.csvFilename}</span>
-                    <span className="text-tiffany-600/60">
-                      ({store.csvRows.length} rows, {store.csvColumns.length}{" "}
-                      columns)
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                    {store.csvColumns.map((col) => (
-                      <code
-                        key={col}
-                        className="px-1.5 py-0.5 text-[10px] bg-tiffany-100 text-tiffany-700 rounded font-mono"
+                <div className="mt-2 border border-tiffany-200 rounded-xl overflow-hidden">
+                  {/* CSV header */}
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-tiffany-50 border-b border-tiffany-200">
+                    <div className="flex items-center gap-2 text-xs text-tiffany-700">
+                      {CsvIcon}
+                      <span className="font-medium">{store.csvFilename}</span>
+                      <span className="text-tiffany-600/60">
+                        ({store.csvRows.length} rows, {store.csvColumns.length}{" "}
+                        columns)
+                      </span>
+                      <span className="text-tiffany-600/60">
+                        — {store.csvSelectedIndices.size} selected
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => store.selectAllCsvRows()}
+                        disabled={store.batchRunning}
+                        className="px-2 py-1 text-[10px] font-medium text-tiffany-600 hover:bg-tiffany-100 rounded transition-colors disabled:opacity-50"
                       >
-                        {`{{${col}}}`}
-                      </code>
-                    ))}
-                    <span className="text-[10px] text-tiffany-600/50 ml-1">
-                      — use these in your prompt
-                    </span>
+                        Select All
+                      </button>
+                      <button
+                        onClick={() => store.deselectAllCsvRows()}
+                        disabled={store.batchRunning}
+                        className="px-2 py-1 text-[10px] font-medium text-tiffany-600 hover:bg-tiffany-100 rounded transition-colors disabled:opacity-50"
+                      >
+                        Deselect All
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Table container with horizontal scroll */}
+                  <div className="overflow-auto max-h-80">
+                    <table className="w-full text-xs">
+                      {/* Column headers */}
+                      <thead>
+                        <tr className="bg-tiffany-50/50 border-b border-tiffany-100">
+                          <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-10">
+                            <span className="sr-only">Select</span>
+                          </th>
+                          {store.csvColumns.map((col) => (
+                            <th
+                              key={col}
+                              className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 whitespace-nowrap"
+                            >
+                              {col}
+                              <span className="ml-1 text-[10px] font-normal text-tiffany-400">{`{{${col}}}`}</span>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {store.csvRows.map((row, rowIdx) => {
+                          const isSelected =
+                            store.csvSelectedIndices.has(rowIdx);
+                          return (
+                            <tr
+                              key={rowIdx}
+                              className={`border-b border-tiffany-100 transition-colors ${
+                                isSelected
+                                  ? "bg-white"
+                                  : "bg-tiffany-50/30 opacity-60"
+                              }`}
+                            >
+                              <td className="px-3 py-1.5">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => store.toggleCsvRow(rowIdx)}
+                                  disabled={store.batchRunning}
+                                  className="w-3.5 h-3.5 rounded border-tiffany-300 text-tiffany-600 focus:ring-tiffany-500 cursor-pointer disabled:opacity-50"
+                                />
+                              </td>
+                              {store.csvColumns.map((col) => (
+                                <td key={col} className="px-3 py-1">
+                                  <input
+                                    type="text"
+                                    value={row[col] ?? ""}
+                                    onChange={(e) =>
+                                      store.updateCsvCell(
+                                        rowIdx,
+                                        col,
+                                        e.target.value,
+                                      )
+                                    }
+                                    disabled={store.batchRunning}
+                                    className="w-full min-w-[120px] px-2 py-1 bg-transparent border border-transparent hover:border-tiffany-200 focus:border-tiffany-300 focus:outline-none focus:ring-1 focus:ring-tiffany-300/30 rounded text-tiffany-800 transition-colors disabled:opacity-50"
+                                  />
+                                </td>
+                              ))}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
@@ -362,21 +437,16 @@ export default function ProjectEditorPage() {
               <a
                 href={(() => {
                   const csv = `id,name,script
-1,羊寶寶,咩～大家好！我是可愛的羊寶寶，今天要講一個聖經故事喔！
-2,羊寶寶,故事叫做《浪子回頭》。很久以前，有一位慈祥的父親和兩個兒子。
-3,羊寶寶,有一天，小兒子對爸爸說：『爸爸，請把我以後會分到的錢現在就給我吧！』
-4,羊寶寶,爸爸雖然難過，還是答應了。小兒子拿到錢，就開心去遠方旅行了。
-5,羊寶寶,他在外面天天玩樂，買了很多東西，很快就把錢全部花光光了。
-6,羊寶寶,那裡剛好發生了大飢荒，小兒子沒有錢買食物，肚子好餓好餓。
-7,羊寶寶,他只好去幫人養豬，甚至餓到想吃豬吃的豆莢，卻沒有人給他。
-8,羊寶寶,這時，他終於醒悟了：『我爸爸家裡那麼好，我為什麼要在這裡挨餓呢？』
-9,羊寶寶,『我要回家！我要跟爸爸說對不起！』於是，他勇敢地踏上回家的路。
-10,羊寶寶,他還離家很遠的時候，每天都在等他回家的爸爸就看到他了。
-11,羊寶寶,爸爸跑過去，緊緊抱住又髒又臭的小兒子，還親吻他。
-12,羊寶寶,小兒子哭著說：『爸爸，我錯了。』爸爸卻叫人給他穿上最好的衣服。
-13,羊寶寶,爸爸開心地說：『我的兒子回來了！他失而復得，我們快來慶祝吧！』
-14,羊寶寶,咩～上帝的愛就像這位爸爸一樣，不管我們做錯什麼，祂都願意原諒我們。
-15,羊寶寶,只要我們願意回頭，天父永遠張開雙手歡迎我們喔！下次見，掰掰～`;
+1,羊寶寶片頭,"歡迎來到羊寶寶聖經金句時間！咩～"
+2,詩篇23篇1節,"「耶和華是我的牧者，我必不致缺乏。」（詩篇 23:1）"
+3,約翰福音10章11節,"「我是好牧人；好牧人為羊捨命。」（約翰福音 10:11）"
+4,詩篇100篇3節,"「我們是他的民，也是他草場的羊。」（詩篇 100:3）"
+5,以賽亞書40章11節,"「他用膀臂聚集羊羔，抱在懷中。」（以賽亞書 40:11）"
+6,路加福音12章32節,"「你們這小群，不要懼怕！」（路加福音 12:32）"
+7,約翰福音10章27節,"「我的羊聽我的聲音，他們也跟著我。」（約翰福音 10:27）"
+8,彼得前書2章25節,"「如今卻歸到你們靈魂的牧人了。」（彼得前書 2:25）"
+9,馬太福音18章12節,"「好牧人會去尋找那隻迷路的羊。」（馬太福音 18:12）"
+10,結語與祝福,"願好牧人耶穌賜福給你！我們下次見！"`;
                   return `data:text/csv;charset=utf-8,${encodeURIComponent(csv.trim())}`;
                 })()}
                 download="example.csv"
@@ -545,20 +615,22 @@ export default function ProjectEditorPage() {
                 Aspect Ratio
               </label>
               <div className="flex flex-wrap gap-2">
-                {(["1:1", "16:9", "9:16", "4:3", "3:4"] as const).map((ratio) => (
-                  <button
-                    key={ratio}
-                    onClick={() => store.setVideoAspectRatio(ratio)}
-                    disabled={store.video.generating}
-                    className={`px-4 py-1.5 text-xs font-medium rounded-lg border transition-all ${
-                      store.video.aspectRatio === ratio
-                        ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
-                        : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
-                    } disabled:opacity-50`}
-                  >
-                    {ratio}
-                  </button>
-                ))}
+                {(["1:1", "16:9", "9:16", "4:3", "3:4"] as const).map(
+                  (ratio) => (
+                    <button
+                      key={ratio}
+                      onClick={() => store.setVideoAspectRatio(ratio)}
+                      disabled={store.video.generating}
+                      className={`px-4 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                        store.video.aspectRatio === ratio
+                          ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
+                          : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+                      } disabled:opacity-50`}
+                    >
+                      {ratio}
+                    </button>
+                  ),
+                )}
               </div>
             </div>
 
@@ -632,7 +704,7 @@ export default function ProjectEditorPage() {
                     className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-500 hover:bg-tiffany-600 active:bg-tiffany-700 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
                   >
                     {TableIcon}
-                    Generate Batch ({store.csvRows.length} videos)
+                    Generate Batch ({store.csvSelectedIndices.size} videos)
                   </button>
                 )}
               </div>
