@@ -586,24 +586,24 @@ async function installUv(): Promise<boolean> {
 }
 
 export async function getUvPath(): Promise<string> {
+  // Fall back to which
+  if (await checkCommand("uv")) {
+    return "uv";
+  }
+
   // Check known paths first — always return absolute path so child processes
   // don't need uv on PATH
   const uvPaths = [
+    "/usr/local/bin/uv",
     "/opt/homebrew/bin/uv", // Apple Silicon Homebrew
     join(homedir(), ".local", "bin", "uv"),
     join(homedir(), ".cargo", "bin", "uv"),
-    "/usr/local/bin/uv",
   ];
 
   for (const path of uvPaths) {
     if (existsSync(path)) {
       return path;
     }
-  }
-
-  // Fall back to which
-  if (await checkCommand("uv")) {
-    return "uv";
   }
 
   throw new Error("uv not found");
