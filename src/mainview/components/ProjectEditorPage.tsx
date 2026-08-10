@@ -688,7 +688,10 @@ export default function ProjectEditorPage() {
                 )}
                 {store.batchRunning ? (
                   <button
-                    onClick={() => store.cancelBatch()}
+                    onClick={() => {
+                      store.cancelBatch();
+                      store.cancelGenerate();
+                    }}
                     className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-red-50 hover:bg-red-100 text-red-600 text-sm font-semibold rounded-xl border border-red-200 transition-colors"
                   >
                     Cancel Batch
@@ -710,21 +713,12 @@ export default function ProjectEditorPage() {
               </div>
             )}
 
-            {/* Generate button (video) */}
-            <button
-              onClick={handleGenerateVideo}
-              disabled={
-                store.video.generating ||
-                store.batchRunning ||
-                !store.video.prompt.trim() ||
-                store.uploading
-              }
-              className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-600 hover:bg-tiffany-700 active:bg-tiffany-800 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
-            >
-              {store.video.generating ? (
-                <>
+            {/* Generate / Stop button (video) */}
+            {store.video.generating ? (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 flex-1 px-4 py-3 bg-tiffany-50 border border-tiffany-200 rounded-xl">
                   <svg
-                    className="animate-spin"
+                    className="animate-spin text-tiffany-500"
                     width="16"
                     height="16"
                     viewBox="0 0 24 24"
@@ -735,15 +729,42 @@ export default function ProjectEditorPage() {
                     <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
                     <path d="M12 2a10 10 0 0 1 10 10" strokeOpacity="0.75" />
                   </svg>
-                  Generating...
-                </>
-              ) : (
-                <>
-                  {SparkleIcon}
-                  {`Generate 1 Video (No CSV / Template support)`}
-                </>
-              )}
-            </button>
+                  <span className="text-sm font-medium text-tiffany-700">
+                    Generating...
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    store.cancelBatch();
+                    store.cancelGenerate();
+                  }}
+                  className="flex items-center justify-center gap-1.5 px-5 py-3 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <rect x="4" y="4" width="16" height="16" rx="2" />
+                  </svg>
+                  Stop
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleGenerateVideo}
+                disabled={
+                  store.batchRunning ||
+                  !store.video.prompt.trim() ||
+                  store.uploading
+                }
+                className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-600 hover:bg-tiffany-700 active:bg-tiffany-800 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
+              >
+                {SparkleIcon}
+                {`Generate 1 Video (No CSV / Template support)`}
+              </button>
+            )}
 
             {/* Error */}
             {store.video.error && (

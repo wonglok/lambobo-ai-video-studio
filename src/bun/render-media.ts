@@ -11,7 +11,10 @@ import { type Application } from "express";
 import { homedir } from "node:os";
 import { join, sep } from "node:path";
 import { execSync } from "node:child_process";
-import { spawn } from "bun";
+import { spawn, type Subprocess } from "bun";
+
+// Track the currently active spawn process so it can be cancelled
+let activeProc: Subprocess | null = null;
 
 const APP_DATA_DIR = join(homedir(), "media-studio");
 const OUTPUT_DIR = join(APP_DATA_DIR, "output");
@@ -405,6 +408,8 @@ export async function renderMediaRoutes({
         },
       );
 
+      activeProc = proc;
+
       // Stream stdout/stderr concurrently
       const stdoutPromise = streamToSSE(
         proc.stdout as ReadableStream<Uint8Array>,
@@ -436,6 +441,7 @@ export async function renderMediaRoutes({
     } catch (e) {
       send("error", { error: String(e) });
     } finally {
+      activeProc = null;
       res.end();
     }
   });
@@ -553,6 +559,8 @@ export async function renderMediaRoutes({
         },
       );
 
+      activeProc = proc;
+
       // Stream stdout/stderr concurrently
       const stdoutPromise = streamToSSE(
         proc.stdout as ReadableStream<Uint8Array>,
@@ -584,6 +592,7 @@ export async function renderMediaRoutes({
     } catch (e) {
       send("error", { error: String(e) });
     } finally {
+      activeProc = null;
       res.end();
     }
   });
@@ -594,6 +603,20 @@ export async function renderMediaRoutes({
       openInFinder(`${OUTPUT_DIR}`);
     } catch {}
 
+    res.json({ ok: true });
+  });
+
+  // ========== Render: Cancel ==========
+
+  app.post("/api/render/cancel", (_req, res) => {
+    if (activeProc) {
+      try {
+        activeProc.kill();
+      } catch {
+        // process may already be dead
+      }
+      activeProc = null;
+    }
     res.json({ ok: true });
   });
 

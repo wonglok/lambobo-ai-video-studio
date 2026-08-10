@@ -74,6 +74,7 @@ interface GenerationStore {
   setVideoResolution: (v: Resolution) => void;
   clearVideoResult: () => void;
   generateVideo: (projectId: string, imagePath?: string) => Promise<void>;
+  cancelGenerate: () => void;
 
   // Upload
   uploading: boolean;
@@ -174,6 +175,11 @@ function parseCsv(text: string): {
   });
   return { rows: result.data, columns: result.meta.fields || [] };
 }
+
+// ========== Abort Controllers ==========
+
+let generateAbortController: AbortController | null = null;
+let batchAbortController: AbortController | null = null;
 
 // ========== Beep ==========
 
@@ -378,6 +384,10 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     // The backend now only accepts bare filenames — extract just the basename
     resolvedImagePath = resolvedImagePath.split("/").pop() || resolvedImagePath;
 
+    // Create a fresh AbortController for this single generate run
+    generateAbortController = new AbortController();
+    const signal = generateAbortController.signal;
+
     set((s) => ({
       video: {
         ...s.video,
@@ -401,6 +411,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
           frames: video.duration * 24 + 1,
           frameRate: 24,
         }),
+        signal,
       });
 
       if (!res.ok) {
@@ -408,6 +419,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
         set((s) => ({
           video: { ...s.video, generating: false, error: err },
         }));
+        generateAbortController = null;
         return;
       }
 
@@ -441,10 +453,19 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
             break;
         }
       });
-    } catch (e) {
-      set((s) => ({
-        video: { ...s.video, generating: false, error: String(e) },
-      }));
+    } catch (e: any) {
+      // If the request was aborted, just stop silently
+      if (e?.name !== "AbortError") {
+        set((s) => ({
+          video: { ...s.video, generating: false, error: String(e) },
+        }));
+      } else {
+        set((s) => ({
+          video: { ...s.video, generating: false },
+        }));
+      }
+    } finally {
+      generateAbortController = null;
     }
   },
 
@@ -602,6 +623,10 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       video.resolution,
     );
 
+    // Create a fresh AbortController for this batch run
+    batchAbortController = new AbortController();
+    const signal = batchAbortController.signal;
+
     set({
       batchRunning: true,
       batchProgress: { current: 0, total: selectedIndices.length },
@@ -665,6 +690,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
             frames: video.duration * 24 + 1,
             frameRate: 24,
           }),
+          signal,
         });
 
         if (!res.ok) {
@@ -708,7 +734,9 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
               break;
           }
         });
-      } catch (e) {
+      } catch (e: any) {
+        // If the request was aborted, just stop silently
+        if (e?.name === "AbortError") break;
         set((s) => ({
           video: { ...s.video, generating: false, error: String(e) },
         }));
@@ -716,6 +744,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     }
 
     const finished = !get().batchCancelRequested;
+    batchAbortController = null;
     set({
       batchRunning: false,
       batchProgress: null,
@@ -727,8 +756,32 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     }
   },
 
+  cancelGenerate: () => {
+    if (generateAbortController) {
+      generateAbortController.abort();
+      generateAbortController = null;
+    }
+    // Immediately reset generating state so UI returns to ready
+    set((s) => ({
+      video: { ...s.video, generating: false },
+    }));
+    // Also kill the backend spawn process
+    fetch(`${API_BASE}/api/render/cancel`, { method: "POST" }).catch(() => {});
+  },
+
   cancelBatch: () => {
     set({ batchCancelRequested: true });
+    if (batchAbortController) {
+      batchAbortController.abort();
+    }
+    // Immediately reset running state so UI returns to ready
+    set({
+      batchRunning: false,
+      batchProgress: null,
+      batchCancelRequested: false,
+    });
+    // Also kill the backend spawn process
+    fetch(`${API_BASE}/api/render/cancel`, { method: "POST" }).catch(() => {});
   },
 
   selectImage: (img) => {
