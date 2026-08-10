@@ -552,7 +552,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       const renderedPrompt = Mustache.render(video.prompt, rowData);
 
       // Build a name-tagged prompt suffix so the output filename reflects the row
-      const nameTag = rowData.name ? ` [${rowData.name}]` : "";
+      // const nameTag = rowData.name ? ` [${rowData.name}]` : "";
 
       // Call the single-video generation with the rendered prompt
       // We use the existing generateVideo logic but inline it here for batch
@@ -590,7 +590,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            prompt: `${renderedPrompt}${nameTag}`,
+            prompt: `${renderedPrompt}`, //${nameTag}
             imagePath: resolvedImagePath,
             projectId,
             width: 480,
