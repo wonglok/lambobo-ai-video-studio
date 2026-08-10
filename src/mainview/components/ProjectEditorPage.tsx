@@ -361,7 +361,7 @@ export default function ProjectEditorPage() {
               )}
               <a
                 href={(() => {
-                  const csv = `id,角色,對白
+                  const csv = `id,name,script
 1,羊寶寶,咩～大家好！我是可愛的羊寶寶，今天要講一個聖經故事喔！
 2,羊寶寶,故事叫做《浪子回頭》。很久以前，有一位慈祥的父親和兩個兒子。
 3,羊寶寶,有一天，小兒子對爸爸說：『爸爸，請把我以後會分到的錢現在就給我吧！』

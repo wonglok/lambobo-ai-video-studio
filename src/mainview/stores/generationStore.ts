@@ -171,7 +171,7 @@ const initialImage: ImageState = {
 };
 
 const initialVideo: VideoState = {
-  prompt: `[三歲的 {{角色}} 說]: {{對白}}`,
+  prompt: `(角色)[{{name}}]: {{script}}`,
   duration: 5,
   generating: false,
   result: null,
