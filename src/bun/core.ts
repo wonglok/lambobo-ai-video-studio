@@ -586,11 +586,6 @@ async function installUv(): Promise<boolean> {
 }
 
 export async function getUvPath(): Promise<string> {
-  // Fall back to which
-  if (await checkCommand("uv")) {
-    return "uv";
-  }
-
   // Check known paths first — always return absolute path so child processes
   // don't need uv on PATH
   const uvPaths = [
@@ -604,6 +599,11 @@ export async function getUvPath(): Promise<string> {
     if (existsSync(path)) {
       return path;
     }
+  }
+
+  // Fall back to which
+  if (await checkCommand("uv")) {
+    return "uv";
   }
 
   throw new Error("uv not found");
