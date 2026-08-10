@@ -296,18 +296,7 @@ export async function runSetup({}: {}): Promise<SetupState> {
       return;
     }
 
-    // Step 4: Test render image
-    setupState.imageTestRendered = await runStep(
-      "render-image",
-      "Rendering test image...",
-      async () => testRenderImage({ send }),
-    );
-    if (!setupState.imageTestRendered) {
-      // Non-fatal: continue with video render
-      console.warn("Test image render failed, continuing...");
-    }
-
-    // Step 5: Test render video
+    // Step 4: Test render video
     setupState.videoTestRendered = await runStep(
       "render-video",
       "Rendering test video...",
@@ -682,72 +671,6 @@ async function installPythonDependencies(): Promise<boolean> {
     return false;
   }
 
-  // const zImagePath = join(pythonAppSrcDir, "z-image-mps");
-
-  // if (!existsSync(zImagePath)) {
-  //   let cloneCMD = await runCommand(
-  //     "git",
-  //     [`clone`, `https://github.com/ivanfioravanti/z-image-mps`, "z-image-mps"],
-  //     { cwd: pythonAppSrcDir },
-  //   );
-
-  //   console.log(cloneCMD.success, cloneCMD.output);
-  // }
-
-  // const uvPathZimage = await getUvPath();
-
-  // const uvInstallZimage = await runCommand(
-  //   uvPathZimage,
-  //   [
-  //     //
-  //     "pip",
-  //     "install",
-  //     "-e",
-  //     ".",
-  //   ],
-  //   {
-  //     cwd: zImagePath,
-  //   },
-  // );
-
-  // if (!uvInstallZimage.success) {
-  //   console.error("Failed to install z image pip", uvInstallZimage.error);
-  //   return false;
-  // }
-
-  // const qwenImageMpsFolder = join(pythonAppSrcDir, "qwen-image-mps");
-  // if (!existsSync(qwenImageMpsFolder)) {
-  //   let cloneCMD = await runCommand(
-  //     "git",
-  //     [
-  //       `clone`,
-  //       `https://github.com/ivanfioravanti/qwen-image-mps`,
-  //       "qwen-image-mps",
-  //     ],
-  //     { cwd: pythonAppSrcDir },
-  //   );
-
-  //   console.log(cloneCMD.success, cloneCMD.output);
-  // }
-  // const uvQwenImageMps = await runCommand(
-  //   uvPathZimage,
-  //   [
-  //     //
-  //     "pip",
-  //     "install",
-  //     "-e",
-  //     ".",
-  //   ],
-  //   {
-  //     cwd: qwenImageMpsFolder,
-  //   },
-  // );
-
-  // if (!uvQwenImageMps.success) {
-  //   console.error("Failed to install z image pip", uvQwenImageMps.error);
-  //   return false;
-  // }
-
   console.log("Python dependencies installed");
   return true;
 }
@@ -779,101 +702,101 @@ async function streamProcessOutput(
   return text;
 }
 
-// ========== Render Functions ==========
+// // ========== Render Functions ==========
 
-let firstImageProcess: Subprocess | null = null;
+// let firstImageProcess: Subprocess | null = null;
 
-async function testRenderImage({
-  send,
-}: {
-  send: (event: string, data: object) => void;
-}): Promise<boolean> {
-  console.log("Try Render Image...");
+// async function testRenderImage({
+//   send,
+// }: {
+//   send: (event: string, data: object) => void;
+// }): Promise<boolean> {
+//   console.log("Try Render Image...");
 
-  const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
-  if (!existsSync(pythonAppSrcDir)) {
-    mkdirSync(pythonAppSrcDir, { recursive: true });
-  }
+//   const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
+//   if (!existsSync(pythonAppSrcDir)) {
+//     mkdirSync(pythonAppSrcDir, { recursive: true });
+//   }
 
-  const zImageFolder = join(pythonAppSrcDir, "z-image-mps");
-  const uvPath = await getUvPath();
+//   const zImageFolder = join(pythonAppSrcDir, "z-image-mps");
+//   const uvPath = await getUvPath();
 
-  // Kill any previous image process
-  if (firstImageProcess && !firstImageProcess.killed) {
-    firstImageProcess.kill();
-  }
+//   // Kill any previous image process
+//   if (firstImageProcess && !firstImageProcess.killed) {
+//     firstImageProcess.kill();
+//   }
 
-  if (!existsSync(join(OUTPUT_DIR, "welcome"))) {
-    mkdirSync(join(OUTPUT_DIR, "welcome"), { recursive: true });
-  }
+//   if (!existsSync(join(OUTPUT_DIR, "welcome"))) {
+//     mkdirSync(join(OUTPUT_DIR, "welcome"), { recursive: true });
+//   }
 
-  const outputPath = join(OUTPUT_DIR, "welcome", "thank-you.png");
-  if (existsSync(outputPath)) {
-    console.log("Image already rendered, skipping.");
-    return true;
-  }
+//   const outputPath = join(OUTPUT_DIR, "welcome", "thank-you.png");
+//   if (existsSync(outputPath)) {
+//     console.log("Image already rendered, skipping.");
+//     return true;
+//   }
 
-  firstImageProcess = spawn(
-    [
-      uvPath,
-      "run",
-      "z-image-mps.py",
-      "-p",
-      "A very cute lamb stadning on two feet, two hands at a park. The image is render in kids cartoon 3d movie style. a line of text that says: Thank you so much for using Lambobo AI Studio!",
-      "--aspect",
-      "1:1",
-      "--height",
-      "512",
-      "--width",
-      "512",
-      "--output",
-      outputPath,
-      "--device",
-      "mps",
-    ],
-    {
-      cwd: zImageFolder,
-      stdout: "pipe",
-      stderr: "pipe",
-    },
-  );
+//   firstImageProcess = spawn(
+//     [
+//       uvPath,
+//       "run",
+//       "z-image-mps.py",
+//       "-p",
+//       "A very cute lamb stadning on two feet, two hands at a park. The image is render in kids cartoon 3d movie style. a line of text that says: Thank you so much for using Lambobo AI Studio!",
+//       "--aspect",
+//       "1:1",
+//       "--height",
+//       "512",
+//       "--width",
+//       "512",
+//       "--output",
+//       outputPath,
+//       "--device",
+//       "mps",
+//     ],
+//     {
+//       cwd: zImageFolder,
+//       stdout: "pipe",
+//       stderr: "pipe",
+//     },
+//   );
 
-  const proc: Subprocess = firstImageProcess;
+//   const proc: Subprocess = firstImageProcess;
 
-  // Stream stdout and stderr concurrently (cast: we always use "pipe" mode)
-  const stdoutPromise = streamProcessOutput(
-    proc.stdout as ReadableStream<Uint8Array>,
-    "Image",
-    send,
-  );
-  const stderrText = await streamProcessOutput(
-    proc.stderr as ReadableStream<Uint8Array>,
-    "Image",
-    send,
-  );
-  await stdoutPromise;
+//   // Stream stdout and stderr concurrently (cast: we always use "pipe" mode)
+//   const stdoutPromise = streamProcessOutput(
+//     proc.stdout as ReadableStream<Uint8Array>,
+//     "Image",
+//     send,
+//   );
+//   const stderrText = await streamProcessOutput(
+//     proc.stderr as ReadableStream<Uint8Array>,
+//     "Image",
+//     send,
+//   );
+//   await stdoutPromise;
 
-  // Wait for process to exit and check result
-  const exitCode = await proc.exited;
-  const success = exitCode === 0 && existsSync(outputPath);
+//   // Wait for process to exit and check result
+//   const exitCode = await proc.exited;
+//   const success = exitCode === 0 && existsSync(outputPath);
 
-  if (success) {
-    send("progress", {
-      step: "render-image",
-      status: "completed",
-      label: "Rendering test image...",
-    });
-  } else {
-    send("progress", {
-      step: "render-image",
-      status: "error",
-      label: "Rendering test image...",
-      error: stderrText || `Process exited with code ${exitCode}`,
-    });
-  }
+//   if (success) {
+//     send("progress", {
+//       step: "render-image",
+//       status: "completed",
+//       label: "Rendering test image...",
+//     });
+//   } else {
+//     send("progress", {
+//       step: "render-image",
+//       status: "error",
+//       label: "Rendering test image...",
+//       error: stderrText || `Process exited with code ${exitCode}`,
+//     });
+//   }
 
-  return success;
-}
+//   return success;
+// }
 
 let firstVideoProcess: Subprocess | null = null;
 
