@@ -171,7 +171,7 @@ const initialImage: ImageState = {
 };
 
 const initialVideo: VideoState = {
-  prompt: `[Teenage Sheep Boy]: "Hi {{name}}! I'm lambobo." `,
+  prompt: `[三歲的 {{角色}} 說]: {{對白}}`,
   duration: 5,
   generating: false,
   result: null,

@@ -361,18 +361,23 @@ export default function ProjectEditorPage() {
               )}
               <a
                 href={(() => {
-                  const csv = `name,age
-Alice Smith,36
-Bob Johnson,60
-Charlie Brown,46
-Diana Prince,39
-Evan Davis,33
-Fiona Gallagher,59
-George Miller,58
-Hannah Abbott,43
-Ian Wright,57
-Julia Roberts,22`;
-                  return `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`;
+                  const csv = `id,角色,對白
+1,羊寶寶,咩～大家好！我是可愛的羊寶寶，今天要講一個聖經故事喔！
+2,羊寶寶,故事叫做《浪子回頭》。很久以前，有一位慈祥的父親和兩個兒子。
+3,羊寶寶,有一天，小兒子對爸爸說：『爸爸，請把我以後會分到的錢現在就給我吧！』
+4,羊寶寶,爸爸雖然難過，還是答應了。小兒子拿到錢，就開心去遠方旅行了。
+5,羊寶寶,他在外面天天玩樂，買了很多東西，很快就把錢全部花光光了。
+6,羊寶寶,那裡剛好發生了大飢荒，小兒子沒有錢買食物，肚子好餓好餓。
+7,羊寶寶,他只好去幫人養豬，甚至餓到想吃豬吃的豆莢，卻沒有人給他。
+8,羊寶寶,這時，他終於醒悟了：『我爸爸家裡那麼好，我為什麼要在這裡挨餓呢？』
+9,羊寶寶,『我要回家！我要跟爸爸說對不起！』於是，他勇敢地踏上回家的路。
+10,羊寶寶,他還離家很遠的時候，每天都在等他回家的爸爸就看到他了。
+11,羊寶寶,爸爸跑過去，緊緊抱住又髒又臭的小兒子，還親吻他。
+12,羊寶寶,小兒子哭著說：『爸爸，我錯了。』爸爸卻叫人給他穿上最好的衣服。
+13,羊寶寶,爸爸開心地說：『我的兒子回來了！他失而復得，我們快來慶祝吧！』
+14,羊寶寶,咩～上帝的愛就像這位爸爸一樣，不管我們做錯什麼，祂都願意原諒我們。
+15,羊寶寶,只要我們願意回頭，天父永遠張開雙手歡迎我們喔！下次見，掰掰～`;
+                  return `data:text/csv;charset=utf-8,${encodeURIComponent(csv.trim())}`;
                 })()}
                 download="example.csv"
                 className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-tiffany-600 hover:text-tiffany-800 transition-colors"
