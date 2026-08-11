@@ -426,20 +426,20 @@ export default function ProjectEditorPage() {
               )}
               <a
                 href={(() => {
-                  const csv = `id,name,script
-1,羊寶寶片頭,"歡迎來到羊寶寶聖經金句時間！咩～"
-2,詩篇23篇1節,"「耶和華是我的牧者，我必不致缺乏。」（詩篇 23:1）"
-3,約翰福音10章11節,"「我是好牧人；好牧人為羊捨命。」（約翰福音 10:11）"
-4,詩篇100篇3節,"「我們是他的民，也是他草場的羊。」（詩篇 100:3）"
-5,以賽亞書40章11節,"「他用膀臂聚集羊羔，抱在懷中。」（以賽亞書 40:11）"
-6,路加福音12章32節,"「你們這小群，不要懼怕！」（路加福音 12:32）"
-7,約翰福音10章27節,"「我的羊聽我的聲音，他們也跟著我。」（約翰福音 10:27）"
-8,彼得前書2章25節,"「如今卻歸到你們靈魂的牧人了。」（彼得前書 2:25）"
-9,馬太福音18章12節,"「好牧人會去尋找那隻迷路的羊。」（馬太福音 18:12）"
-10,結語與祝福,"願好牧人耶穌賜福給你！我們下次見！"`;
+                  const csv = `id,book,chapter,verses,script
+1,Ephesians,4,32,"Be kind to one another, tenderhearted, forgiving one another, as God in Christ forgave you."
+2,Colossians,3,13,Bear with each other and forgive one another if any of you has a grievance against someone. Forgive as the Lord forgave you.
+3,Matthew,6,14,"For if you forgive other people when they sin against you, your heavenly Father will also forgive you."
+4,Luke,6,37,"Do not judge, and you will not be judged. Do not condemn, and you will not be condemned. Forgive, and you will be forgiven."
+5,Mark,11,25,"And whenever you stand praying, forgive, if you have anything against anyone, so that your Father also who is in heaven may forgive you."
+6,1 John,1,9,"If we confess our sins, he is faithful and just to forgive us our sins and to cleanse us from all unrighteousness."
+7,Psalm,103,12,"As far as the east is from the west, so far has he removed our transgressions from us."
+8,Proverbs,17,9,"Whoever would foster love covers over an offense, but whoever repeats the matter separates close friends."
+9,Psalm,86,5,"For you, O Lord, are good and forgiving, abounding in steadfast love to all who call upon you."
+10,Isaiah,43,25,"I, even I, am he who blots out your transgressions, for my own sake, and remembers your sins no more."`;
                   return `data:text/csv;charset=utf-8,${encodeURIComponent(csv.trim())}`;
                 })()}
-                download="example.csv"
+                download="bible.csv"
                 className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-tiffany-600 hover:text-tiffany-800 transition-colors"
               >
                 {DownloadIcon}
@@ -621,20 +621,22 @@ export default function ProjectEditorPage() {
                 Resolution
               </label>
               <div className="flex flex-wrap gap-2">
-                {(["320p", "480p", "576p", "640p", "720p"] as const).map((res) => (
-                  <button
-                    key={res}
-                    onClick={() => store.setVideoResolution(res)}
-                    disabled={store.video.generating}
-                    className={`px-4 py-1.5 text-xs font-medium rounded-lg border transition-all ${
-                      store.video.resolution === res
-                        ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
-                        : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
-                    } disabled:opacity-50`}
-                  >
-                    {res}
-                  </button>
-                ))}
+                {(["320p", "480p", "576p", "640p", "720p"] as const).map(
+                  (res: any) => (
+                    <button
+                      key={res}
+                      onClick={() => store.setVideoResolution(res)}
+                      disabled={store.video.generating}
+                      className={`px-4 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                        store.video.resolution === res
+                          ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
+                          : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+                      } disabled:opacity-50`}
+                    >
+                      {res}
+                    </button>
+                  ),
+                )}
               </div>
             </div>
 

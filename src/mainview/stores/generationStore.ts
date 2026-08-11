@@ -216,7 +216,7 @@ const initialImage: ImageState = {
 };
 
 const initialVideo: VideoState = {
-  prompt: `[{{name}} 說話]: {{script}}`,
+  prompt: `[活潑的羊寶寶 朗讀]: the book of {{book}} Chapter {{chapter}} Verse {{verse}} : {{script}}`,
   duration: 5,
   aspectRatio: "1:1",
   resolution: "480p",
@@ -601,8 +601,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       csvSelectedIndices: new Set(s.csvRows.map((_, i) => i)),
     })),
 
-  deselectAllCsvRows: () =>
-    set({ csvSelectedIndices: new Set() }),
+  deselectAllCsvRows: () => set({ csvSelectedIndices: new Set() }),
 
   updateCsvCell: (rowIndex, column, value) =>
     set((s) => {
@@ -615,7 +614,9 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
   generateBatchVideos: async (projectId) => {
     const { video, csvRows, csvSelectedIndices, batchRunning } = get();
     // Only process selected rows
-    const selectedIndices = Array.from(csvSelectedIndices).sort((a, b) => a - b);
+    const selectedIndices = Array.from(csvSelectedIndices).sort(
+      (a, b) => a - b,
+    );
     if (batchRunning || selectedIndices.length === 0) return;
 
     const { width, height } = getDimensions(
@@ -638,7 +639,9 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
 
       const i = selectedIndices[batchIdx];
 
-      set({ batchProgress: { current: batchIdx + 1, total: selectedIndices.length } });
+      set({
+        batchProgress: { current: batchIdx + 1, total: selectedIndices.length },
+      });
 
       const rowData = csvRows[i];
       const renderedPrompt = Mustache.render(`${video.prompt}`, { ...rowData });
