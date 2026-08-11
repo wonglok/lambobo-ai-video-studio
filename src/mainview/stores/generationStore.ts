@@ -216,7 +216,7 @@ const initialImage: ImageState = {
 };
 
 const initialVideo: VideoState = {
-  prompt: `[活潑的羊寶寶 朗讀]: the book of {{book}} Chapter {{chapter}} Verse {{verse}} : {{script}}`,
+  prompt: `[4歲的羊寶寶正經朗讀]: {{book}}. Chapter {{chapter}}. Verse {{verse}}. {{script}}`,
   duration: 5,
   aspectRatio: "1:1",
   resolution: "480p",
