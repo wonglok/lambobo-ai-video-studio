@@ -75,98 +75,107 @@ export default function ExtendVideoTab({ projectId }: Props) {
       </div>
 
       {/* Source video picker */}
-      <div>
-        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-          Source Video
-        </label>
-        {store.projectVideos.length > 0 && (
-          <div className="relative mb-2">
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-tiffany-400"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Filter videos..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm placeholder-tiffany-400 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all"
-            />
-          </div>
-        )}
-        {store.projectVideosLoading ? (
-          <p className="text-xs text-tiffany-400 italic py-4 text-center">
-            Loading videos...
-          </p>
-        ) : store.projectVideos.length === 0 ? (
-          <p className="text-xs text-tiffany-400 italic py-4 text-center border border-dashed border-tiffany-200 rounded-xl">
-            No videos yet. Generate a video in the "Generate Video" tab.
-          </p>
-        ) : filteredVideos.length === 0 ? (
-          <p className="text-xs text-tiffany-400 italic py-4 text-center border border-dashed border-tiffany-200 rounded-xl">
-            No videos match "{search}".
-          </p>
-        ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 p-1">
-            {filteredVideos.map((v) => {
-              const isSelected = store.selectedVideo?.filename === v.filename;
-              // URL is always server-generated from the output dir — safe to use directly.
-              // Resolve relative URLs against the API base so they work regardless of origin.
-              const fullUrl = v.url.startsWith("/")
-                ? `http://localhost:${(window as any).PORT}${v.url}`
-                : v.url;
-              return (
-                <button
-                  key={v.filename}
-                  onClick={() => store.selectVideo(v)}
-                  disabled={store.extend.generating}
-                  className={`relative rounded-lg border-2 overflow-hidden transition-all ${
-                    isSelected
-                      ? "border-tiffany-500 ring-2 ring-tiffany-300/40"
-                      : "border-tiffany-200 hover:border-tiffany-300"
-                  } disabled:opacity-50`}
-                >
-                  <video
-                    src={fullUrl}
-                    muted
-                    playsInline
-                    preload="metadata"
-                    className="aspect-video object-cover object-center bg-black w-full h-full"
-                    onMouseEnter={(e) => {
-                      e.currentTarget.muted = false;
-                      e.currentTarget.play();
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.pause();
-                      e.currentTarget.currentTime = 0;
-                      e.currentTarget.muted = true;
-                    }}
-                  />
-                  <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-tiffany-700 truncate text-center">
-                    {v.filename}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
+      <div className="flex gap-4">
+        {/* Video list */}
+        <div className="flex-1 min-w-0">
+          <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+            Source Video
+          </label>
+          {store.projectVideos.length > 0 && (
+            <div className="relative mb-2">
+              <svg
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-tiffany-400"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Filter videos..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm placeholder-tiffany-400 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all"
+              />
+            </div>
+          )}
+          {store.projectVideosLoading ? (
+            <p className="text-xs text-tiffany-400 italic py-4">
+              Loading videos...
+            </p>
+          ) : store.projectVideos.length === 0 ? (
+            <p className="text-xs text-tiffany-400 italic py-4 border border-dashed border-tiffany-200 rounded-xl text-center">
+              No videos yet. Generate a video in the "Generate Video" tab.
+            </p>
+          ) : filteredVideos.length === 0 ? (
+            <p className="text-xs text-tiffany-400 italic py-4 border border-dashed border-tiffany-200 rounded-xl text-center">
+              No videos match "{search}".
+            </p>
+          ) : (
+            <div className="border border-tiffany-200 rounded-xl overflow-hidden max-h-64 overflow-y-auto">
+              {filteredVideos.map((v) => {
+                const isSelected = store.selectedVideo?.filename === v.filename;
+                return (
+                  <button
+                    key={v.filename}
+                    onClick={() => store.selectVideo(v)}
+                    disabled={store.extend.generating}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition-colors border-b border-tiffany-100 last:border-b-0 ${
+                      isSelected
+                        ? "bg-tiffany-100 text-tiffany-900 font-medium"
+                        : "text-tiffany-700 hover:bg-tiffany-50"
+                    } disabled:opacity-50`}
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="shrink-0 text-tiffany-400"
+                    >
+                      <polygon points="23 7 16 12 23 17 23 7" />
+                      <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                    </svg>
+                    <span className="truncate">{v.filename}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Preview box */}
         {store.selectedVideo && (
-          <p className="text-xs text-tiffany-600/60 mt-1.5">
-            Selected:{" "}
-            <span className="font-medium text-tiffany-700">
+          <div className="w-1/2 shrink-0">
+            <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+              Preview
+            </label>
+            <div className="relative rounded-xl overflow-hidden border border-tiffany-200 bg-black aspect-video">
+              <video
+                src={
+                  store.selectedVideo.url.startsWith("/")
+                    ? `http://localhost:${(window as any).PORT}${store.selectedVideo.url}`
+                    : store.selectedVideo.url
+                }
+                muted={false}
+                playsInline
+                controls
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <p className="text-[10px] text-tiffany-500 mt-1 truncate">
               {store.selectedVideo.filename}
-            </span>
-          </p>
+            </p>
+          </div>
         )}
       </div>
 
@@ -207,8 +216,8 @@ export default function ExtendVideoTab({ projectId }: Props) {
           ))}
         </div>
         <p className="text-xs text-tiffany-600/50 mt-1.5">
-          {store.extend.extendFrames} frames ({store.extend.extendDuration}s × 24
-          fps + 1)
+          {store.extend.extendFrames} frames ({store.extend.extendDuration}s ×
+          24 fps + 1)
         </p>
       </div>
 
