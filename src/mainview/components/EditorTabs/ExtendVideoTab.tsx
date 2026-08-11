@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo, useState } from "react";
 import { useGenerationStore } from "../../stores/generationStore";
 
 interface Props {
@@ -8,6 +8,15 @@ interface Props {
 export default function ExtendVideoTab({ projectId }: Props) {
   const store = useGenerationStore();
   const extendLogRef = useRef<HTMLPreElement | any>(null);
+  const [search, setSearch] = useState("");
+
+  const filteredVideos = useMemo(() => {
+    if (!search.trim()) return store.projectVideos;
+    const q = search.toLowerCase();
+    return store.projectVideos.filter((v) =>
+      v.filename.toLowerCase().includes(q),
+    );
+  }, [store.projectVideos, search]);
 
   useEffect(() => {
     if (extendLogRef.current) {
@@ -70,6 +79,31 @@ export default function ExtendVideoTab({ projectId }: Props) {
         <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
           Source Video
         </label>
+        {store.projectVideos.length > 0 && (
+          <div className="relative mb-2">
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-tiffany-400"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Filter videos..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm placeholder-tiffany-400 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all"
+            />
+          </div>
+        )}
         {store.projectVideosLoading ? (
           <p className="text-xs text-tiffany-400 italic py-4 text-center">
             Loading videos...
@@ -78,9 +112,13 @@ export default function ExtendVideoTab({ projectId }: Props) {
           <p className="text-xs text-tiffany-400 italic py-4 text-center border border-dashed border-tiffany-200 rounded-xl">
             No videos yet. Generate a video in the "Generate Video" tab.
           </p>
+        ) : filteredVideos.length === 0 ? (
+          <p className="text-xs text-tiffany-400 italic py-4 text-center border border-dashed border-tiffany-200 rounded-xl">
+            No videos match "{search}".
+          </p>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 p-1">
-            {store.projectVideos.map((v) => {
+            {filteredVideos.map((v) => {
               const isSelected = store.selectedVideo?.filename === v.filename;
               // URL is always server-generated from the output dir — safe to use directly.
               // Resolve relative URLs against the API base so they work regardless of origin.

@@ -314,11 +314,10 @@ export async function renderMediaRoutes({
   app.get("/api/projects/:id/videos", (req, res) => {
     const { id } = req.params;
     const videoExts = new Set([".mp4"]);
-    const results: { filename: string; url: string }[] = [];
 
     const projectDir = join(OUTPUT_DIR, id);
     if (!existsSync(projectDir)) {
-      res.json(results);
+      res.json([]);
       return;
     }
 
@@ -326,29 +325,35 @@ export async function renderMediaRoutes({
     try {
       entries = readdirSync(projectDir);
     } catch {
-      res.json(results);
+      res.json([]);
       return;
     }
+
+    const raw: { filename: string; url: string; birthtime: number }[] = [];
 
     for (const entry of entries) {
       const ext = entry.slice(entry.lastIndexOf(".")).toLowerCase();
       if (!videoExts.has(ext)) continue;
 
       const fullPath = join(projectDir, entry);
+      let stats;
       try {
-        if (!statSync(fullPath).isFile()) continue;
+        stats = statSync(fullPath);
+        if (!stats.isFile()) continue;
       } catch {
         continue;
       }
 
-      results.push({
+      raw.push({
         filename: entry,
         url: `/api/files?path=${encodeURIComponent(fullPath)}`,
+        birthtime: stats.birthtimeMs,
       });
     }
 
-    // Sort newest first (by filename which often includes timestamp)
-    results.sort((a, b) => b.filename.localeCompare(a.filename));
+    // Sort newest first by file creation date
+    raw.sort((a, b) => b.birthtime - a.birthtime);
+    const results = raw.map(({ filename, url }) => ({ filename, url }));
     res.json(results);
   });
 
