@@ -446,7 +446,7 @@ export default function ProjectEditorPage() {
                 Download example CSV file
               </a>
             </div>
-
+            {/*  */}
             {/* Image upload */}
             <div>
               <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
@@ -462,6 +462,17 @@ export default function ProjectEditorPage() {
               <p className="text-xs text-tiffany-600/50 mt-1.5">
                 Upload an image to animate.
               </p>
+
+              <a
+                href={`/lambobo.png.zip`}
+                download="lambobo.zip"
+                className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-tiffany-600 hover:text-tiffany-800 transition-colors"
+              >
+                {DownloadIcon}
+                Download example image file
+              </a>
+              <br />
+
               {store.uploading && (
                 <p className="text-xs text-tiffany-600 mt-1">Uploading...</p>
               )}
