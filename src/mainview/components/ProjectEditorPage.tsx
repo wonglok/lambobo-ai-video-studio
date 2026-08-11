@@ -443,7 +443,7 @@ export default function ProjectEditorPage() {
                 className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-tiffany-600 hover:text-tiffany-800 transition-colors"
               >
                 {DownloadIcon}
-                Download example CSV
+                Download example CSV file
               </a>
             </div>
 
