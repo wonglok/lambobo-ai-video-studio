@@ -6,7 +6,7 @@ const API_BASE = `http://localhost:${(window as any).PORT}`;
 
 // ========== Types ==========
 
-export type GenerationTab = "image" | "video";
+export type GenerationTab = "image" | "video" | "extend";
 export type AspectRatio = "1:1" | "16:9" | "9:16" | "4:3" | "3:4";
 export type Resolution = "320p" | "480p" | "640p" | "720p";
 
@@ -53,6 +53,15 @@ interface VideoState {
   logs: string[];
 }
 
+interface ExtendState {
+  prompt: string;
+  extendFrames: number;
+  generating: boolean;
+  result: string | null;
+  error: string | null;
+  logs: string[];
+}
+
 interface GenerationStore {
   // Tab
   activeTab: GenerationTab;
@@ -75,6 +84,20 @@ interface GenerationStore {
   clearVideoResult: () => void;
   generateVideo: (projectId: string, imagePath?: string) => Promise<void>;
   cancelGenerate: () => void;
+
+  // Video extension
+  extend: ExtendState;
+  setExtendPrompt: (v: string) => void;
+  setExtendFrames: (v: number) => void;
+  clearExtendResult: () => void;
+  generateExtend: (projectId: string, videoPath: string) => Promise<void>;
+
+  // Project videos picker
+  projectVideos: ProjectVideo[];
+  projectVideosLoading: boolean;
+  fetchProjectVideos: (projectId: string) => Promise<void>;
+  selectedVideo: ProjectVideo | null;
+  selectVideo: (video: ProjectVideo | null) => void;
 
   // Upload
   uploading: boolean;
@@ -120,6 +143,11 @@ export interface ProjectImage {
   filename: string;
   url: string;
   source: "upload" | "generated";
+}
+
+export interface ProjectVideo {
+  filename: string;
+  url: string;
 }
 
 // ========== SSE Stream Reader ==========
@@ -220,6 +248,15 @@ const initialVideo: VideoState = {
   duration: 5,
   aspectRatio: "1:1",
   resolution: "480p",
+  generating: false,
+  result: null,
+  error: null,
+  logs: [],
+};
+
+const initialExtend: ExtendState = {
+  prompt: "Continue the scene: the camera holds, motion flows naturally...",
+  extendFrames: 2,
   generating: false,
   result: null,
   error: null,
@@ -759,6 +796,164 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     }
   },
 
+  // ---- Video Extension ----
+  extend: { ...initialExtend },
+
+  setExtendPrompt: (prompt) =>
+    set((s) => ({ extend: { ...s.extend, prompt, error: null } })),
+  setExtendFrames: (extendFrames) =>
+    set((s) => ({ extend: { ...s.extend, extendFrames } })),
+  clearExtendResult: () =>
+    set((s) => ({
+      extend: { ...s.extend, result: null, error: null, logs: [] },
+    })),
+
+  generateExtend: async (projectId, videoPath) => {
+    const { extend } = get();
+    if (!extend.prompt.trim() || extend.generating) return;
+
+    // Extract raw file path from HTTP URL (e.g. http://localhost:PORT/api/files?path=...)
+    let resolvedVideoPath = videoPath || "";
+    if (!resolvedVideoPath) {
+      set((s) => ({
+        extend: { ...s.extend, error: "Select a video to extend first." },
+      }));
+      return;
+    }
+    if (resolvedVideoPath.includes("/api/files?path=")) {
+      try {
+        const url = new URL(resolvedVideoPath);
+        resolvedVideoPath = url.searchParams.get("path") || resolvedVideoPath;
+      } catch {
+        // not a valid URL, use as-is
+      }
+    }
+    if (resolvedVideoPath.startsWith("file://")) {
+      resolvedVideoPath = resolvedVideoPath.slice(7);
+    }
+    // The backend only accepts bare filenames — extract just the basename
+    resolvedVideoPath =
+      resolvedVideoPath.split("/").pop() || resolvedVideoPath;
+
+    // Create a fresh AbortController for this extend run
+    generateAbortController = new AbortController();
+    const signal = generateAbortController.signal;
+
+    set((s) => ({
+      extend: {
+        ...s.extend,
+        generating: true,
+        error: null,
+        result: null,
+        logs: [],
+      },
+    }));
+
+    try {
+      const res = await fetch(`${API_BASE}/api/render/extend-video`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: extend.prompt.trim(),
+          videoPath: resolvedVideoPath,
+          projectId,
+          extendFrames: extend.extendFrames,
+        }),
+        signal,
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        set((s) => ({
+          extend: { ...s.extend, generating: false, error: err },
+        }));
+        generateAbortController = null;
+        return;
+      }
+
+      await readSSEStream(res, (event, data) => {
+        switch (event) {
+          case "log":
+            set((s) => ({
+              extend: {
+                ...s.extend,
+                logs: [...s.extend.logs, data.text as string],
+              },
+            }));
+            break;
+          case "complete":
+            set((s) => ({
+              extend: {
+                ...s.extend,
+                generating: false,
+                result: `http://localhost:${(window as any).PORT}/api/files?path=${encodeURIComponent(data.path)}`,
+              },
+            }));
+            // Refresh the video grid so the new extended-*.mp4 appears
+            get().fetchProjectVideos(projectId);
+            break;
+          case "error":
+            set((s) => ({
+              extend: {
+                ...s.extend,
+                generating: false,
+                error: data.error || "Video extension failed",
+              },
+            }));
+            break;
+        }
+      });
+    } catch (e: any) {
+      // If the request was aborted, just stop silently
+      if (e?.name !== "AbortError") {
+        set((s) => ({
+          extend: { ...s.extend, generating: false, error: String(e) },
+        }));
+      } else {
+        set((s) => ({ extend: { ...s.extend, generating: false } }));
+      }
+    } finally {
+      generateAbortController = null;
+    }
+  },
+
+  // ---- Project Videos ----
+  projectVideos: [],
+  projectVideosLoading: false,
+  selectedVideo: null,
+
+  fetchProjectVideos: async (projectId) => {
+    set({ projectVideosLoading: true });
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/projects/${projectId}/videos`,
+      );
+      if (!res.ok) throw new Error(await res.text());
+      const videos: ProjectVideo[] = await res.json();
+      // Resolve relative URLs to absolute so they work regardless of page origin
+      const resolved = videos.map((v) => ({
+        ...v,
+        url: v.url.startsWith("http")
+          ? v.url
+          : `http://localhost:${(window as any).PORT}${v.url}`,
+      }));
+      set({ projectVideos: resolved, projectVideosLoading: false });
+    } catch {
+      set({ projectVideosLoading: false });
+    }
+  },
+
+  selectVideo: (video) => {
+    if (!video) {
+      set({ selectedVideo: null });
+      return;
+    }
+    const fullUrl = video.url.startsWith("http")
+      ? video.url
+      : `http://localhost:${(window as any).PORT}${video.url}`;
+    set({ selectedVideo: { ...video, url: fullUrl } });
+  },
+
   cancelGenerate: () => {
     if (generateAbortController) {
       generateAbortController.abort();
@@ -767,6 +962,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     // Immediately reset generating state so UI returns to ready
     set((s) => ({
       video: { ...s.video, generating: false },
+      extend: { ...s.extend, generating: false },
     }));
     // Also kill the backend spawn process
     fetch(`${API_BASE}/api/render/cancel`, { method: "POST" }).catch(() => {});
@@ -808,6 +1004,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       activeTab: "image",
       image: { ...initialImage },
       video: { ...initialVideo },
+      extend: { ...initialExtend },
       uploading: false,
       uploadError: null,
       uploadedImageUrl: null,
@@ -815,6 +1012,9 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       uploadedImagePath: null,
       projectImages: [],
       selectedImage: null,
+      projectVideos: [],
+      projectVideosLoading: false,
+      selectedVideo: null,
       csvRows: [],
       csvColumns: [],
       csvFilename: null,
