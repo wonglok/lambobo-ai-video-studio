@@ -28,11 +28,9 @@ The app handles everything — installs Homebrew, ffmpeg, uv, Python 3.10, and a
 
 All AI inference runs **on your Mac's GPU** using Apple's native ML frameworks:
 
-| Model                                               | Engine                          | Purpose                    |
-| --------------------------------------------------- | ------------------------------- | -------------------------- |
-| [LTX-2.3-MLX](https://github.com/dgrauet/ltx-2-mlx) | MLX (Apple Neural Engine)       | Image-to-video generation  |
-| Z-Image-MPS                                         | MPS (Metal Performance Shaders) | Text-to-image generation   |
-| Qwen-Image-MPS                                      | MPS                             | Image editing & generation |
+| Model                                               | Engine                    | Purpose                   |
+| --------------------------------------------------- | ------------------------- | ------------------------- |
+| [LTX-2.3-MLX](https://github.com/dgrauet/ltx-2-mlx) | MLX (Apple Neural Engine) | Image-to-video generation |
 
 The app bundles a Python virtual environment managed by [uv](https://docs.astral.sh/uv/), spawning Python subprocesses for ML inference and streaming progress back to the UI via SSE.
 
