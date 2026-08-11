@@ -313,6 +313,28 @@ export default function ProjectEditorPage() {
                   </button>
                 )}
               </div>
+              <a
+                href={(() => {
+                  const csv = `id,book,chapter,verses,script
+1,Ephesians,4,32,"Be kind to one another, tenderhearted, forgiving one another, as God in Christ forgave you."
+2,Colossians,3,13,Bear with each other and forgive one another if any of you has a grievance against someone. Forgive as the Lord forgave you.
+3,Matthew,6,14,"For if you forgive other people when they sin against you, your heavenly Father will also forgive you."
+4,Luke,6,37,"Do not judge, and you will not be judged. Do not condemn, and you will not be condemned. Forgive, and you will be forgiven."
+5,Mark,11,25,"And whenever you stand praying, forgive, if you have anything against anyone, so that your Father also who is in heaven may forgive you."
+6,1 John,1,9,"If we confess our sins, he is faithful and just to forgive us our sins and to cleanse us from all unrighteousness."
+7,Psalm,103,12,"As far as the east is from the west, so far has he removed our transgressions from us."
+8,Proverbs,17,9,"Whoever would foster love covers over an offense, but whoever repeats the matter separates close friends."
+9,Psalm,86,5,"For you, O Lord, are good and forgiving, abounding in steadfast love to all who call upon you."
+10,Isaiah,43,25,"I, even I, am he who blots out your transgressions, for my own sake, and remembers your sins no more."`;
+                  return `data:text/csv;charset=utf-8,${encodeURIComponent(csv.trim())}`;
+                })()}
+                download="bible.csv"
+                className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-tiffany-600 hover:text-tiffany-800 transition-colors"
+              >
+                {DownloadIcon}
+                Download example CSV file
+              </a>
+              {/*  */}
               {store.csvFilename && (
                 <div className="mt-2 border border-tiffany-200 rounded-xl overflow-hidden">
                   {/* CSV header */}
@@ -424,27 +446,6 @@ export default function ProjectEditorPage() {
                   in your prompt as a template.
                 </p>
               )}
-              <a
-                href={(() => {
-                  const csv = `id,book,chapter,verses,script
-1,Ephesians,4,32,"Be kind to one another, tenderhearted, forgiving one another, as God in Christ forgave you."
-2,Colossians,3,13,Bear with each other and forgive one another if any of you has a grievance against someone. Forgive as the Lord forgave you.
-3,Matthew,6,14,"For if you forgive other people when they sin against you, your heavenly Father will also forgive you."
-4,Luke,6,37,"Do not judge, and you will not be judged. Do not condemn, and you will not be condemned. Forgive, and you will be forgiven."
-5,Mark,11,25,"And whenever you stand praying, forgive, if you have anything against anyone, so that your Father also who is in heaven may forgive you."
-6,1 John,1,9,"If we confess our sins, he is faithful and just to forgive us our sins and to cleanse us from all unrighteousness."
-7,Psalm,103,12,"As far as the east is from the west, so far has he removed our transgressions from us."
-8,Proverbs,17,9,"Whoever would foster love covers over an offense, but whoever repeats the matter separates close friends."
-9,Psalm,86,5,"For you, O Lord, are good and forgiving, abounding in steadfast love to all who call upon you."
-10,Isaiah,43,25,"I, even I, am he who blots out your transgressions, for my own sake, and remembers your sins no more."`;
-                  return `data:text/csv;charset=utf-8,${encodeURIComponent(csv.trim())}`;
-                })()}
-                download="bible.csv"
-                className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-tiffany-600 hover:text-tiffany-800 transition-colors"
-              >
-                {DownloadIcon}
-                Download example CSV file
-              </a>
             </div>
             {/*  */}
             {/* Image upload */}
