@@ -82,9 +82,11 @@ export default function ExtendVideoTab({ projectId }: Props) {
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 p-1">
             {store.projectVideos.map((v) => {
               const isSelected = store.selectedVideo?.filename === v.filename;
-              const fullUrl = v.url.startsWith("http")
-                ? v.url
-                : `http://localhost:${(window as any).PORT}${v.url}`;
+              // URL is always server-generated from the output dir — safe to use directly.
+              // Resolve relative URLs against the API base so they work regardless of origin.
+              const fullUrl = v.url.startsWith("/")
+                ? `http://localhost:${(window as any).PORT}${v.url}`
+                : v.url;
               return (
                 <button
                   key={v.filename}
@@ -103,11 +105,13 @@ export default function ExtendVideoTab({ projectId }: Props) {
                     preload="metadata"
                     className="aspect-video object-cover object-center bg-black w-full h-full"
                     onMouseEnter={(e) => {
+                      e.currentTarget.muted = false;
                       e.currentTarget.play();
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.pause();
                       e.currentTarget.currentTime = 0;
+                      e.currentTarget.muted = true;
                     }}
                   />
                   <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-tiffany-700 truncate text-center">
@@ -143,24 +147,30 @@ export default function ExtendVideoTab({ projectId }: Props) {
         />
       </div>
 
-      {/* Extend frames */}
+      {/* Duration (seconds) */}
       <div>
         <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-          Extend Frames
+          Duration (seconds)
         </label>
-        <input
-          type="number"
-          min={1}
-          max={128}
-          value={store.extend.extendFrames}
-          onChange={(e) =>
-            store.setExtendFrames(parseInt(e.target.value, 10) || 0)
-          }
-          disabled={store.extend.generating}
-          className="w-32 px-4 py-3 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all disabled:opacity-50"
-        />
+        <div className="flex flex-wrap gap-2">
+          {[0.5, 1, 2, 3, 5, 7.5, 10].map((d) => (
+            <button
+              key={d}
+              onClick={() => store.setExtendDuration(d)}
+              disabled={store.extend.generating}
+              className={`px-4 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                store.extend.extendDuration === d
+                  ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
+                  : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+              } disabled:opacity-50`}
+            >
+              {d}s
+            </button>
+          ))}
+        </div>
         <p className="text-xs text-tiffany-600/50 mt-1.5">
-          Number of latent frames to add to the end of the video.
+          {store.extend.extendFrames} frames ({store.extend.extendDuration}s × 24
+          fps + 1)
         </p>
       </div>
 

@@ -55,6 +55,7 @@ interface VideoState {
 
 interface ExtendState {
   prompt: string;
+  extendDuration: number;
   extendFrames: number;
   generating: boolean;
   result: string | null;
@@ -88,6 +89,7 @@ interface GenerationStore {
   // Video extension
   extend: ExtendState;
   setExtendPrompt: (v: string) => void;
+  setExtendDuration: (v: number) => void;
   setExtendFrames: (v: number) => void;
   clearExtendResult: () => void;
   generateExtend: (projectId: string, videoPath: string) => Promise<void>;
@@ -256,7 +258,8 @@ const initialVideo: VideoState = {
 
 const initialExtend: ExtendState = {
   prompt: "Continue the scene: the camera holds, motion flows naturally...",
-  extendFrames: 2,
+  extendDuration: 2,
+  extendFrames: 2 * 24 + 1,
   generating: false,
   result: null,
   error: null,
@@ -801,8 +804,18 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
 
   setExtendPrompt: (prompt) =>
     set((s) => ({ extend: { ...s.extend, prompt, error: null } })),
+  setExtendDuration: (extendDuration) =>
+    set((s) => ({
+      extend: {
+        ...s.extend,
+        extendDuration,
+        extendFrames: extendDuration * 24 + 1,
+      },
+    })),
   setExtendFrames: (extendFrames) =>
-    set((s) => ({ extend: { ...s.extend, extendFrames } })),
+    set((s) => ({
+      extend: { ...s.extend, extendFrames, extendDuration: Math.max(0.5, (extendFrames - 1) / 24) },
+    })),
   clearExtendResult: () =>
     set((s) => ({
       extend: { ...s.extend, result: null, error: null, logs: [] },
@@ -857,7 +870,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
           prompt: extend.prompt.trim(),
           videoPath: resolvedVideoPath,
           projectId,
-          extendFrames: extend.extendFrames,
+          extendFrames: extend.extendDuration * 24 + 1,
         }),
         signal,
       });
