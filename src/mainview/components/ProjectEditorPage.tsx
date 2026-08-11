@@ -3,12 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useProjectStore, type Project } from "../stores/projectStore";
 import { useGenerationStore } from "../stores/generationStore";
 
-const API_BASE = `http://localhost:${(window as any).PORT}`;
-
 export default function ProjectEditorPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { projects, fetchProjects } = useProjectStore();
+  const { projects, fetchProjects, openFolder } = useProjectStore();
   const [project, setProject] = useState<Project | null>(null);
 
   // Zustand generation store
@@ -73,15 +71,7 @@ export default function ProjectEditorPage() {
 
   const handleOpenVideoFolder = async () => {
     if (!id) return;
-    try {
-      await fetch(`${API_BASE}/api/projects/${id}/open-folder`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "output" }),
-      });
-    } catch (e) {
-      console.error("Failed to open folder:", e);
-    }
+    await openFolder(id, "output");
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -472,15 +462,6 @@ export default function ProjectEditorPage() {
               <p className="text-xs text-tiffany-600/50 mt-1.5">
                 Upload an image to animate.
               </p>
-              {/* <a
-                href={`${API_BASE}/lambobo.png`}
-                download="lambobo.png"
-                target="_blank"
-                className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-tiffany-600 hover:text-tiffany-800 transition-colors"
-              >
-                {DownloadIcon}
-                Download example image
-              </a> */}
               {store.uploading && (
                 <p className="text-xs text-tiffany-600 mt-1">Uploading...</p>
               )}
@@ -640,7 +621,7 @@ export default function ProjectEditorPage() {
                 Resolution
               </label>
               <div className="flex flex-wrap gap-2">
-                {(["320p", "480p", "640p", "720p"] as const).map((res) => (
+                {(["320p", "480p", "576p", "640p", "720p"] as const).map((res) => (
                   <button
                     key={res}
                     onClick={() => store.setVideoResolution(res)}

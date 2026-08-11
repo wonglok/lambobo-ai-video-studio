@@ -10,7 +10,6 @@ import {
 import { type Application } from "express";
 import { homedir } from "node:os";
 import { join, sep } from "node:path";
-import { execSync } from "node:child_process";
 import { spawn, type Subprocess } from "bun";
 
 // Track the currently active spawn process so it can be cancelled
@@ -65,7 +64,16 @@ function makeId(): string {
 }
 
 function openInFinder(dirPath: string) {
-  execSync(`open "${dirPath}"`);
+  // Use Bun.spawn instead of execSync — non-blocking and native to Bun
+  spawn(["open", dirPath], {
+    stdout: "ignore",
+    stderr: "ignore",
+    onExit: (_proc, exitCode, _signalCode, _error) => {
+      if (exitCode !== 0) {
+        console.error(`openInFinder: "open ${dirPath}" exited with code ${exitCode}`);
+      }
+    },
+  });
 }
 
 // ========== SSE Helper ==========
