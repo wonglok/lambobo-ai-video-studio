@@ -675,73 +675,73 @@ async function installPythonDependencies(): Promise<boolean> {
 
   //
 
-  {
-    const uvPath = await getUvPath();
-    const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
-    if (!existsSync(pythonAppSrcDir)) {
-      mkdirSync(pythonAppSrcDir, { recursive: true });
-    }
+  // {
+  //   const uvPath = await getUvPath();
+  //   const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
+  //   if (!existsSync(pythonAppSrcDir)) {
+  //     mkdirSync(pythonAppSrcDir, { recursive: true });
+  //   }
 
-    const mlxgenFolder = join(pythonAppSrcDir, "mlxgen");
+  //   const mlxgenFolder = join(pythonAppSrcDir, "mlxgen");
 
-    if (!existsSync(mlxgenFolder)) {
-      let cloneCMD = await runCommand(
-        "git",
-        [`clone`, `https://github.com/lpalbou/mlx-gen`, "mlxgen"],
-        { cwd: pythonAppSrcDir },
-      );
+  //   if (!existsSync(mlxgenFolder)) {
+  //     let cloneCMD = await runCommand(
+  //       "git",
+  //       [`clone`, `https://github.com/lpalbou/mlx-gen`, "mlxgen"],
+  //       { cwd: pythonAppSrcDir },
+  //     );
 
-      console.log(cloneCMD.success, cloneCMD.output);
-    }
+  //     console.log(cloneCMD.success, cloneCMD.output);
+  //   }
 
-    {
-      const uvSyncResult = await runCommand(
-        uvPath,
-        [
-          //
-          "tool",
-          "install",
-          "--upgrade",
-          "mlx-gen",
-        ],
-        {
-          cwd: mlxgenFolder,
-        },
-      );
-      if (!uvSyncResult.success) {
-        console.error("Failed to install mlx-gen tool:", uvSyncResult.error);
-        return false;
-      }
-    }
+  //   {
+  //     const uvSyncResult = await runCommand(
+  //       uvPath,
+  //       [
+  //         //
+  //         "tool",
+  //         "install",
+  //         "--upgrade",
+  //         "mlx-gen",
+  //       ],
+  //       {
+  //         cwd: mlxgenFolder,
+  //       },
+  //     );
+  //     if (!uvSyncResult.success) {
+  //       console.error("Failed to install mlx-gen tool:", uvSyncResult.error);
+  //       return false;
+  //     }
+  //   }
 
-    {
-      const uvSyncResult = await runCommand(
-        uvPath,
-        [
-          //
-          "run",
-          "mlxgen",
-          "download",
-          "--model",
-          "AbstractFramework/qwen-image-edit-2511-4bit",
-        ],
-        {
-          cwd: mlxgenFolder,
-        },
-      );
-      if (!uvSyncResult.success) {
-        console.error(
-          "Failed to download mlx-gen AbstractFramework/qwen-image-edit-2511-4bit:",
-          uvSyncResult.error,
-        );
-        return false;
-      }
-    }
+  //   {
+  //     const uvSyncResult = await runCommand(
+  //       uvPath,
+  //       [
+  //         //
+  //         "run",
+  //         "mlxgen",
+  //         "download",
+  //         "--model",
+  //         "AbstractFramework/qwen-image-edit-2511-4bit",
+  //       ],
+  //       {
+  //         cwd: mlxgenFolder,
+  //       },
+  //     );
+  //     if (!uvSyncResult.success) {
+  //       console.error(
+  //         "Failed to download mlx-gen AbstractFramework/qwen-image-edit-2511-4bit:",
+  //         uvSyncResult.error,
+  //       );
+  //       return false;
+  //     }
+  //   }
 
-    //
-    //uv run mlxgen download --model AbstractFramework/qwen-image-edit-2511-4bit
-    //
-  }
+  //   //
+  //   //uv run mlxgen download --model AbstractFramework/qwen-image-edit-2511-4bit
+  //   //
+  // }
 
   //
   console.log("Python dependencies installed");
