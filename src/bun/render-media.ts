@@ -70,7 +70,9 @@ function openInFinder(dirPath: string) {
     stderr: "ignore",
     onExit: (_proc, exitCode, _signalCode, _error) => {
       if (exitCode !== 0) {
-        console.error(`openInFinder: "open ${dirPath}" exited with code ${exitCode}`);
+        console.error(
+          `openInFinder: "open ${dirPath}" exited with code ${exitCode}`,
+        );
       }
     },
   });
@@ -117,7 +119,10 @@ function resolveSafePath(candidate: string, projectId: string): string | null {
 }
 
 /** Resolve and validate a user-supplied video filename. Only bare .mp4 names in the output dir. */
-function resolveSafeVideoPath(candidate: string, projectId: string): string | null {
+function resolveSafeVideoPath(
+  candidate: string,
+  projectId: string,
+): string | null {
   const base = candidate.split(/[/\\]/).pop() || candidate;
   if (base !== candidate || base.includes("..") || base.startsWith(".")) {
     return null;
