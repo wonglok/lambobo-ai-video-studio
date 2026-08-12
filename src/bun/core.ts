@@ -636,41 +636,114 @@ async function setupPythonEnvironment(): Promise<boolean> {
 async function installPythonDependencies(): Promise<boolean> {
   console.log("Installing Python dependencies...");
 
-  const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
-  if (!existsSync(pythonAppSrcDir)) {
-    mkdirSync(pythonAppSrcDir, { recursive: true });
-  }
+  {
+    const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
+    if (!existsSync(pythonAppSrcDir)) {
+      mkdirSync(pythonAppSrcDir, { recursive: true });
+    }
 
-  const ltxFolder = join(pythonAppSrcDir, "ltx-2-mlx");
+    const ltxFolder = join(pythonAppSrcDir, "ltx-2-mlx");
 
-  if (!existsSync(ltxFolder)) {
-    let cloneCMD = await runCommand(
-      "git",
-      [`clone`, `https://github.com/dgrauet/ltx-2-mlx.git`, "ltx-2-mlx"],
-      { cwd: pythonAppSrcDir },
+    if (!existsSync(ltxFolder)) {
+      let cloneCMD = await runCommand(
+        "git",
+        [`clone`, `https://github.com/dgrauet/ltx-2-mlx.git`, "ltx-2-mlx"],
+        { cwd: pythonAppSrcDir },
+      );
+
+      console.log(cloneCMD.success, cloneCMD.output);
+    }
+
+    const uvPath = await getUvPath();
+
+    const uvSyncResult = await runCommand(
+      uvPath,
+      [
+        //
+        "sync",
+        "--all-extras",
+      ],
+      {
+        cwd: ltxFolder,
+      },
     );
-
-    console.log(cloneCMD.success, cloneCMD.output);
+    if (!uvSyncResult.success) {
+      console.error("Failed to install ltx model:", uvSyncResult.error);
+      return false;
+    }
   }
 
-  const uvPath = await getUvPath();
+  //
 
-  const uvSyncResult = await runCommand(
-    uvPath,
-    [
-      //
-      "sync",
-      "--all-extras",
-    ],
+  {
+    const uvPath = await getUvPath();
+    const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
+    if (!existsSync(pythonAppSrcDir)) {
+      mkdirSync(pythonAppSrcDir, { recursive: true });
+    }
+
+    const mlxgenFolder = join(pythonAppSrcDir, "mlxgen");
+
+    if (!existsSync(mlxgenFolder)) {
+      let cloneCMD = await runCommand(
+        "git",
+        [`clone`, `https://github.com/lpalbou/mlx-gen`, "mlxgen"],
+        { cwd: pythonAppSrcDir },
+      );
+
+      console.log(cloneCMD.success, cloneCMD.output);
+    }
+
     {
-      cwd: ltxFolder,
-    },
-  );
-  if (!uvSyncResult.success) {
-    console.error("Failed to install ltx model:", uvSyncResult.error);
-    return false;
+      const uvSyncResult = await runCommand(
+        uvPath,
+        [
+          //
+          "tool",
+          "install",
+          "--upgrade",
+          "mlx-gen",
+        ],
+        {
+          cwd: mlxgenFolder,
+        },
+      );
+      if (!uvSyncResult.success) {
+        console.error("Failed to install mlx-gen tool:", uvSyncResult.error);
+        return false;
+      }
+    }
+
+    {
+      const uvSyncResult = await runCommand(
+        uvPath,
+        [
+          //
+          "run",
+          "mlxgen",
+          "download",
+          "--model",
+          "AbstractFramework/qwen-image-edit-2511-4bit",
+        ],
+        {
+          cwd: mlxgenFolder,
+        },
+      );
+      if (!uvSyncResult.success) {
+        console.error(
+          "Failed to download mlx-gen AbstractFramework/qwen-image-edit-2511-4bit:",
+          uvSyncResult.error,
+        );
+        return false;
+      }
+    }
+
+    //
+    //uv run mlxgen download --model AbstractFramework/qwen-image-edit-2511-4bit
+    //
   }
 
+  //
   console.log("Python dependencies installed");
   return true;
 }
@@ -908,109 +981,110 @@ async function testRenderVideo({
   return success;
 }
 
-// // ========== Render Functions ==========
+// ========== Render Functions ==========
 
-// let firstImageEdit: Subprocess | null = null;
+let firstImageEdit: Subprocess | null = null;
 
-// async function testQwenImageEditGeneration({
-//   send,
-// }: {
-//   send: (event: string, data: object) => void;
-// }): Promise<boolean> {
-//   console.log("Try Render Image...");
+async function testQwenImageEditGeneration({
+  send,
+}: {
+  send: (event: string, data: object) => void;
+}): Promise<boolean> {
+  const uvPath = await getUvPath();
 
-//   const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
-//   if (!existsSync(pythonAppSrcDir)) {
-//     mkdirSync(pythonAppSrcDir, { recursive: true });
-//   }
+  console.log("Try Render Image...");
 
-//   const zImageFolder = join(pythonAppSrcDir, "qwen-image-mps");
-//   const uvPath = await getUvPath();
+  const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
+  if (!existsSync(pythonAppSrcDir)) {
+    mkdirSync(pythonAppSrcDir, { recursive: true });
+  }
 
-//   // Kill any previous image process
-//   if (firstImageEdit && !firstImageEdit.killed) {
-//     firstImageEdit.kill();
-//   }
+  const zImageFolder = join(pythonAppSrcDir, "qwen-image-mps");
 
-//   if (!existsSync(join(OUTPUT_DIR, "welcome"))) {
-//     mkdirSync(join(OUTPUT_DIR, "welcome"), { recursive: true });
-//   }
+  // Kill any previous image process
+  if (firstImageEdit && !firstImageEdit.killed) {
+    firstImageEdit.kill();
+  }
 
-//   //
-//   const outputPath = join(OUTPUT_DIR, "welcome", "thank-you-edit.png");
-//   if (existsSync(outputPath)) {
-//     console.log("Image already rendered, skipping.");
-//     return true;
-//   }
+  if (!existsSync(join(OUTPUT_DIR, "welcome"))) {
+    mkdirSync(join(OUTPUT_DIR, "welcome"), { recursive: true });
+  }
 
-//   const lambobo = join(
-//     import.meta.path,
-//     "..",
-//     "..",
-//     "python-src",
-//     "images",
-//     "lambobo.png",
-//   );
+  //
+  const outputPath = join(OUTPUT_DIR, "welcome", "thank-you-edit.png");
+  if (existsSync(outputPath)) {
+    console.log("Image already rendered, skipping.");
+    return true;
+  }
 
-//   firstImageEdit = spawn(
-//     [
-//       uvPath,
-//       "run",
-//       "qwen-image-mps",
-//       "edit",
-//       "-i",
-//       JSON.stringify(lambobo),
-//       "-p",
-//       "Change the background to sunset",
-//       "--ultra-fast",
-//       "--quantization",
-//       "Q4_0",
-//       "--output",
-//       JSON.stringify(outputPath),
-//     ],
-//     {
-//       cwd: zImageFolder,
-//       stdout: "pipe",
-//       stderr: "pipe",
-//     },
-//   );
+  const lambobo = join(
+    import.meta.path,
+    "..",
+    "..",
+    "python-src",
+    "images",
+    "lambobo.png",
+  );
 
-//   const proc: Subprocess = firstImageEdit;
+  firstImageEdit = spawn(
+    [
+      uvPath,
+      "run",
+      "qwen-image-mps",
+      "edit",
+      "-i",
+      JSON.stringify(lambobo),
+      "-p",
+      "Change the background to sunset",
+      "--ultra-fast",
+      "--quantization",
+      "Q4_0",
+      "--output",
+      JSON.stringify(outputPath),
+    ],
+    {
+      cwd: zImageFolder,
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  );
 
-//   // Stream stdout and stderr concurrently (cast: we always use "pipe" mode)
-//   const stdoutPromise = streamProcessOutput(
-//     proc.stdout as ReadableStream<Uint8Array>,
-//     "EditImage",
-//     send,
-//   );
-//   const stderrText = await streamProcessOutput(
-//     proc.stderr as ReadableStream<Uint8Array>,
-//     "EditImage",
-//     send,
-//   );
-//   await stdoutPromise;
+  const proc: Subprocess = firstImageEdit;
 
-//   // Wait for process to exit and check result
-//   const exitCode = await proc.exited;
-//   const success = exitCode === 0 && existsSync(outputPath);
+  // Stream stdout and stderr concurrently (cast: we always use "pipe" mode)
+  const stdoutPromise = streamProcessOutput(
+    proc.stdout as ReadableStream<Uint8Array>,
+    "EditImage",
+    send,
+  );
+  const stderrText = await streamProcessOutput(
+    proc.stderr as ReadableStream<Uint8Array>,
+    "EditImage",
+    send,
+  );
+  await stdoutPromise;
 
-//   if (success) {
-//     send("progress", {
-//       step: "edit-image",
-//       status: "completed",
-//       label: "Processing edit image task...",
-//     });
-//   } else {
-//     send("progress", {
-//       step: "edit-image",
-//       status: "error",
-//       label: "Processing edit image task...",
-//       error: stderrText || `Process exited with code ${exitCode}`,
-//     });
-//   }
+  // Wait for process to exit and check result
+  const exitCode = await proc.exited;
+  const success = exitCode === 0 && existsSync(outputPath);
 
-//   return success;
-// }
+  if (success) {
+    send("progress", {
+      step: "edit-image",
+      status: "completed",
+      label: "Processing edit image task...",
+    });
+  } else {
+    send("progress", {
+      step: "edit-image",
+      status: "error",
+      label: "Processing edit image task...",
+      error: stderrText || `Process exited with code ${exitCode}`,
+    });
+  }
+
+  return success;
+}
 
 // // ========== Render Functions ==========
 
