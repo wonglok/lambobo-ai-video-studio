@@ -246,7 +246,7 @@ const initialImage: ImageState = {
 };
 
 const initialVideo: VideoState = {
-  prompt: `[4歲的羊寶寶正經朗讀]: {{book}}. Chapter {{chapter}}. Verse {{verses}}. {{script}}`,
+  prompt: `[a 4 years old little lamb happily says]: {{book}}. Chapter {{chapter}}. Verse {{verses}}. {{script}}`,
   duration: 5,
   aspectRatio: "1:1",
   resolution: "480p",
@@ -814,7 +814,11 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     })),
   setExtendFrames: (extendFrames) =>
     set((s) => ({
-      extend: { ...s.extend, extendFrames, extendDuration: Math.max(0.5, (extendFrames - 1) / 24) },
+      extend: {
+        ...s.extend,
+        extendFrames,
+        extendDuration: Math.max(0.5, (extendFrames - 1) / 24),
+      },
     })),
   clearExtendResult: () =>
     set((s) => ({
@@ -845,8 +849,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       resolvedVideoPath = resolvedVideoPath.slice(7);
     }
     // The backend only accepts bare filenames — extract just the basename
-    resolvedVideoPath =
-      resolvedVideoPath.split("/").pop() || resolvedVideoPath;
+    resolvedVideoPath = resolvedVideoPath.split("/").pop() || resolvedVideoPath;
 
     // Create a fresh AbortController for this extend run
     generateAbortController = new AbortController();
@@ -938,9 +941,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
   fetchProjectVideos: async (projectId) => {
     set({ projectVideosLoading: true });
     try {
-      const res = await fetch(
-        `${API_BASE}/api/projects/${projectId}/videos`,
-      );
+      const res = await fetch(`${API_BASE}/api/projects/${projectId}/videos`);
       if (!res.ok) throw new Error(await res.text());
       const videos: ProjectVideo[] = await res.json();
       // Resolve relative URLs to absolute so they work regardless of page origin
