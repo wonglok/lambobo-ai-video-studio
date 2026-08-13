@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useProjectStore, type Project } from "../stores/projectStore";
 import { useGenerationStore } from "../stores/generationStore";
 import ExtendVideoTab from "./EditorTabs/ExtendVideoTab";
+import GenerateImageTab from "./EditorTabs/GenerateImageTab";
 
 export default function ProjectEditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -158,6 +159,25 @@ export default function ProjectEditorPage() {
     </svg>
   );
 
+  const ImageEditIcon = (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M11 19H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5" />
+      <path d="M13 5h7a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-7" />
+      <path d="M2 12h20" />
+      <path d="M11 8v3" />
+      <path d="M11 13v3" />
+    </svg>
+  );
+
   const SparkleIcon = (
     <svg
       width="16"
@@ -303,6 +323,17 @@ export default function ProjectEditorPage() {
           {/* ========== TAB BAR ========== */}
           <div className="flex items-center gap-1 border-b border-tiffany-200 pb-4 mb-2">
             <button
+              onClick={() => store.setActiveTab("image")}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+                store.activeTab === "image"
+                  ? "bg-tiffany-100 text-tiffany-800"
+                  : "text-tiffany-600 hover:bg-tiffany-50 hover:text-tiffany-700"
+              }`}
+            >
+              {ImageEditIcon}
+              Generate Image
+            </button>
+            <button
               onClick={() => store.setActiveTab("video")}
               className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
                 store.activeTab === "video"
@@ -325,6 +356,11 @@ export default function ProjectEditorPage() {
               Extend Video
             </button>
           </div>
+
+          {/* ========== IMAGE GENERATION PANEL ========== */}
+          {store.activeTab === "image" && (
+            <GenerateImageTab projectId={id!} />
+          )}
 
           {/* ========== VIDEO GENERATION PANEL ========== */}
           {store.activeTab === "video" && (

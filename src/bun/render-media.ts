@@ -22,6 +22,8 @@ const JSON_DIR = join(APP_DATA_DIR, "json");
 const PYTHON_DIR = join(APP_DATA_DIR, "python-src");
 const PROJECTS_FILE = join(JSON_DIR, "projects.json");
 
+const MLXGEN_MODEL = "AbstractFramework/qwen-image-edit-2511-4bit";
+
 // ========== Project Types ==========
 
 export interface Project {
@@ -136,6 +138,33 @@ function resolveSafeVideoPath(
   return null;
 }
 
+/**
+ * Resolve the `mlxgen` executable installed via `uv tool install --upgrade mlx-gen`.
+ * uv tool installs binaries into `~/.local/bin`; fall back to relying on PATH.
+ */
+async function getMlxgenBin(): Promise<string> {
+  const candidates = [
+    join(homedir(), ".local", "bin", "mlxgen"),
+    "/opt/homebrew/bin/mlxgen",
+    "/usr/local/bin/mlxgen",
+  ];
+  for (const p of candidates) {
+    if (existsSync(p)) return p;
+  }
+  return "mlxgen";
+}
+
+/**
+ * Strip ANSI escape sequences (colors, cursor control, etc.) from a string.
+ * Tools like `uv` emit these when streaming to a TTY; forwarding them to the
+ * browser renders them as raw control glyphs (e.g. `␛[2m`) instead of text.
+ */
+function stripAnsi(input: string): string {
+  // Matches CSI (`ESC [ ...`) and other two-byte control sequences (`ESC @`–`ESC _`).
+  // eslint-disable-next-line no-control-regex
+  return input.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, "");
+}
+
 /** Stream stdout/stderr from a Bun subprocess to an SSE response. */
 async function streamToSSE(
   readable: ReadableStream<Uint8Array> | undefined,
@@ -152,7 +181,7 @@ async function streamToSSE(
       if (done) break;
       // Use { stream: true } so multi-byte UTF-8 characters split across
       // chunks are reassembled correctly instead of producing mojibake.
-      const chunk = decoder.decode(value, { stream: true });
+      const chunk = stripAnsi(decoder.decode(value, { stream: true }));
       if (chunk) {
         console.log(`[${prefix}]`, chunk);
         text += chunk;
@@ -160,7 +189,7 @@ async function streamToSSE(
       }
     }
     // Flush any remaining bytes buffered in the decoder.
-    const final = decoder.decode();
+    const final = stripAnsi(decoder.decode());
     if (final) {
       console.log(`[${prefix}]`, final);
       text += final;
@@ -731,6 +760,242 @@ export async function renderMediaRoutes({
       const stderrText = await streamToSSE(
         proc.stderr as ReadableStream<Uint8Array>,
         "Extend",
+        send,
+      );
+      await stdoutPromise;
+
+      const exitCode = await proc.exited;
+      const success = exitCode === 0 && existsSync(outputPath);
+
+      if (success) {
+        send("complete", {
+          success: true,
+          path: outputPath,
+          filename: outputFile,
+        });
+      } else {
+        send("error", {
+          error: stderrText || `Process exited with code ${exitCode}`,
+          exitCode,
+        });
+      }
+    } catch (e) {
+      send("error", { error: String(e) });
+    } finally {
+      activeProc = null;
+      res.end();
+    }
+  });
+
+  // ========== MLX-Gen: Install ==========
+
+  app.post("/api/mlxgen/install", async (_req, res) => {
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: string, data: object) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      const uvPath = await getUvPath();
+      send("progress", {
+        status: "starting",
+        label: "Installing mlx-gen...",
+      });
+
+      const proc = spawn(
+        [uvPath, "tool", "install", "--upgrade", "mlx-gen"],
+        {
+          stdout: "pipe",
+          stderr: "pipe",
+        },
+      );
+
+      activeProc = proc;
+
+      const stdoutPromise = streamToSSE(
+        proc.stdout as ReadableStream<Uint8Array>,
+        "Install",
+        send,
+      );
+      const stderrText = await streamToSSE(
+        proc.stderr as ReadableStream<Uint8Array>,
+        "Install",
+        send,
+      );
+      await stdoutPromise;
+
+      const exitCode = await proc.exited;
+      if (exitCode === 0) {
+        send("complete", { success: true });
+      } else {
+        send("error", {
+          error: stderrText || `Process exited with code ${exitCode}`,
+          exitCode,
+        });
+      }
+    } catch (e) {
+      send("error", { error: String(e) });
+    } finally {
+      activeProc = null;
+      res.end();
+    }
+  });
+
+  // ========== MLX-Gen: Download Model ==========
+
+  app.post("/api/mlxgen/download-model", async (_req, res) => {
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: string, data: object) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      const mlxgen = await getMlxgenBin();
+      send("progress", {
+        status: "starting",
+        label: `Downloading model ${MLXGEN_MODEL}...`,
+      });
+
+      const proc = spawn(
+        [mlxgen, "download", "--model", MLXGEN_MODEL],
+        {
+          stdout: "pipe",
+          stderr: "pipe",
+        },
+      );
+
+      activeProc = proc;
+
+      const stdoutPromise = streamToSSE(
+        proc.stdout as ReadableStream<Uint8Array>,
+        "Download",
+        send,
+      );
+      const stderrText = await streamToSSE(
+        proc.stderr as ReadableStream<Uint8Array>,
+        "Download",
+        send,
+      );
+      await stdoutPromise;
+
+      const exitCode = await proc.exited;
+      if (exitCode === 0) {
+        send("complete", { success: true });
+      } else {
+        send("error", {
+          error: stderrText || `Process exited with code ${exitCode}`,
+          exitCode,
+        });
+      }
+    } catch (e) {
+      send("error", { error: String(e) });
+    } finally {
+      activeProc = null;
+      res.end();
+    }
+  });
+
+  // ========== MLX-Gen: Generate (Image Edit) ==========
+
+  app.post("/api/mlxgen/generate", async (req, res) => {
+    const { prompt, imagePath, projectId } = req.body || {};
+
+    if (!prompt) {
+      res.status(400).json({ error: "Prompt is required" });
+      return;
+    }
+    if (!imagePath) {
+      res.status(400).json({ error: "Image path is required" });
+      return;
+    }
+    if (!projectId) {
+      res.status(400).json({ error: "Project ID is required" });
+      return;
+    }
+
+    // Project IDs are generated by makeId() (alphanumeric + hyphen). Reject
+    // anything else so a malicious projectId cannot escape OUTPUT_DIR via `../`.
+    if (!/^[a-zA-Z0-9_-]+$/.test(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+
+    // Resolve the character image — only bare filenames uploaded to this project
+    const resolvedImage = resolveSafePath(imagePath, projectId);
+    if (!resolvedImage) {
+      res.status(400).json({
+        error:
+          "Invalid image path. Provide a filename previously uploaded to this project.",
+      });
+      return;
+    }
+
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: string, data: object) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      const mlxgen = await getMlxgenBin();
+      const projectOutputDir = join(OUTPUT_DIR, projectId);
+      ensureDir(projectOutputDir);
+
+      const outputFile = `mlxgen-${Date.now()}.png`;
+      const outputPath = join(projectOutputDir, outputFile);
+
+      send("progress", {
+        status: "starting",
+        label: "Generating image...",
+        outputFile,
+      });
+
+      const proc = spawn(
+        [
+          mlxgen,
+          "generate",
+          "--model",
+          MLXGEN_MODEL,
+          "--image",
+          resolvedImage,
+          "--prompt",
+          prompt,
+          "--output",
+          outputPath,
+        ],
+        {
+          stdout: "pipe",
+          stderr: "pipe",
+        },
+      );
+
+      activeProc = proc;
+
+      const stdoutPromise = streamToSSE(
+        proc.stdout as ReadableStream<Uint8Array>,
+        "MLXGen",
+        send,
+      );
+      const stderrText = await streamToSSE(
+        proc.stderr as ReadableStream<Uint8Array>,
+        "MLXGen",
         send,
       );
       await stdoutPromise;
