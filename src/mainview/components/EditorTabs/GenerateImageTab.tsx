@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useGenerationStore } from "../../stores/generationStore";
 
 interface Props {
@@ -14,6 +14,11 @@ export default function GenerateImageTab({ projectId }: Props) {
   const uploadedImages = store.projectImages.filter(
     (img) => img.source === "upload",
   );
+
+  useEffect(() => {
+    store.checkMlxgenStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCsvSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -38,7 +43,11 @@ export default function GenerateImageTab({ projectId }: Props) {
     const reader = new FileReader();
     reader.onload = async () => {
       const base64 = reader.result as string;
-      const uploadedPath = await store.uploadImage(projectId, base64, file.name);
+      const uploadedPath = await store.uploadImage(
+        projectId,
+        base64,
+        file.name,
+      );
       if (uploadedPath) {
         await store.fetchProjectImages(projectId);
         const { uploadedImageFilename, uploadedImageUrl } =
@@ -174,11 +183,73 @@ export default function GenerateImageTab({ projectId }: Props) {
     </svg>
   );
 
+  const CheckCircleIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+      <polyline points="22 4 12 14.01 9 11.01" />
+    </svg>
+  );
+
+  const AlertCircleIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+  );
+
   const busy =
     store.imageEdit.generating ||
     store.imageEdit.installing ||
     store.imageEdit.downloading ||
     store.batchRunning;
+
+  const renderStatus = (
+    value: boolean | null,
+    okText: string,
+    missingText: string,
+  ) => {
+    if (value === null) {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-tiffany-400">
+          {SpinnerIcon}
+          Checking...
+        </span>
+      );
+    }
+    if (value) {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-emerald-600">
+          {CheckCircleIcon}
+          {okText}
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 text-amber-600">
+        {AlertCircleIcon}
+        {missingText}
+      </span>
+    );
+  };
 
   return (
     <div className="flex flex-col gap-5">
@@ -211,6 +282,19 @@ export default function GenerateImageTab({ projectId }: Props) {
             {store.imageEdit.downloading ? SpinnerIcon : DownloadIcon}
             Download Model
           </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-2 text-xs font-medium">
+          {renderStatus(
+            store.imageEdit.mlxgenInstalled,
+            "mlx-gen installed",
+            "mlx-gen not installed",
+          )}
+          {renderStatus(
+            store.imageEdit.modelDownloaded,
+            "Model downloaded",
+            "Model not downloaded",
+          )}
         </div>
 
         {store.imageEdit.installingLogs.length > 0 && (
@@ -251,7 +335,7 @@ export default function GenerateImageTab({ projectId }: Props) {
           accept="image/*"
           onChange={handleCharacterUpload}
           disabled={store.uploading}
-          className="w-full text-sm text-tiffany-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-tiffany-100 file:text-tiffany-700 hover:file:bg-tiffany-200 file:cursor-pointer file:transition-colors disabled:opacity-50"
+          className="inline-block text-sm text-tiffany-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-tiffany-100 file:text-tiffany-700 hover:file:bg-tiffany-200 file:cursor-pointer file:transition-colors disabled:opacity-50"
         />
         {store.uploading && (
           <p className="text-xs text-tiffany-600 mt-1">Uploading...</p>
@@ -445,11 +529,7 @@ export default function GenerateImageTab({ projectId }: Props) {
                               type="text"
                               value={row[col] ?? ""}
                               onChange={(e) =>
-                                store.updateCsvCell(
-                                  rowIdx,
-                                  col,
-                                  e.target.value,
-                                )
+                                store.updateCsvCell(rowIdx, col, e.target.value)
                               }
                               disabled={store.batchRunning}
                               className="w-full min-w-[120px] px-2 py-1 bg-transparent border border-transparent hover:border-tiffany-200 focus:border-tiffany-300 focus:outline-none focus:ring-1 focus:ring-tiffany-300/30 rounded text-tiffany-800 transition-colors disabled:opacity-50"
@@ -497,7 +577,11 @@ export default function GenerateImageTab({ projectId }: Props) {
           ) : (
             <button
               onClick={() => store.generateBatchEditedImages(projectId)}
-              disabled={busy || !store.imageEdit.prompt.trim() || !store.imageEdit.characterImage}
+              disabled={
+                busy ||
+                !store.imageEdit.prompt.trim() ||
+                !store.imageEdit.characterImage
+              }
               className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-500 hover:bg-tiffany-600 active:bg-tiffany-700 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
             >
               {TableIcon}
@@ -531,12 +615,7 @@ export default function GenerateImageTab({ projectId }: Props) {
             onClick={() => store.cancelBatch()}
             className="flex items-center justify-center gap-1.5 px-5 py-3 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <rect x="4" y="4" width="16" height="16" rx="2" />
             </svg>
             Stop

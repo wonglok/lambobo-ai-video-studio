@@ -154,6 +154,49 @@ async function getMlxgenBin(): Promise<string> {
   return "mlxgen";
 }
 
+/** True when the `mlxgen` executable is installed (known paths or PATH). */
+function isMlxgenInstalled(): boolean {
+  const candidates = [
+    join(homedir(), ".local", "bin", "mlxgen"),
+    "/opt/homebrew/bin/mlxgen",
+    "/usr/local/bin/mlxgen",
+  ];
+  for (const p of candidates) {
+    if (existsSync(p)) return true;
+  }
+  // Fall back to PATH lookup (Bun native, synchronous).
+  try {
+    return Bun.which("mlxgen") !== null;
+  } catch {
+    return false;
+  }
+}
+
+/** Directory where Hugging Face Hub caches downloaded models. */
+function huggingfaceCacheDir(): string {
+  if (process.env.HF_HUB_CACHE) return process.env.HF_HUB_CACHE;
+  if (process.env.HF_HOME) return join(process.env.HF_HOME, "hub");
+  return join(homedir(), ".cache", "huggingface", "hub");
+}
+
+/** True when the MLX-Gen model has already been downloaded to the HF cache. */
+function isModelDownloaded(): boolean {
+  const modelDirName = `models--${MLXGEN_MODEL.replace("/", "--")}`;
+  const snapshotsDir = join(huggingfaceCacheDir(), modelDirName, "snapshots");
+  if (!existsSync(snapshotsDir)) return false;
+  try {
+    return readdirSync(snapshotsDir).some((name) => {
+      try {
+        return statSync(join(snapshotsDir, name)).isDirectory();
+      } catch {
+        return false;
+      }
+    });
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Strip ANSI escape sequences (colors, cursor control, etc.) from a string.
  * Tools like `uv` emit these when streaming to a TTY; forwarding them to the
@@ -785,6 +828,15 @@ export async function renderMediaRoutes({
       activeProc = null;
       res.end();
     }
+  });
+
+  // ========== MLX-Gen: Status ==========
+
+  app.get("/api/mlxgen/status", (_req, res) => {
+    res.json({
+      installed: isMlxgenInstalled(),
+      modelDownloaded: isModelDownloaded(),
+    });
   });
 
   // ========== MLX-Gen: Install ==========

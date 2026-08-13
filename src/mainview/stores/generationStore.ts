@@ -76,6 +76,8 @@ interface ImageEditState {
   result: string | null;
   error: string | null;
   logs: string[];
+  mlxgenInstalled: boolean | null;
+  modelDownloaded: boolean | null;
 }
 
 interface GenerationStore {
@@ -114,6 +116,7 @@ interface GenerationStore {
   setImageEditPrompt: (v: string) => void;
   selectCharacterImage: (img: ProjectImage | null) => void;
   clearImageEditResult: () => void;
+  checkMlxgenStatus: () => Promise<void>;
   installMlxGen: () => Promise<void>;
   downloadMlxGenModel: () => Promise<void>;
   generateEditedImage: (projectId: string) => Promise<void>;
@@ -340,6 +343,8 @@ const initialImageEdit: ImageEditState = {
   result: null,
   error: null,
   logs: [],
+  mlxgenInstalled: null,
+  modelDownloaded: null,
 };
 
 // ========== Store ==========
@@ -1023,6 +1028,23 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       imageEdit: { ...s.imageEdit, result: null, error: null, logs: [] },
     })),
 
+  checkMlxgenStatus: async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/mlxgen/status`);
+      if (!res.ok) return;
+      const data = await res.json();
+      set((s) => ({
+        imageEdit: {
+          ...s.imageEdit,
+          mlxgenInstalled: Boolean(data.installed),
+          modelDownloaded: Boolean(data.modelDownloaded),
+        },
+      }));
+    } catch {
+      // Leave status unknown (null) if the check fails.
+    }
+  },
+
   installMlxGen: async () => {
     const { imageEdit } = get();
     if (imageEdit.installing) return;
@@ -1070,6 +1092,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
             set((s) => ({
               imageEdit: { ...s.imageEdit, installing: false },
             }));
+            get().checkMlxgenStatus();
             break;
           case "error":
             set((s) => ({
@@ -1136,6 +1159,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
             set((s) => ({
               imageEdit: { ...s.imageEdit, downloading: false },
             }));
+            get().checkMlxgenStatus();
             break;
           case "error":
             set((s) => ({
