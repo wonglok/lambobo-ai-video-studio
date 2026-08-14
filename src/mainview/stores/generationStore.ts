@@ -66,6 +66,7 @@ interface ExtendState {
 interface ImageEditState {
   prompt: string;
   characterImage: ProjectImage | null;
+  outputSize: number;
   installing: boolean;
   installingLogs: string[];
   installingError: string | null;
@@ -114,6 +115,7 @@ interface GenerationStore {
   // MLX-Gen image edit
   imageEdit: ImageEditState;
   setImageEditPrompt: (v: string) => void;
+  setImageEditOutputSize: (size: number) => void;
   selectCharacterImage: (img: ProjectImage | null) => void;
   clearImageEditResult: () => void;
   checkMlxgenStatus: () => Promise<void>;
@@ -236,8 +238,83 @@ function parseCsv(text: string): {
 
 // ========== MLX-Gen Image Edit Helper ==========
 
+function resolveImageUrl(url: string): string {
+  if (url.startsWith("http")) return url;
+  return `http://localhost:${(window as any).PORT}${url}`;
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = src;
+  });
+}
+
+/**
+ * Load an image from a URL and re-encode it as a PNG whose longest edge is at
+ * most `maxDim` pixels (preserving aspect ratio). PNG is lossless, so the
+ * result is always full quality. Returns the base64 data URL together with the
+ * original image dimensions, or null on failure.
+ */
+async function resizeImageToPng(
+  url: string,
+  maxDim = 1024,
+): Promise<{ dataUrl: string; width: number; height: number } | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    try {
+      const img = await loadImage(objectUrl);
+      const { width, height } = img;
+      const longest = Math.max(width, height);
+      const scale = longest > maxDim ? maxDim / longest : 1;
+      const w = Math.max(1, Math.round(width * scale));
+      const h = Math.max(1, Math.round(height * scale));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+      ctx.drawImage(img, 0, 0, w, h);
+      return { dataUrl: canvas.toDataURL("image/png"), width, height };
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Compute output dimensions so the longest edge equals `maxDim` while keeping
+ * the source aspect ratio.
+ */
+function fitDimensions(
+  sourceWidth: number,
+  sourceHeight: number,
+  maxDim: number,
+): { width: number; height: number } {
+  const longest = Math.max(sourceWidth, sourceHeight);
+  const scale = longest > 0 ? maxDim / longest : 1;
+  return {
+    width: Math.max(1, Math.round(sourceWidth * scale)),
+    height: Math.max(1, Math.round(sourceHeight * scale)),
+  };
+}
+
 async function requestMlxgenGenerate(
-  body: { prompt: string; imagePath: string; projectId: string },
+  body: {
+    prompt: string;
+    image: string;
+    projectId: string;
+    width: number;
+    height: number;
+  },
   onLog: (text: string) => void,
 ): Promise<{ ok: boolean; error?: string; result?: string }> {
   const res = await fetch(`${API_BASE}/api/mlxgen/generate`, {
@@ -333,6 +410,7 @@ const initialExtend: ExtendState = {
 const initialImageEdit: ImageEditState = {
   prompt: "the character is at AI Chip lab.",
   characterImage: null,
+  outputSize: 1024,
   installing: false,
   installingLogs: [],
   installingError: null,
@@ -1020,6 +1098,9 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
   setImageEditPrompt: (prompt) =>
     set((s) => ({ imageEdit: { ...s.imageEdit, prompt, error: null } })),
 
+  setImageEditOutputSize: (outputSize) =>
+    set((s) => ({ imageEdit: { ...s.imageEdit, outputSize } })),
+
   selectCharacterImage: (img) =>
     set((s) => ({ imageEdit: { ...s.imageEdit, characterImage: img } })),
 
@@ -1213,11 +1294,34 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       },
     }));
 
+    // Preprocess the character image: resize to max 1024px and re-encode as PNG.
+    const processed = await resizeImageToPng(
+      resolveImageUrl(imageEdit.characterImage.url),
+    );
+    if (!processed) {
+      set((s) => ({
+        imageEdit: {
+          ...s.imageEdit,
+          generating: false,
+          error: "Failed to process character image.",
+        },
+      }));
+      return;
+    }
+
+    const { width, height } = fitDimensions(
+      processed.width,
+      processed.height,
+      imageEdit.outputSize,
+    );
+
     const result = await requestMlxgenGenerate(
       {
         prompt: imageEdit.prompt.trim(),
-        imagePath: imageEdit.characterImage.filename,
+        image: processed.dataUrl,
         projectId,
+        width,
+        height,
       },
       (text) =>
         set((s) => ({
@@ -1274,6 +1378,32 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       },
     }));
 
+    // Preprocess the character image once and reuse it for every batch row.
+    const processed = await resizeImageToPng(
+      resolveImageUrl(imageEdit.characterImage.url),
+    );
+    if (!processed) {
+      set({
+        batchRunning: false,
+        batchProgress: null,
+        batchCancelRequested: false,
+      });
+      set((s) => ({
+        imageEdit: {
+          ...s.imageEdit,
+          generating: false,
+          error: "Failed to process character image.",
+        },
+      }));
+      return;
+    }
+
+    const { width, height } = fitDimensions(
+      processed.width,
+      processed.height,
+      imageEdit.outputSize,
+    );
+
     let lastError: string | null = null;
 
     for (let idx = 0; idx < selectedIndices.length; idx++) {
@@ -1292,8 +1422,10 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       const result = await requestMlxgenGenerate(
         {
           prompt: renderedPrompt,
-          imagePath: imageEdit.characterImage.filename,
+          image: processed.dataUrl,
           projectId,
+          width,
+          height,
         },
         (text) =>
           set((s) => ({

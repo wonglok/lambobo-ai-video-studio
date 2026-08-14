@@ -164,17 +164,6 @@ export default function ProjectEditorPage() {
           {/* ========== TAB BAR ========== */}
           <div className="flex items-center gap-1 border-b border-tiffany-200 pb-4 mb-2">
             <button
-              onClick={() => store.setActiveTab("image")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
-                store.activeTab === "image"
-                  ? "bg-tiffany-100 text-tiffany-800"
-                  : "text-tiffany-600 hover:bg-tiffany-50 hover:text-tiffany-700"
-              }`}
-            >
-              {ImageEditIcon}
-              Generate Image
-            </button>
-            <button
               onClick={() => store.setActiveTab("video")}
               className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
                 store.activeTab === "video"
@@ -195,6 +184,17 @@ export default function ProjectEditorPage() {
             >
               {ExtendIcon}
               Extend Video
+            </button>
+            <button
+              onClick={() => store.setActiveTab("image")}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+                store.activeTab === "image"
+                  ? "bg-tiffany-100 text-tiffany-800"
+                  : "text-tiffany-600 hover:bg-tiffany-50 hover:text-tiffany-700"
+              }`}
+            >
+              {ImageEditIcon}
+              Edit Image
             </button>
           </div>
 

@@ -413,6 +413,32 @@ export default function GenerateImageTab({ projectId }: Props) {
         />
       </div>
 
+      {/* ===== Output Size ===== */}
+      <div>
+        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+          Output Size
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {[512, 1024, 1500, 2048].map((size) => {
+            const isSelected = store.imageEdit.outputSize === size;
+            return (
+              <button
+                key={size}
+                onClick={() => store.setImageEditOutputSize(size)}
+                disabled={store.imageEdit.generating || store.batchRunning}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                  isSelected
+                    ? "bg-tiffany-500 text-white border-tiffany-500"
+                    : "bg-white text-tiffany-600 border-tiffany-200 hover:border-tiffany-300"
+                } disabled:opacity-50`}
+              >
+                {size}px
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* ===== CSV batch ===== */}
       <div>
         <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
