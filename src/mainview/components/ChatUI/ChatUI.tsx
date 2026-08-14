@@ -115,6 +115,12 @@ export function ChatUI() {
     </svg>
   );
 
+  const DotIcon = (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="12" cy="12" r="6" />
+    </svg>
+  );
+
   const AttachIcon = (
     <svg
       width="16"
@@ -200,8 +206,8 @@ export function ChatUI() {
                           {WrenchIcon}
                         </span>
                       ) : (
-                        <span className="mt-0.5 shrink-0 text-tiffany-400">
-                          {SpinnerIcon}
+                        <span className="mt-0.5 shrink-0 text-tiffany-300">
+                          {DotIcon}
                         </span>
                       )}
                       <span className="truncate">
