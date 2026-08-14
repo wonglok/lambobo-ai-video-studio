@@ -860,13 +860,10 @@ export async function renderMediaRoutes({
         label: "Installing mlx-gen...",
       });
 
-      const proc = spawn(
-        [uvPath, "tool", "install", "--upgrade", "mlx-gen"],
-        {
-          stdout: "pipe",
-          stderr: "pipe",
-        },
-      );
+      const proc = spawn([uvPath, "tool", "install", "--upgrade", "mlx-gen"], {
+        stdout: "pipe",
+        stderr: "pipe",
+      });
 
       activeProc = proc;
 
@@ -920,13 +917,10 @@ export async function renderMediaRoutes({
         label: `Downloading model ${MLXGEN_MODEL}...`,
       });
 
-      const proc = spawn(
-        [mlxgen, "download", "--model", MLXGEN_MODEL],
-        {
-          stdout: "pipe",
-          stderr: "pipe",
-        },
-      );
+      const proc = spawn([mlxgen, "download", "--model", MLXGEN_MODEL], {
+        stdout: "pipe",
+        stderr: "pipe",
+      });
 
       activeProc = proc;
 
