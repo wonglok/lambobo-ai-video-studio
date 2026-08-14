@@ -448,11 +448,11 @@ async function continueToWork(
     {
       role: "system",
       content:
-        'You are a task-completion judge. Reply with exactly "YES" if the user\'s request in the conversation has been FULLY satisfied, or "NO" if more work is still needed. Output only YES or NO.',
+        'You are a task-completion judge. Decide whether the user\'s request in the conversation has been FULLY satisfied. Respond with JSON only, in this exact shape: {"achieved": true} if satisfied, or {"achieved": false} if more work is still needed.',
     },
     {
       role: "user",
-      content: `Conversation:\n${transcript}\n\nHas the user's goal been fully achieved?`,
+      content: `Conversation:\n${transcript}\n\nReturn JSON: {"achieved": true} or {"achieved": false}.`,
     },
   ];
 
@@ -462,9 +462,20 @@ async function continueToWork(
       messages: judgeMessages,
       temperature: 0,
       stream: false,
+      response_format: { type: "json_object" },
     });
-    const answer = completion.choices?.[0]?.message?.content ?? "";
-    const achieved = /^\s*yes\b/i.test(answer.trim());
+
+    const raw = completion.choices?.[0]?.message?.content ?? "";
+    let parsed: { achieved?: unknown };
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (!match) return false;
+      parsed = JSON.parse(match[0]);
+    }
+
+    const achieved = Boolean(parsed?.achieved);
     // Return false when the goal is achieved (stop working).
     return !achieved;
   } catch {
