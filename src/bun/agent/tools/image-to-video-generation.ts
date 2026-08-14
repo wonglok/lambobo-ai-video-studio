@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  realpathSync,
+} from "node:fs";
 import { join } from "node:path";
 import {
   isValidProjectId,
@@ -72,8 +78,20 @@ const tool: AgentTool = {
       return "image_to_video_generation requires an image from the workspace.";
 
     const abs = resolveWorkspacePath(ctx.projectId, image);
-    if (!abs || !existsSync(abs) || classifyFile(image) !== "image") {
-      return `Image not found or not an image: ${image}`;
+    if (!abs || !existsSync(abs)) {
+      return `Image not found: ${image}`;
+    }
+
+    // Classify the resolved real path (resolves symlinks) so a symlink named
+    // like an image but pointing at another file is not treated as an image.
+    let realAbs: string;
+    try {
+      realAbs = realpathSync(abs);
+    } catch {
+      return `Image not found: ${image}`;
+    }
+    if (classifyFile(realAbs) !== "image") {
+      return `Not an image: ${image}`;
     }
 
     if (!ctx.backendPort) return "Video backend not available.";
@@ -95,7 +113,7 @@ const tool: AgentTool = {
       /[^a-zA-Z0-9._-]/g,
       "_",
     )}`;
-    writeFileSync(join(uploadProjectDir, imageName), readFileSync(abs));
+    writeFileSync(join(uploadProjectDir, imageName), readFileSync(realAbs));
 
     ctx.emit?.("notice", { text: `Generating video from "${image}"...` });
 
