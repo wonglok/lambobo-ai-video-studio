@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useGenerationStore } from "../../stores/generationStore";
 import { useChatStore } from "../../stores/chatStore";
 
@@ -20,10 +20,7 @@ async function uploadToAgentWorkspace(
       body: JSON.stringify({ image: dataUrl, filename, projectId }),
     });
     if (!res.ok) {
-      console.error(
-        "Failed to upload to agent workspace:",
-        await res.text(),
-      );
+      console.error("Failed to upload to agent workspace:", await res.text());
     }
   } catch (e) {
     console.error("Failed to upload to agent workspace:", e);
@@ -38,15 +35,23 @@ export function ChatUI({ projectId }: Props) {
   const model = gen.agent.model;
   const serverRunning = gen.agent.serverRunning;
 
+  const activeSession =
+    chat.sessions.find((s) => s.id === chat.activeSessionId) ?? null;
+  const messages = activeSession?.messages ?? [];
+
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const [confirmDeleteSession, setConfirmDeleteSession] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [chat.messages, chat.sending]);
+  }, [messages, chat.sending]);
 
   const handleSend = () => {
     const value = inputRef.current?.value ?? "";
@@ -86,6 +91,13 @@ export function ChatUI({ projectId }: Props) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  const confirmDeleteSessionAction = () => {
+    if (confirmDeleteSession) {
+      chat.deleteSession(confirmDeleteSession);
+      setConfirmDeleteSession(null);
     }
   };
 
@@ -186,145 +198,276 @@ export function ChatUI({ projectId }: Props) {
     </svg>
   );
 
+  const ResetIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="1 4 1 10 7 10" />
+      <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+    </svg>
+  );
+
+  const PlusIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+
+  const TrashIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  );
+
   const canSend = serverRunning && !chat.sending;
 
   return (
-    <div className="flex flex-col border border-tiffany-200 rounded-xl overflow-hidden bg-white">
-      {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 bg-tiffany-50 border-b border-tiffany-200">
-        <span className="text-tiffany-500">{BotIcon}</span>
-        <span className="text-sm font-semibold text-tiffany-900">Agent Chat</span>
-        <span className="ml-auto text-xs text-tiffany-600/60">
-          {serverRunning ? "Connected" : "Server offline"}
-        </span>
-      </div>
-
-      {/* Messages */}
-      <div
-        ref={scrollRef}
-        className="flex flex-col gap-3 p-4 h-72 overflow-y-auto bg-tiffany-50/40"
-      >
-        {chat.messages.length === 0 && (
-          <div className="m-auto text-center text-xs text-tiffany-400 italic max-w-xs">
-            {serverRunning
-              ? "Ask the agent anything. It can use tools like get_time or list_projects."
-              : "Start the mlx-vlm server above to begin chatting."}
-          </div>
-        )}
-
-        {chat.messages.map((m) =>
-          m.role === "user" ? (
-            <div key={m.id} className="flex justify-end">
-              <div className="max-w-[80%] px-3 py-2 rounded-xl bg-tiffany-500 text-white text-sm whitespace-pre-wrap">
-                {m.image && (
-                  <img
-                    src={m.image}
-                    alt="uploaded"
-                    className="mb-2 max-w-48 rounded-lg"
-                  />
-                )}
-                {m.content}
-              </div>
-            </div>
-          ) : (
-            <div key={m.id} className="flex flex-col gap-1.5">
-              {m.steps.length > 0 && (
-                <div className="flex flex-col gap-1">
-                  {m.steps.map((step, i) => (
-                    <div
-                      key={i}
-                      className="flex items-start gap-1.5 text-[11px] text-tiffany-600/70"
-                    >
-                      <span className="mt-0.5 shrink-0 text-tiffany-400">
-                        {WrenchIcon}
-                      </span>
-                      <span className="truncate">Tool: {step.text}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {m.content ? (
-                <div className="flex justify-start">
-                  <div className="max-w-[80%] px-3 py-2 rounded-xl bg-white border border-tiffany-200 text-tiffany-900 text-sm whitespace-pre-wrap">
-                    {m.content}
-                  </div>
-                </div>
-              ) : (
-                chat.sending && (
-                  <div className="flex justify-start">
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-tiffany-200 text-tiffany-400 text-sm">
-                      {SpinnerIcon}
-                      Thinking...
-                    </div>
-                  </div>
-                )
-              )}
-            </div>
-          ),
-        )}
-
-        {chat.error && (
-          <div className="px-3 py-2 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs">
-            {chat.error}
-          </div>
-        )}
-      </div>
-
-      {/* Input */}
-      <div className="border-t border-tiffany-200 bg-white">
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          className="hidden"
-        />
-
-        {chat.pendingImage && (
-          <div className="flex items-center gap-2 px-3 pt-2">
-            <img
-              src={chat.pendingImage}
-              alt="pending"
-              className="w-14 h-14 rounded-lg object-cover border border-tiffany-200"
-            />
-            <button
-              onClick={() => chat.setPendingImage(null)}
-              className="flex items-center justify-center w-6 h-6 rounded-full bg-tiffany-100 text-tiffany-600 hover:bg-tiffany-200 transition-colors"
-              title="Remove image"
-            >
-              {RemoveIcon}
-            </button>
-          </div>
-        )}
-
-        <div className="flex items-end gap-2 px-3 py-3">
+    <div className="flex border border-tiffany-200 rounded-xl overflow-hidden bg-white">
+      {/* ===== Session sidebar ===== */}
+      <div className="w-44 shrink-0 border-r border-tiffany-200 bg-tiffany-50/40 flex flex-col">
+        <div className="p-2 border-b border-tiffany-200">
           <button
-            onClick={handleAttach}
-            disabled={!serverRunning || chat.sending}
-            className="flex items-center justify-center w-10 h-10 shrink-0 rounded-xl border border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50 transition-all"
-            title="Attach image"
+            onClick={() => chat.createSession()}
+            className="flex items-center justify-center gap-1.5 w-full px-2 py-1.5 text-xs font-medium rounded-lg border border-tiffany-200 bg-white text-tiffany-600 hover:border-tiffany-300 transition-colors"
           >
-            {AttachIcon}
-          </button>
-          <textarea
-            ref={inputRef}
-            rows={2}
-            placeholder="Type a message..."
-            onKeyDown={handleKeyDown}
-            disabled={!serverRunning || chat.sending}
-            className="flex-1 px-3 py-2 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
-          />
-          <button
-            onClick={handleSend}
-            disabled={!canSend}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-tiffany-500 hover:bg-tiffany-600 active:bg-tiffany-700 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
-          >
-            {chat.sending ? SpinnerIcon : SendIcon}
-            Send
+            {PlusIcon}
+            New Session
           </button>
         </div>
+        <div className="flex-1 overflow-y-auto">
+          {chat.sessions.map((sess) => {
+            const active = sess.id === chat.activeSessionId;
+            return (
+              <div
+                key={sess.id}
+                onClick={() => chat.selectSession(sess.id)}
+                className={`group flex items-center gap-1 px-2.5 py-2 cursor-pointer text-xs border-b border-tiffany-100 transition-colors ${
+                  active
+                    ? "bg-tiffany-100 text-tiffany-800"
+                    : "text-tiffany-600 hover:bg-tiffany-50"
+                }`}
+              >
+                <span className="flex-1 truncate">{sess.title}</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirmDeleteSession(sess.id);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-0.5 text-red-400 hover:bg-red-50 rounded transition-opacity"
+                  title="Delete session"
+                >
+                  {TrashIcon}
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
+
+      {/* ===== Chat area ===== */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <div className="flex items-center gap-2 px-4 py-3 bg-tiffany-50 border-b border-tiffany-200">
+          <span className="text-tiffany-500">{BotIcon}</span>
+          <span className="text-sm font-semibold text-tiffany-900 truncate">
+            {activeSession?.title ?? "Agent Chat"}
+          </span>
+          <span className="ml-auto text-xs text-tiffany-600/60">
+            {serverRunning ? "Connected" : "Server offline"}
+          </span>
+          <button
+            onClick={() => chat.resetActiveSession()}
+            disabled={messages.length === 0}
+            className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-lg border border-tiffany-200 text-tiffany-600 hover:bg-white transition-colors disabled:opacity-40"
+            title="Reset chat history"
+          >
+            {ResetIcon}
+            Reset
+          </button>
+        </div>
+
+        {/* Messages */}
+        <div
+          ref={scrollRef}
+          className="flex flex-col gap-3 p-4 h-72 overflow-y-auto bg-tiffany-50/40"
+        >
+          {messages.length === 0 && (
+            <div className="m-auto text-center text-xs text-tiffany-400 italic max-w-xs">
+              {serverRunning
+                ? "Ask the agent anything. It can use tools like get_time or list_projects."
+                : "Start the mlx-vlm server above to begin chatting."}
+            </div>
+          )}
+
+          {messages.map((m) =>
+            m.role === "user" ? (
+              <div key={m.id} className="flex justify-end">
+                <div className="max-w-[80%] px-3 py-2 rounded-xl bg-tiffany-500 text-white text-sm whitespace-pre-wrap">
+                  {m.image && (
+                    <img
+                      src={m.image}
+                      alt="uploaded"
+                      className="mb-2 max-w-48 rounded-lg"
+                    />
+                  )}
+                  {m.content}
+                </div>
+              </div>
+            ) : (
+              <div key={m.id} className="flex flex-col gap-1.5">
+                {m.steps.length > 0 && (
+                  <div className="flex flex-col gap-1">
+                    {m.steps.map((step, i) => (
+                      <div
+                        key={i}
+                        className="flex items-start gap-1.5 text-[11px] text-tiffany-600/70"
+                      >
+                        <span className="mt-0.5 shrink-0 text-tiffany-400">
+                          {WrenchIcon}
+                        </span>
+                        <span className="truncate">Tool: {step.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {m.content ? (
+                  <div className="flex justify-start">
+                    <div className="max-w-[80%] px-3 py-2 rounded-xl bg-white border border-tiffany-200 text-tiffany-900 text-sm whitespace-pre-wrap">
+                      {m.content}
+                    </div>
+                  </div>
+                ) : (
+                  chat.sending && (
+                    <div className="flex justify-start">
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-tiffany-200 text-tiffany-400 text-sm">
+                        {SpinnerIcon}
+                        Thinking...
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+            ),
+          )}
+
+          {chat.error && (
+            <div className="px-3 py-2 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs">
+              {chat.error}
+            </div>
+          )}
+        </div>
+
+        {/* Input */}
+        <div className="border-t border-tiffany-200 bg-white">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+
+          {chat.pendingImage && (
+            <div className="flex items-center gap-2 px-3 pt-2">
+              <img
+                src={chat.pendingImage}
+                alt="pending"
+                className="w-14 h-14 rounded-lg object-cover border border-tiffany-200"
+              />
+              <button
+                onClick={() => chat.setPendingImage(null)}
+                className="flex items-center justify-center w-6 h-6 rounded-full bg-tiffany-100 text-tiffany-600 hover:bg-tiffany-200 transition-colors"
+                title="Remove image"
+              >
+                {RemoveIcon}
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-end gap-2 px-3 py-3">
+            <button
+              onClick={handleAttach}
+              disabled={!serverRunning || chat.sending}
+              className="flex items-center justify-center w-10 h-10 shrink-0 rounded-xl border border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50 transition-all"
+              title="Attach image"
+            >
+              {AttachIcon}
+            </button>
+            <textarea
+              ref={inputRef}
+              rows={2}
+              placeholder="Type a message..."
+              onKeyDown={handleKeyDown}
+              disabled={!serverRunning || chat.sending}
+              className="flex-1 px-3 py-2 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
+            />
+            <button
+              onClick={handleSend}
+              disabled={!canSend}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-tiffany-500 hover:bg-tiffany-600 active:bg-tiffany-700 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
+            >
+              {chat.sending ? SpinnerIcon : SendIcon}
+              Send
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Session delete confirmation modal */}
+      {confirmDeleteSession && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-2xl shadow-card p-5 w-80">
+            <h3 className="text-sm font-semibold text-tiffany-900 mb-2">
+              Delete Session
+            </h3>
+            <p className="text-xs text-tiffany-600 mb-4">
+              Are you sure you want to delete this chat session?
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setConfirmDeleteSession(null)}
+                className="px-3 py-2 text-xs font-medium rounded-lg border border-tiffany-200 text-tiffany-600 hover:bg-tiffany-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteSessionAction}
+                className="px-3 py-2 text-xs font-medium rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

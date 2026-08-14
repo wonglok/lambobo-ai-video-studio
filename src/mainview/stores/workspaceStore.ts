@@ -66,11 +66,13 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   },
 
   uploadFile: async (projectId, dataUrl, filename) => {
+    // Strip any directory component — only the basename is ever sent.
+    const safeName = filename.split(/[/\\]/).pop() || "upload";
     try {
       const res = await fetch(`${API_BASE}/api/agent/upload`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: dataUrl, filename, projectId }),
+        body: JSON.stringify({ image: dataUrl, filename: safeName, projectId }),
       });
       if (!res.ok) throw new Error(await res.text());
       await get().fetchFiles(projectId);

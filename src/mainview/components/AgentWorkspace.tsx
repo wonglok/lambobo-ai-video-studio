@@ -24,6 +24,7 @@ export default function AgentWorkspace({ projectId }: Props) {
   const [editContent, setEditContent] = useState("");
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   useEffect(() => {
     ws.fetchFiles(projectId);
@@ -67,17 +68,28 @@ export default function AgentWorkspace({ projectId }: Props) {
   };
 
   const confirmRename = async (f: WorkspaceFile) => {
+    const name = renameValue.trim();
+    // Only bare filenames — no separators, `..`, or leading dots.
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name)) {
+      setRenaming(null);
+      return;
+    }
     const dir = f.path.slice(0, f.path.lastIndexOf("/") + 1);
-    await ws.renameFile(projectId, f.path, dir + renameValue);
+    await ws.renameFile(projectId, f.path, dir + name);
     setRenaming(null);
   };
 
-  const handleDelete = async (f: WorkspaceFile) => {
-    if (window.confirm(`Delete "${f.path}"?`)) {
-      await ws.removeFile(projectId, f.path);
-      if (preview?.path === f.path) setPreview(null);
-      if (editing?.path === f.path) setEditing(null);
-    }
+  const handleDelete = (f: WorkspaceFile) => {
+    setConfirmDelete(f.path);
+  };
+
+  const confirmDeleteAction = async () => {
+    if (!confirmDelete) return;
+    const path = confirmDelete;
+    await ws.removeFile(projectId, path);
+    setConfirmDelete(null);
+    if (preview?.path === path) setPreview(null);
+    if (editing?.path === path) setEditing(null);
   };
 
   // ========== SVG Icons ==========
@@ -236,6 +248,7 @@ export default function AgentWorkspace({ projectId }: Props) {
         <input
           ref={fileInputRef}
           type="file"
+          accept="image/*,video/*,text/*,.csv,.md,.txt,.json,.log"
           onChange={handleUpload}
           className="hidden"
         />
@@ -401,6 +414,35 @@ export default function AgentWorkspace({ projectId }: Props) {
             rows={10}
             className="w-full px-3 py-2 bg-white text-tiffany-900 text-xs font-mono focus:outline-none resize-y"
           />
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-2xl shadow-card p-5 w-80">
+            <h3 className="text-sm font-semibold text-tiffany-900 mb-2">
+              Delete File
+            </h3>
+            <p className="text-xs text-tiffany-600 mb-4">
+              Are you sure you want to delete "{confirmDelete}"? This action
+              cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="px-3 py-2 text-xs font-medium rounded-lg border border-tiffany-200 text-tiffany-600 hover:bg-tiffany-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteAction}
+                className="px-3 py-2 text-xs font-medium rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

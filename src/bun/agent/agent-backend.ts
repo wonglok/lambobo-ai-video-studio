@@ -8,6 +8,7 @@ import {
   statSync,
   renameSync,
   rmSync,
+  realpathSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname, sep } from "node:path";
@@ -56,11 +57,18 @@ function memoriesDir(projectId: string): string {
   return join(AGENTS_DIR, projectId, MEMORIES_DIR_NAME);
 }
 
+const PROJECT_ID_RE = /^[a-zA-Z0-9_-]{1,64}$/;
+
+function isValidProjectId(id: string): boolean {
+  return PROJECT_ID_RE.test(id);
+}
+
 /** Resolve a workspace-relative path safely (no traversal / absolute paths). */
 function resolveWorkspacePath(
   projectId: string,
   relativePath: string,
 ): string | null {
+  if (!isValidProjectId(projectId)) return null;
   if (typeof relativePath !== "string" || !relativePath) return null;
   if (relativePath.includes("..") || relativePath.includes("\0")) return null;
   const normalized = relativePath.replace(/\\/g, "/");
@@ -68,6 +76,18 @@ function resolveWorkspacePath(
   const base = workspaceDir(projectId);
   const resolved = join(base, normalized);
   if (resolved !== base && !resolved.startsWith(base + sep)) return null;
+
+  // Defense in depth: if the target exists, ensure its real path (symlinks
+  // resolved) is still inside the real agent workspace.
+  if (existsSync(resolved)) {
+    try {
+      const realResolved = realpathSync(resolved);
+      const realAgents = realpathSync(AGENTS_DIR);
+      if (!realResolved.startsWith(realAgents + sep)) return null;
+    } catch {
+      return null;
+    }
+  }
   return resolved;
 }
 
@@ -380,6 +400,17 @@ export async function agentBackend({
       res.status(404).json({ error: "File not found" });
       return;
     }
+    // Only serve non-executable media; block HTML/SVG/JS/etc. to prevent
+    // stored XSS from being served in the app's origin.
+    const kind = classifyFile(path);
+    if (kind !== "image" && kind !== "video") {
+      res
+        .status(415)
+        .json({ error: "Preview only supports images and videos" });
+      return;
+    }
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Content-Security-Policy", "sandbox");
     res.sendFile(abs);
   });
 

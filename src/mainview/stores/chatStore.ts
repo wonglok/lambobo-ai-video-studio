@@ -16,10 +16,32 @@ export interface ChatMessage {
   steps: AgentStep[];
 }
 
-let idCounter = 0;
-function nextId(): string {
-  idCounter += 1;
-  return `msg-${idCounter}`;
+export interface ChatSession {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  createdAt: number;
+}
+
+let msgCounter = 0;
+function nextMsgId(): string {
+  msgCounter += 1;
+  return `msg-${msgCounter}`;
+}
+
+let sessionCounter = 0;
+function nextSessionId(): string {
+  sessionCounter += 1;
+  return `sess-${sessionCounter}`;
+}
+
+function newSession(): ChatSession {
+  return {
+    id: nextSessionId(),
+    title: "New chat",
+    messages: [],
+    createdAt: Date.now(),
+  };
 }
 
 // ========== SSE Stream Reader ==========
@@ -66,11 +88,16 @@ async function readSSEStream(
 // ========== Store ==========
 
 interface ChatStore {
-  messages: ChatMessage[];
+  sessions: ChatSession[];
+  activeSessionId: string | null;
   sending: boolean;
   error: string | null;
   pendingImage: string | null;
   setPendingImage: (dataUrl: string | null) => void;
+  createSession: () => void;
+  selectSession: (id: string) => void;
+  deleteSession: (id: string) => void;
+  resetActiveSession: () => void;
   sendMessage: (
     content: string,
     port: number,
@@ -78,42 +105,110 @@ interface ChatStore {
     projectId: string,
     image?: string,
   ) => Promise<void>;
-  reset: () => void;
 }
 
+const firstSession = newSession();
+
 export const useChatStore = create<ChatStore>((set, get) => ({
-  messages: [],
+  sessions: [firstSession],
+  activeSessionId: firstSession.id,
   sending: false,
   error: null,
   pendingImage: null,
 
   setPendingImage: (dataUrl) => set({ pendingImage: dataUrl }),
 
+  createSession: () => {
+    const session = newSession();
+    set((s) => ({
+      sessions: [...s.sessions, session],
+      activeSessionId: session.id,
+      error: null,
+    }));
+  },
+
+  selectSession: (id) => set({ activeSessionId: id, error: null }),
+
+  deleteSession: (id) =>
+    set((s) => {
+      let sessions = s.sessions.filter((x) => x.id !== id);
+      let activeSessionId = s.activeSessionId;
+      if (activeSessionId === id) {
+        if (sessions.length > 0) {
+          activeSessionId = sessions[sessions.length - 1].id;
+        } else {
+          const fresh = newSession();
+          sessions = [fresh];
+          activeSessionId = fresh.id;
+        }
+      }
+      return { sessions, activeSessionId };
+    }),
+
+  resetActiveSession: () =>
+    set((s) => ({
+      sessions: s.sessions.map((sess) =>
+        sess.id === s.activeSessionId
+          ? { ...sess, title: "New chat", messages: [] }
+          : sess,
+      ),
+      error: null,
+    })),
+
   sendMessage: async (content, port, model, projectId, image) => {
     const text = content.trim();
     if ((!text && !image) || get().sending) return;
 
+    let sessionId = get().activeSessionId;
+    if (!sessionId) {
+      const fresh = newSession();
+      sessionId = fresh.id;
+      set((s) => ({
+        sessions: [...s.sessions, fresh],
+        activeSessionId: fresh.id,
+      }));
+    }
+
+    const session = get().sessions.find((sess) => sess.id === sessionId);
+    if (!session) return;
+
     // History sent to the backend: prior user/assistant turns only.
-    const history = get()
-      .messages.filter((m) => m.content.trim() || (m.image && m.image.trim()))
+    const history = session.messages
+      .filter((m) => m.content.trim() || (m.image && m.image.trim()))
       .map((m) => ({ role: m.role, content: m.content, image: m.image }));
 
     const userMsg: ChatMessage = {
-      id: nextId(),
+      id: nextMsgId(),
       role: "user",
       content: text,
       image,
       steps: [],
     };
     const assistantMsg: ChatMessage = {
-      id: nextId(),
+      id: nextMsgId(),
       role: "assistant",
       content: "",
       steps: [],
     };
 
+    // Set the session title from the first user message.
+    const title =
+      session.title === "New chat" && text
+        ? text.length > 40
+          ? `${text.slice(0, 40)}…`
+          : text
+        : session.title;
+
     set((s) => ({
-      messages: [...s.messages, userMsg, assistantMsg],
+      sessions: s.sessions.map((sess) =>
+        sess.id === sessionId
+          ? {
+              ...sess,
+              title,
+              messages: [...sess.messages, userMsg, assistantMsg],
+            }
+          : sess,
+      ),
       sending: true,
       error: null,
       pendingImage: null,
@@ -121,8 +216,15 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     const updateAssistant = (fn: (m: ChatMessage) => ChatMessage) =>
       set((s) => ({
-        messages: s.messages.map((m) =>
-          m.id === assistantMsg.id ? fn(m) : m,
+        sessions: s.sessions.map((sess) =>
+          sess.id === sessionId
+            ? {
+                ...sess,
+                messages: sess.messages.map((m) =>
+                  m.id === assistantMsg.id ? fn(m) : m,
+                ),
+              }
+            : sess,
         ),
       }));
 
@@ -174,7 +276,4 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       set({ sending: false });
     }
   },
-
-  reset: () =>
-    set({ messages: [], sending: false, error: null, pendingImage: null }),
 }));
