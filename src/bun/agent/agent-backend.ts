@@ -412,7 +412,7 @@ export async function agentBackend({
         send("error", { error: String(e) });
       } finally {
         if (await continueToWork()) {
-          runOnce();
+          await runOnce();
         }
       }
     };
