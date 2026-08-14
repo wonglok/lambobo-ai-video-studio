@@ -77,7 +77,11 @@ export default function AgentWorkspace({ projectId }: Props) {
 
   const handleCsvSave = async () => {
     if (!csvEditing) return;
-    await ws.writeFileContent(projectId, csvEditing.path, Papa.unparse(csvGrid));
+    await ws.writeFileContent(
+      projectId,
+      csvEditing.path,
+      Papa.unparse(csvGrid),
+    );
     setCsvEditing(null);
   };
 
@@ -306,9 +310,12 @@ export default function AgentWorkspace({ projectId }: Props) {
   );
 
   const kindIcon = (f: WorkspaceFile) => {
-    if (f.kind === "image") return <span className="text-tiffany-500">{ImageIcon}</span>;
-    if (f.kind === "video") return <span className="text-tiffany-500">{VideoIcon}</span>;
-    if (f.kind === "text") return <span className="text-tiffany-500">{FileIcon}</span>;
+    if (f.kind === "image")
+      return <span className="text-tiffany-500">{ImageIcon}</span>;
+    if (f.kind === "video")
+      return <span className="text-tiffany-500">{VideoIcon}</span>;
+    if (f.kind === "text")
+      return <span className="text-tiffany-500">{FileIcon}</span>;
     return <span className="text-tiffany-400">{FileIcon}</span>;
   };
 
@@ -390,7 +397,10 @@ export default function AgentWorkspace({ projectId }: Props) {
                         className="w-full px-2 py-1 bg-white border border-tiffany-300 rounded text-xs text-tiffany-900 focus:outline-none focus:ring-1 focus:ring-tiffany-300"
                       />
                     ) : (
-                      <p className="text-xs text-tiffany-800 truncate" title={f.path}>
+                      <p
+                        className="text-xs text-tiffany-800 truncate"
+                        title={f.path}
+                      >
                         {f.path}
                       </p>
                     )}
