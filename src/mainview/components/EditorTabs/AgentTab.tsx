@@ -19,6 +19,11 @@ export default function AgentTab({ projectId }: Props) {
 
   useEffect(() => {
     store.checkAgentStatus();
+    store.checkServerOnline();
+    const interval = setInterval(() => {
+      store.checkServerOnline();
+    }, 3000);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -302,18 +307,23 @@ export default function AgentTab({ projectId }: Props) {
               {SpinnerIcon}
               Starting server...
             </span>
-          ) : store.agent.serverRunning ? (
+          ) : store.agent.serverOnline === true ? (
             <span className="inline-flex items-center gap-1.5 text-emerald-600">
               {CheckCircleIcon}
-              Server running at {serverUrl}
+              Server online at {serverUrl}
+            </span>
+          ) : store.agent.serverOnline === false ? (
+            <span className="inline-flex items-center gap-1.5 text-amber-600">
+              {AlertCircleIcon}
+              Server offline
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 text-tiffany-400">
-              {AlertCircleIcon}
-              Server stopped
+              {SpinnerIcon}
+              Checking server...
             </span>
           )}
-          {store.agent.serverRunning && (
+          {store.agent.serverOnline === true && (
             <button
               onClick={() => store.openAgentServer()}
               className="inline-flex items-center gap-1.5 text-tiffany-600 hover:text-tiffany-800 transition-colors cursor-pointer"
@@ -344,7 +354,7 @@ export default function AgentTab({ projectId }: Props) {
         )}
       </div>
 
-      {store.agent.serverRunning ? (
+      {store.agent.serverRunning && store.agent.serverOnline ? (
         <div className="">
           <ChatUI projectId={projectId} />
           <div className="h-4" />

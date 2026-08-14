@@ -21,7 +21,7 @@ import { TOOLS, toolDefinitions, runTool } from "./tools";
 // ========== Constants ==========
 
 const DEFAULT_MODEL = "mlx-community/gemma-4-e2b-it-4bit";
-const MAX_ITERATIONS = 5;
+const MAX_ITERATIONS = 500;
 
 type Role = "system" | "user" | "assistant" | "tool";
 
@@ -293,7 +293,15 @@ export async function agentBackend({
     });
 
     const abortController = new AbortController();
-    res.on("close", () => abortController.abort());
+
+    let ttt = setInterval(() => {
+      if (req.signal.aborted) {
+        clearInterval(ttt);
+        abortController.abort();
+      }
+    });
+
+    // res.on("close", () => abortController.abort());
 
     try {
       const seenToolKeys = new Set<string>();

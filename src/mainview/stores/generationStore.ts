@@ -90,6 +90,7 @@ interface AgentState {
   installed: boolean | null;
   starting: boolean;
   serverRunning: boolean;
+  serverOnline: boolean | null;
   serverLogs: string[];
   serverError: string | null;
 }
@@ -142,6 +143,7 @@ interface GenerationStore {
   setAgentModel: (v: string) => void;
   setAgentPort: (v: number) => void;
   checkAgentStatus: () => Promise<void>;
+  checkServerOnline: () => Promise<void>;
   installMlxVlm: () => Promise<void>;
   startAgentServer: () => Promise<void>;
   stopAgentServer: () => Promise<void>;
@@ -457,6 +459,7 @@ const initialAgent: AgentState = {
   installed: null,
   starting: false,
   serverRunning: false,
+  serverOnline: null,
   serverLogs: [],
   serverError: null,
 };
@@ -1530,6 +1533,23 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       }));
     } catch {
       // Leave status unknown (null) if the check fails.
+    }
+  },
+
+  checkServerOnline: async () => {
+    const { port } = get().agent;
+    try {
+      // Any response (even 4xx/5xx) means the port is listening.
+      await fetch(`http://localhost:${port}/v1/models`, {
+        method: "GET",
+      }).then((r) => {
+        if (!r.ok) {
+          throw new Error("server is offline");
+        }
+      });
+      set((s) => ({ agent: { ...s.agent, serverOnline: true } }));
+    } catch {
+      set((s) => ({ agent: { ...s.agent, serverOnline: false } }));
     }
   },
 
