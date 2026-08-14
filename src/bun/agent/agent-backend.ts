@@ -20,7 +20,7 @@ import { TOOLS, toolDefinitions, runTool } from "./tools";
 
 // ========== Constants ==========
 
-const DEFAULT_MODEL = "mlx-community/gemma-4-e2b-4bit";
+const DEFAULT_MODEL = "mlx-community/gemma-4-e2b-it-4bit";
 const MAX_ITERATIONS = 5;
 
 type Role = "system" | "user" | "assistant" | "tool";

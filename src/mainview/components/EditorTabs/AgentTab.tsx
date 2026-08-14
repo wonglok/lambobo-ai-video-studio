@@ -4,9 +4,9 @@ import { ChatUI } from "../ChatUI/ChatUI";
 import AgentWorkspace from "../AgentWorkspace";
 
 const MODEL_PRESETS = [
-  "mlx-community/gemma-4-e2b-4bit",
-  "mlx-community/gemma-4-e4b-4bit",
-  "mlx-community/gemma-4-26b-a4b-4bit",
+  "mlx-community/gemma-4-e2b-it-4bit",
+  "mlx-community/gemma-4-e4b-it-4bit",
+  "mlx-community/gemma-4-26b-a4b-it-4bit",
 ];
 
 interface Props {

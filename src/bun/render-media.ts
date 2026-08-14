@@ -36,7 +36,7 @@ const TEMP_DIR = join(APP_DATA_DIR, "temp");
 const PROJECTS_FILE = join(JSON_DIR, "projects.json");
 
 const MLXGEN_MODEL = "AbstractFramework/qwen-image-edit-2511-4bit";
-const MLX_VLM_MODEL = "mlx-community/gemma-4-e2b-4bit";
+const MLX_VLM_MODEL = "mlx-community/gemma-4-e2b-it-4bit";
 
 // ========== Project Types ==========
 
