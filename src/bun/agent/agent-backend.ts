@@ -7,6 +7,7 @@ import {
   rmSync,
 } from "node:fs";
 import { join, dirname } from "node:path";
+import { spawn } from "bun";
 import OpenAI from "openai";
 import { getAgentServerPort } from "../render-media";
 import {
@@ -250,6 +251,18 @@ export async function agentBackend({
     }
   });
 
+  app.post("/api/agent/open-workspace", (req, res) => {
+    const { projectId } = req.body || {};
+    if (!projectId || !/^[a-zA-Z0-9_-]{1,64}$/.test(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    const dir = workspaceDir(String(projectId));
+    ensureDir(dir);
+    spawn(["open", dir], { stdout: "ignore", stderr: "ignore" });
+    res.json({ ok: true });
+  });
+
   app.post("/api/agent/chat", async (req, res) => {
     res.writeHead(200, {
       "Content-Type": "text/event-stream",
@@ -315,7 +328,7 @@ export async function agentBackend({
     const abortController = new AbortController();
 
     let ttt = setInterval(() => {
-      if (req.signal.aborted) {
+      if (req?.signal?.aborted) {
         clearInterval(ttt);
         abortController.abort();
       }
@@ -335,6 +348,7 @@ export async function agentBackend({
             tools: toolDefinitions(TOOLS),
             tool_choice: "auto",
             temperature: 0.7,
+            reasoning_effort: "high",
             stream: true,
           },
           { signal: abortController.signal },

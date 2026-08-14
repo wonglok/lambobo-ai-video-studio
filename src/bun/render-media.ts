@@ -202,6 +202,28 @@ async function getMlxVlmServerBin(): Promise<string> {
   return "mlx_vlm.server";
 }
 
+/** Kill any process listening on the given port (returns the PIDs that were killed). */
+async function killProcessOnPort(port: number): Promise<string[]> {
+  try {
+    const proc = spawn(["lsof", "-ti", `:${port}`], {
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const output = await new Response(
+      proc.stdout as ReadableStream<Uint8Array>,
+    ).text();
+    const exitCode = await proc.exited;
+    if (exitCode !== 0) return [];
+    const pids = output.trim().split(/\s+/).filter(Boolean);
+    for (const pid of pids) {
+      spawn(["kill", "-9", pid], { stdout: "ignore", stderr: "ignore" });
+    }
+    return pids;
+  } catch {
+    return [];
+  }
+}
+
 /** True when the `mlx_vlm.server` executable is installed (known paths or PATH). */
 function isMlxVlmInstalled(): boolean {
   const candidates = [
@@ -1247,6 +1269,14 @@ export async function renderMediaRoutes({
 
     try {
       const bin = await getMlxVlmServerBin();
+
+      const killedPids = await killProcessOnPort(portNum);
+      if (killedPids.length > 0) {
+        send("log", {
+          text: `Freed port ${portNum} (killed PID(s): ${killedPids.join(", ")})\n`,
+        });
+      }
+
       send("progress", {
         status: "starting",
         label: `Starting mlx-vlm server (${modelName}) on port ${portNum}...`,

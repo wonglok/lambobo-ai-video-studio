@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import Papa from "papaparse";
 import {
   useWorkspaceStore,
   workspacePreviewUrl,
@@ -25,6 +26,8 @@ export default function AgentWorkspace({ projectId }: Props) {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [csvEditing, setCsvEditing] = useState<WorkspaceFile | null>(null);
+  const [csvGrid, setCsvGrid] = useState<string[][]>([]);
 
   useEffect(() => {
     ws.fetchFiles(projectId);
@@ -52,14 +55,45 @@ export default function AgentWorkspace({ projectId }: Props) {
   const handleEdit = async (f: WorkspaceFile) => {
     setPreview(null);
     const content = await ws.readFileContent(projectId, f.path);
-    setEditing(f);
-    setEditContent(content ?? "");
+    if (f.ext === ".csv") {
+      const parsed = Papa.parse<string[]>(content ?? "", {
+        skipEmptyLines: "greedy",
+      });
+      setEditing(null);
+      setCsvEditing(f);
+      setCsvGrid(parsed.data);
+    } else {
+      setCsvEditing(null);
+      setEditing(f);
+      setEditContent(content ?? "");
+    }
   };
 
   const handleSave = async () => {
     if (!editing) return;
     await ws.writeFileContent(projectId, editing.path, editContent);
     setEditing(null);
+  };
+
+  const handleCsvSave = async () => {
+    if (!csvEditing) return;
+    await ws.writeFileContent(projectId, csvEditing.path, Papa.unparse(csvGrid));
+    setCsvEditing(null);
+  };
+
+  const handleCsvCellChange = (row: number, col: number, value: string) => {
+    setCsvGrid((grid) =>
+      grid.map((r, ri) =>
+        ri === row ? r.map((c, ci) => (ci === col ? value : c)) : r,
+      ),
+    );
+  };
+
+  const handleCsvAddRow = () => {
+    setCsvGrid((grid) => {
+      const cols = grid.length > 0 ? grid[0].length : 1;
+      return [...grid, Array(cols).fill("")];
+    });
   };
 
   const handleRename = (f: WorkspaceFile) => {
@@ -140,6 +174,21 @@ export default function AgentWorkspace({ projectId }: Props) {
     >
       <polyline points="23 4 23 10 17 10" />
       <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+    </svg>
+  );
+
+  const FolderIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
     </svg>
   );
 
@@ -277,6 +326,13 @@ export default function AgentWorkspace({ projectId }: Props) {
             className="flex items-center justify-center w-8 h-8 rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
           >
             {RefreshIcon}
+          </button>
+          <button
+            onClick={() => ws.openWorkspace(projectId)}
+            title="Open workspace folder"
+            className="flex items-center justify-center w-8 h-8 rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+          >
+            {FolderIcon}
           </button>
           <button
             onClick={() => fileInputRef.current?.click()}
@@ -455,6 +511,66 @@ export default function AgentWorkspace({ projectId }: Props) {
             rows={10}
             className="w-full px-3 py-2 bg-white text-tiffany-900 text-xs font-mono focus:outline-none resize-y"
           />
+        </div>
+      )}
+
+      {/* CSV editor */}
+      {csvEditing && (
+        <div className="border border-tiffany-200 rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 bg-tiffany-50 border-b border-tiffany-200">
+            <span className="text-xs font-medium text-tiffany-700 truncate">
+              Editing {csvEditing.path}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={handleCsvAddRow}
+                className="px-2 py-1 text-[10px] font-medium text-tiffany-600 hover:bg-tiffany-100 rounded transition-colors"
+              >
+                Add Row
+              </button>
+              <button
+                onClick={handleCsvSave}
+                className="px-2 py-1 text-[10px] font-medium text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setCsvEditing(null)}
+                className="p-1 text-tiffany-500 hover:bg-tiffany-100 rounded transition-colors"
+                title="Close"
+              >
+                {CloseIcon}
+              </button>
+            </div>
+          </div>
+          <div className="overflow-auto max-h-80">
+            <table className="border-collapse text-xs">
+              <tbody>
+                {csvGrid.map((row, ri) => (
+                  <tr key={ri}>
+                    {row.map((cell, ci) => (
+                      <td
+                        key={ci}
+                        className={`border border-tiffany-200 p-0 ${
+                          ri === 0 ? "bg-tiffany-50" : ""
+                        }`}
+                      >
+                        <input
+                          value={cell ?? ""}
+                          onChange={(e) =>
+                            handleCsvCellChange(ri, ci, e.target.value)
+                          }
+                          className={`w-full min-w-[110px] px-2 py-1 text-tiffany-900 focus:outline-none focus:bg-tiffany-50 ${
+                            ri === 0 ? "font-medium" : ""
+                          }`}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

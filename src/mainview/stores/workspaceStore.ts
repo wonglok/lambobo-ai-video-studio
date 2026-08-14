@@ -44,6 +44,7 @@ interface WorkspaceStore {
     path: string,
     content: string,
   ) => Promise<boolean>;
+  openWorkspace: (projectId: string) => Promise<void>;
 }
 
 export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
@@ -140,6 +141,18 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     } catch (e) {
       set({ error: String(e) });
       return false;
+    }
+  },
+
+  openWorkspace: async (projectId) => {
+    try {
+      await fetch(`${API_BASE}/api/agent/open-workspace`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId }),
+      });
+    } catch (e) {
+      set({ error: String(e) });
     }
   },
 }));
