@@ -1,9 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   isValidProjectId,
@@ -49,8 +44,7 @@ async function readSSE(
 
 const tool: AgentTool = {
   name: "generate_video",
-  description:
-    "Generate a video from a prompt and an image in the workspace.",
+  description: "Generate a video from a prompt and an image in the workspace.",
   parameters: {
     type: "object",
     properties: {
@@ -118,6 +112,7 @@ const tool: AgentTool = {
             frames,
             frameRate: 24,
           }),
+          signal: ctx.signal,
         },
       );
 

@@ -4,6 +4,8 @@ export interface ToolRunContext {
   emit?: (event: string, data: Record<string, unknown>) => void;
   /** The app backend port, for tools that call internal endpoints. */
   backendPort?: number;
+  /** Abort signal derived from the incoming request, for cancellable calls. */
+  signal?: AbortSignal;
 }
 
 export interface AgentTool {

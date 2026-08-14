@@ -420,7 +420,12 @@ export async function agentBackend({
               TOOLS,
               tc.function.name,
               tc.function.arguments,
-              { projectId, emit: send, backendPort },
+              {
+                projectId,
+                emit: send,
+                backendPort,
+                signal: abortController.signal,
+              },
             );
             send("tool", {
               name: tc.function.name,
