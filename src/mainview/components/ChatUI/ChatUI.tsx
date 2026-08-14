@@ -2,7 +2,35 @@ import { useEffect, useRef } from "react";
 import { useGenerationStore } from "../../stores/generationStore";
 import { useChatStore } from "../../stores/chatStore";
 
-export function ChatUI() {
+const API_BASE = `http://localhost:${(window as any).PORT}`;
+
+interface Props {
+  projectId: string;
+}
+
+async function uploadImageToProject(
+  projectId: string,
+  dataUrl: string,
+  filename: string,
+): Promise<void> {
+  try {
+    const res = await fetch(`${API_BASE}/api/upload/image`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: dataUrl, filename, projectId }),
+    });
+    if (!res.ok) {
+      console.error(
+        "Failed to upload image to project:",
+        await res.text(),
+      );
+    }
+  } catch (e) {
+    console.error("Failed to upload image to project:", e);
+  }
+}
+
+export function ChatUI({ projectId }: Props) {
   const gen = useGenerationStore();
   const chat = useChatStore();
 
@@ -36,7 +64,13 @@ export function ChatUI() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      chat.setPendingImage(reader.result as string);
+      const dataUrl = reader.result as string;
+      chat.setPendingImage(dataUrl);
+      uploadImageToProject(
+        projectId,
+        dataUrl,
+        `chat-${Date.now()}-${file.name}`,
+      );
     };
     reader.readAsDataURL(file);
     e.target.value = "";

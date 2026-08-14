@@ -9,7 +9,11 @@ const MODEL_PRESETS = [
   "mlx-community/gemma-4-31B-it-bf16",
 ];
 
-export default function AgentTab() {
+interface Props {
+  projectId: string;
+}
+
+export default function AgentTab({ projectId }: Props) {
   const store = useGenerationStore();
 
   useEffect(() => {
@@ -341,7 +345,7 @@ export default function AgentTab() {
 
       <div className="">
         {/*  */}
-        <ChatUI></ChatUI>
+        <ChatUI projectId={projectId}></ChatUI>
         {/*  */}
       </div>
     </div>

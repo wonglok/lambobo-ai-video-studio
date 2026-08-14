@@ -238,7 +238,7 @@ export default function ProjectEditorPage() {
           {store.activeTab === "extend" && <ExtendVideoTab projectId={id!} />}
 
           {/* ========== AGENT PANEL ========== */}
-          {store.activeTab === "agent" && <AgentTab />}
+          {store.activeTab === "agent" && <AgentTab projectId={id!} />}
         </div>
       </div>
     </div>
