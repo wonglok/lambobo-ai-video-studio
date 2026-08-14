@@ -393,26 +393,6 @@ export default function GenerateImageTab({ projectId }: Props) {
         )}
       </div>
 
-      {/* ===== Prompt ===== */}
-      <div>
-        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-          Image Prompt
-          {store.csvColumns.length > 0 && (
-            <span className="ml-2 text-[10px] font-normal text-tiffany-500">
-              — template with {`{{column}}`} placeholders
-            </span>
-          )}
-        </label>
-        <textarea
-          value={store.imageEdit.prompt}
-          onChange={(e) => store.setImageEditPrompt(e.target.value)}
-          placeholder="Describe the scene, e.g. the character is at AI Chip lab."
-          rows={3}
-          disabled={store.imageEdit.generating || store.batchRunning}
-          className="w-full px-4 py-3 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
-        />
-      </div>
-
       {/* ===== Output Size ===== */}
       <div>
         <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
@@ -570,6 +550,26 @@ export default function GenerateImageTab({ projectId }: Props) {
             </div>
           </div>
         )}
+      </div>
+
+      {/* ===== Prompt ===== */}
+      <div>
+        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+          Image Prompt
+          {store.csvColumns.length > 0 && (
+            <span className="ml-2 text-[10px] font-normal text-tiffany-500">
+              — template with {`{{column}}`} placeholders
+            </span>
+          )}
+        </label>
+        <textarea
+          value={store.imageEdit.prompt}
+          onChange={(e) => store.setImageEditPrompt(e.target.value)}
+          placeholder="Describe the scene, e.g. the character is at AI Chip lab."
+          rows={3}
+          disabled={store.imageEdit.generating || store.batchRunning}
+          className="w-full px-4 py-3 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
+        />
       </div>
 
       {/* ===== Batch generate ===== */}
