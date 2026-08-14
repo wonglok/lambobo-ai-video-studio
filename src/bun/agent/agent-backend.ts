@@ -294,125 +294,136 @@ export async function agentBackend({
       apiKey: "local",
     });
 
-    try {
-      for (let i = 0; i < MAX_ITERATIONS; i++) {
-        const stream = await client.chat.completions.create({
-          model,
-          messages: toOpenAIMessages(messages),
-          tools: toolDefinitions(TOOLS),
-          tool_choice: "auto",
-          temperature: 0.7,
-          stream: true,
-        });
-
-        let content = "";
-        let finishReason = "";
-        const toolCalls: {
-          id: string;
-          function: { name: string; arguments: string };
-        }[] = [];
-
-        for await (const chunk of stream) {
-          const choice = chunk.choices?.[0];
-          const delta = choice?.delta;
-          if (choice?.finish_reason) finishReason = choice.finish_reason;
-          if (!delta) continue;
-
-          if (delta.content) {
-            content += delta.content;
-            send("delta", { text: delta.content });
-          }
-
-          if (delta.tool_calls) {
-            for (const tc of delta.tool_calls) {
-              const index = tc.index ?? 0;
-              if (!toolCalls[index]) {
-                toolCalls[index] = {
-                  id: tc.id ?? "",
-                  function: { name: "", arguments: "" },
-                };
-              }
-              if (tc.id) toolCalls[index].id = tc.id;
-              if (tc.function?.name) {
-                toolCalls[index].function.name += tc.function.name;
-              }
-              if (tc.function?.arguments) {
-                toolCalls[index].function.arguments += tc.function.arguments;
-              }
-            }
-          }
-        }
-
-        // Some local servers signal tool intent via finish_reason but don't
-        // stream the tool_calls deltas. Fall back to a non-streaming call.
-        if (toolCalls.length === 0 && finishReason === "tool_calls") {
-          const completion = await client.chat.completions.create({
+    let runOnce = async () => {
+      try {
+        for (let i = 0; i < MAX_ITERATIONS; i++) {
+          const stream = await client.chat.completions.create({
             model,
             messages: toOpenAIMessages(messages),
             tools: toolDefinitions(TOOLS),
             tool_choice: "auto",
             temperature: 0.7,
-            stream: false,
+            stream: true,
           });
-          const msg = completion.choices?.[0]?.message;
-          content = typeof msg?.content === "string" ? msg.content : "";
-          for (const tc of (msg?.tool_calls ?? []) as any[]) {
-            toolCalls.push({
-              id: tc.id ?? "",
-              function: {
-                name: tc.function?.name ?? "",
-                arguments: tc.function?.arguments ?? "",
-              },
-            });
-          }
-        }
 
-        // If the model requested tools, run them and feed results back in.
-        if (toolCalls.length > 0) {
-          messages.push({
-            role: "assistant",
-            content: content || null,
-            tool_calls: toolCalls.map((tc) => ({
-              id: tc.id,
-              type: "function" as const,
-              function: {
+          let content = "";
+          let finishReason = "";
+          const toolCalls: {
+            id: string;
+            function: { name: string; arguments: string };
+          }[] = [];
+
+          for await (const chunk of stream) {
+            const choice = chunk.choices?.[0];
+            const delta = choice?.delta;
+            if (choice?.finish_reason) finishReason = choice.finish_reason;
+            if (!delta) continue;
+
+            if (delta.content) {
+              content += delta.content;
+              send("delta", { text: delta.content });
+            }
+
+            if (delta.tool_calls) {
+              for (const tc of delta.tool_calls) {
+                const index = tc.index ?? 0;
+                if (!toolCalls[index]) {
+                  toolCalls[index] = {
+                    id: tc.id ?? "",
+                    function: { name: "", arguments: "" },
+                  };
+                }
+                if (tc.id) toolCalls[index].id = tc.id;
+                if (tc.function?.name) {
+                  toolCalls[index].function.name += tc.function.name;
+                }
+                if (tc.function?.arguments) {
+                  toolCalls[index].function.arguments += tc.function.arguments;
+                }
+              }
+            }
+          }
+
+          // Some local servers signal tool intent via finish_reason but don't
+          // stream the tool_calls deltas. Fall back to a non-streaming call.
+          if (toolCalls.length === 0 && finishReason === "tool_calls") {
+            const completion = await client.chat.completions.create({
+              model,
+              messages: toOpenAIMessages(messages),
+              tools: toolDefinitions(TOOLS),
+              tool_choice: "auto",
+              temperature: 0.7,
+              stream: false,
+            });
+            const msg = completion.choices?.[0]?.message;
+            content = typeof msg?.content === "string" ? msg.content : "";
+            for (const tc of (msg?.tool_calls ?? []) as any[]) {
+              toolCalls.push({
+                id: tc.id ?? "",
+                function: {
+                  name: tc.function?.name ?? "",
+                  arguments: tc.function?.arguments ?? "",
+                },
+              });
+            }
+          }
+
+          // If the model requested tools, run them and feed results back in.
+          if (toolCalls.length > 0) {
+            messages.push({
+              role: "assistant",
+              content: content || null,
+              tool_calls: toolCalls.map((tc) => ({
+                id: tc.id,
+                type: "function" as const,
+                function: {
+                  name: tc.function.name,
+                  arguments: tc.function.arguments,
+                },
+              })),
+            });
+
+            for (const tc of toolCalls) {
+              const output = await runTool(
+                TOOLS,
+                tc.function.name,
+                tc.function.arguments,
+                { projectId },
+              );
+              send("tool", {
                 name: tc.function.name,
                 arguments: tc.function.arguments,
-              },
-            })),
-          });
-
-          for (const tc of toolCalls) {
-            const output = await runTool(
-              TOOLS,
-              tc.function.name,
-              tc.function.arguments,
-              { projectId },
-            );
-            send("tool", {
-              name: tc.function.name,
-              arguments: tc.function.arguments,
-              output,
-            });
-            messages.push({
-              role: "tool",
-              tool_call_id: tc.id,
-              name: tc.function.name,
-              content: output,
-            });
+                output,
+              });
+              messages.push({
+                role: "tool",
+                tool_call_id: tc.id,
+                name: tc.function.name,
+                content: output,
+              });
+            }
+            continue;
           }
-          continue;
+
+          // No tool calls → the streamed content is the final answer.
+          break;
         }
-
-        // No tool calls → the streamed content is the final answer.
-        break;
+      } catch (e) {
+        send("error", { error: String(e) });
+      } finally {
+        if (await continueToWork()) {
+          runOnce();
+        }
       }
+    };
 
-      send("done", {});
-    } catch (e) {
-      send("error", { error: String(e) });
-    } finally {
-      res.end();
-    }
+    await runOnce();
+
+    send("done", {});
+    res.end();
   });
+}
+
+async function continueToWork(): Promise<boolean> {
+  return true;
 }
