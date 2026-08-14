@@ -5,6 +5,7 @@ import {
   resolveWorkspacePath,
   classifyFile,
   UPLOAD_DIR,
+  workspaceDir,
 } from "../workspace";
 import type { AgentTool } from "./types";
 
@@ -107,6 +108,7 @@ const tool: AgentTool = {
             prompt,
             imagePath: imageName,
             projectId: ctx.projectId,
+            outputDir: workspaceDir(ctx.projectId),
             width: 480,
             height: 480,
             frames,

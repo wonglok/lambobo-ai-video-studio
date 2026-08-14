@@ -30,6 +30,7 @@ export function getAgentServerPort(): number | null {
 const APP_DATA_DIR = join(homedir(), "media-studio");
 const OUTPUT_DIR = join(APP_DATA_DIR, "output");
 const UPLOAD_DIR = join(APP_DATA_DIR, "upload");
+const AGENTS_DIR = join(APP_DATA_DIR, "agents");
 const JSON_DIR = join(APP_DATA_DIR, "json");
 const PYTHON_DIR = join(APP_DATA_DIR, "python-src");
 const TEMP_DIR = join(APP_DATA_DIR, "temp");
@@ -54,6 +55,37 @@ function ensureDir(dir: string) {
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
+}
+
+/**
+ * Resolve an output directory for generated media. Returns the directory path,
+ * or null when the supplied directory is outside the allowed roots.
+ */
+function resolveOutputDir(
+  outputDir: unknown,
+  projectId: string,
+): string | null {
+  const base =
+    typeof outputDir === "string" && outputDir.trim()
+      ? outputDir.trim()
+      : join(OUTPUT_DIR, projectId);
+
+  ensureDir(base);
+  let realBase: string;
+  try {
+    realBase = realpathSync(base);
+  } catch {
+    return null;
+  }
+
+  for (const root of [OUTPUT_DIR, UPLOAD_DIR, AGENTS_DIR]) {
+    ensureDir(root);
+    const realRoot = realpathSync(root);
+    if (realBase === realRoot || realBase.startsWith(realRoot + sep)) {
+      return base;
+    }
+  }
+  return null;
 }
 
 function readProjects(): Project[] {
@@ -627,6 +659,7 @@ export async function renderMediaRoutes({
       prompt,
       imagePath,
       projectId,
+      outputDir,
       width = 480,
       height = 480,
       frames = 121,
@@ -677,8 +710,12 @@ export async function renderMediaRoutes({
       }
 
       const uvPath = await getUvPath();
-      const projectOutputDir = join(OUTPUT_DIR, projectId);
-      ensureDir(projectOutputDir);
+      const projectOutputDir = resolveOutputDir(outputDir, projectId);
+      if (!projectOutputDir) {
+        send("error", { error: "Invalid output directory." });
+        res.end();
+        return;
+      }
 
       const outputFile = `video-${Date.now()}.mp4`;
       const outputPath = join(projectOutputDir, outputFile);
