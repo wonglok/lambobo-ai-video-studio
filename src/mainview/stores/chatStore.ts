@@ -141,15 +141,6 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
       await readSSEStream(res, (event, data) => {
         switch (event) {
-          case "step":
-            updateAssistant((m) => ({
-              ...m,
-              steps: [
-                ...m.steps,
-                { type: "thought", text: data.text as string },
-              ],
-            }));
-            break;
           case "tool":
             updateAssistant((m) => ({
               ...m,
@@ -163,8 +154,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
               ],
             }));
             break;
-          case "answer":
-            updateAssistant((m) => ({ ...m, content: data.text as string }));
+          case "delta":
+            updateAssistant((m) => ({
+              ...m,
+              content: m.content + (data.text as string),
+            }));
             break;
           case "error":
             set({ error: data.error || "Something went wrong" });

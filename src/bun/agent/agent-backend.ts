@@ -12,35 +12,59 @@ const JSON_DIR = join(APP_DATA_DIR, "json");
 const PROJECTS_FILE = join(JSON_DIR, "projects.json");
 
 const DEFAULT_MODEL = "mlx-community/gemma-4-E4B-it-bf16";
-const MAX_ITERATIONS = 8;
+const MAX_ITERATIONS = 100;
 
-type Role = "system" | "user" | "assistant";
+type Role = "system" | "user" | "assistant" | "tool";
+
+interface ToolCall {
+  id: string;
+  type: "function";
+  function: { name: string; arguments: string };
+}
 
 interface ChatMessage {
   role: Role;
-  content: string;
+  content: string | null;
   image?: string;
-}
-
-interface Tool {
-  name: string;
-  description: string;
-  run: (input: string) => Promise<string>;
+  tool_call_id?: string;
+  name?: string;
+  tool_calls?: ToolCall[];
 }
 
 // ========== Tools ==========
 
-const TOOLS: Tool[] = [
+const TOOLS = [
   {
-    name: "get_time",
-    description: "Return the current date and time. Input: none.",
-    run: async () => new Date().toString(),
+    type: "function",
+    function: {
+      name: "get_time",
+      description: "Return the current date and time.",
+      parameters: {
+        type: "object",
+        properties: {},
+        additionalProperties: false,
+      },
+    },
   },
   {
-    name: "list_projects",
-    description:
-      "List all projects in the studio (name and description). Input: none.",
-    run: async () => {
+    type: "function",
+    function: {
+      name: "list_projects",
+      description: "List all projects in the studio (name and description).",
+      parameters: {
+        type: "object",
+        properties: {},
+        additionalProperties: false,
+      },
+    },
+  },
+];
+
+async function runTool(name: string, _args: string): Promise<string> {
+  switch (name) {
+    case "get_time":
+      return new Date().toString();
+    case "list_projects":
       try {
         if (!existsSync(PROJECTS_FILE)) return "[]";
         const projects = JSON.parse(readFileSync(PROJECTS_FILE, "utf-8"));
@@ -53,117 +77,43 @@ const TOOLS: Tool[] = [
       } catch (e) {
         return `Error reading projects: ${String(e)}`;
       }
-    },
-  },
-];
-
-// ========== Prompt & parsing ==========
-
-function buildSystemPrompt(): string {
-  const toolList = TOOLS.map((t) => `- ${t.name}: ${t.description}`).join("\n");
-  return [
-    "You are a helpful assistant inside an AI video studio app.",
-    "You can use tools to help answer the user's questions.",
-    "",
-    "Use the following ReAct format to decide when to use a tool:",
-    "",
-    "Thought: <your reasoning about what to do>",
-    "Action: <tool name, or leave blank if no tool is needed>",
-    "Action Input: <input for the tool, or leave blank>",
-    "",
-    "After you call a tool you will receive an Observation. Then continue with",
-    "another Thought/Action/Action Input cycle if needed, or give your final answer.",
-    "",
-    "When you are ready to answer the user, end with:",
-    "Final Answer: <your response>",
-    "",
-    "Available tools:",
-    toolList,
-    "",
-    "If no tool is needed, respond directly with Final Answer.",
-  ].join("\n");
+    default:
+      return `Unknown tool: ${name}`;
+  }
 }
 
-function parseReAct(text: string): {
-  finalAnswer: string | null;
-  action: string | null;
-  actionInput: string | null;
-} {
-  const trimmed = text.trim();
-
-  // A "Final Answer:" marker wins regardless of position.
-  const finalMatch = trimmed.match(/Final Answer\s*:\s*([\s\S]*)$/i);
-  if (finalMatch) {
-    return {
-      finalAnswer: finalMatch[1].trim(),
-      action: null,
-      actionInput: null,
-    };
-  }
-
-  const actionMatch = trimmed.match(/Action\s*:\s*([^\n]+)/i);
-  if (actionMatch) {
-    const inputMatch = trimmed.match(
-      /Action Input\s*:\s*([\s\S]*?)(?=\n(?:Thought|Action|Final Answer)\s*:|$)/i,
-    );
-    return {
-      finalAnswer: null,
-      action: actionMatch[1].trim(),
-      actionInput: inputMatch ? inputMatch[1].trim() : "",
-    };
-  }
-
-  // No explicit marker → treat the whole reply as the final answer.
-  return { finalAnswer: trimmed, action: null, actionInput: null };
-}
-
-// ========== Model call ==========
-
-/**
- * Only accept inline base64 image data URLs. Reject `http(s):`, `file:`, and
- * any other scheme so a client cannot make the model server fetch an arbitrary
- * URL (SSRF).
- */
+/** Only accept inline base64 image data URLs (SSRF guard). */
 function isValidImageDataUrl(url: string): boolean {
   return /^data:image\/[a-z0-9.+-]+;base64,/i.test(url);
 }
 
-/**
- * Convert internal messages into OpenAI-compatible message params, handling
- * optional image attachments as multimodal content.
- */
+/** Convert internal messages into OpenAI-compatible message params. */
 function toOpenAIMessages(messages: ChatMessage[]): any[] {
   return messages.map((m) => {
-    if (m.image) {
+    if (m.role === "tool") {
+      return {
+        role: "tool",
+        tool_call_id: m.tool_call_id,
+        content: m.content ?? "",
+      };
+    }
+    if (m.role === "assistant" && m.tool_calls) {
+      return {
+        role: "assistant",
+        content: m.content,
+        tool_calls: m.tool_calls,
+      };
+    }
+    if (m.role === "user" && m.image) {
       const parts: any[] = [];
       if (m.content && m.content.trim()) {
         parts.push({ type: "text", text: m.content });
       }
       parts.push({ type: "image_url", image_url: { url: m.image } });
-      return { role: m.role, content: parts };
+      return { role: "user", content: parts };
     }
-    return { role: m.role, content: m.content };
+    return { role: m.role, content: m.content ?? "" };
   });
-}
-
-async function callModel(
-  port: number,
-  model: string,
-  messages: ChatMessage[],
-): Promise<string> {
-  const client = new OpenAI({
-    baseURL: `http://localhost:${port}/v1`,
-    apiKey: "local",
-  });
-
-  const completion = await client.chat.completions.create({
-    model,
-    messages: toOpenAIMessages(messages),
-    temperature: 0.7,
-  });
-
-  const content = completion.choices[0]?.message?.content;
-  return typeof content === "string" ? content : "";
 }
 
 // ========== Routes ==========
@@ -189,13 +139,12 @@ export async function agentBackend({
 
     const body = req.body || {};
 
-    // Use the port the app itself started the mlx-vlm server on — never trust a
-    // client-supplied port, which would otherwise allow probing arbitrary
-    // localhost services (SSRF).
+    // Use the port the app itself started the mlx-vlm server on (SSRF guard).
     const port = getAgentServerPort();
     if (port === null) {
       send("error", {
-        error: "Model server is not running. Start it from the Agent tab first.",
+        error:
+          "Model server is not running. Start it from the Agent tab first.",
       });
       res.end();
       return;
@@ -208,13 +157,7 @@ export async function agentBackend({
 
     const incoming = Array.isArray(body.messages) ? body.messages : [];
     const history: ChatMessage[] = incoming
-      .filter(
-        (m: any) =>
-          m &&
-          (m.role === "user" || m.role === "assistant") &&
-          ((typeof m.content === "string" && m.content.trim()) ||
-            (typeof m.image === "string" && m.image.trim())),
-      )
+      .filter((m: any) => m && (m.role === "user" || m.role === "assistant"))
       .map((m: any) => ({
         role: m.role,
         content: typeof m.content === "string" ? m.content : "",
@@ -225,80 +168,107 @@ export async function agentBackend({
       }));
 
     const messages: ChatMessage[] = [
-      { role: "system", content: buildSystemPrompt() },
+      {
+        role: "system",
+        content:
+          "You are a helpful assistant inside an AI video studio app. Use the available tools when they help answer the user's question.",
+      },
       ...history,
     ];
 
+    const client = new OpenAI({
+      baseURL: `http://localhost:${port}/v1`,
+      apiKey: "local",
+    });
+
     try {
-      let finalAnswer: string | null = null;
-
       for (let i = 0; i < MAX_ITERATIONS; i++) {
-        send("step", { text: "Thinking..." });
+        const stream = await client.chat.completions.create({
+          model,
+          messages: toOpenAIMessages(messages),
+          tools: TOOLS as any,
+          temperature: 0.7,
+          stream: true,
+        });
 
-        const reply = await callModel(port, model, messages);
-        messages.push({ role: "assistant", content: reply });
+        let content = "";
+        const toolCalls: {
+          id: string;
+          function: { name: string; arguments: string };
+        }[] = [];
 
-        const parsed = parseReAct(reply);
+        for await (const chunk of stream) {
+          const delta = chunk.choices?.[0]?.delta;
+          if (!delta) continue;
 
-        if (parsed.finalAnswer !== null) {
-          finalAnswer = parsed.finalAnswer;
-          break;
-        }
-
-        if (parsed.action) {
-          const tool = TOOLS.find((t) => t.name === parsed.action);
-          if (tool) {
-            send("step", { text: `Running tool: ${tool.name}` });
-
-            let output: string;
-            try {
-              output = await tool.run(parsed.actionInput ?? "");
-            } catch (e) {
-              output = `Tool error: ${String(e)}`;
-            }
-
-            send("tool", {
-              name: tool.name,
-              input: parsed.actionInput ?? "",
-              output,
-            });
-
-            messages.push({
-              role: "user",
-              content: `Observation: ${output}`,
-            });
-            continue;
+          if (delta.content) {
+            content += delta.content;
+            send("delta", { text: delta.content });
           }
 
-          send("tool", {
-            name: parsed.action,
-            input: parsed.actionInput ?? "",
-            output: "Unknown tool",
+          if (delta.tool_calls) {
+            for (const tc of delta.tool_calls) {
+              const index = tc.index ?? 0;
+              if (!toolCalls[index]) {
+                toolCalls[index] = {
+                  id: tc.id ?? "",
+                  function: { name: "", arguments: "" },
+                };
+              }
+              if (tc.id) toolCalls[index].id = tc.id;
+              if (tc.function?.name) {
+                toolCalls[index].function.name += tc.function.name;
+              }
+              if (tc.function?.arguments) {
+                toolCalls[index].function.arguments += tc.function.arguments;
+              }
+            }
+          }
+        }
+
+        // If the model requested tools, run them and feed results back in.
+        if (toolCalls.length > 0) {
+          messages.push({
+            role: "assistant",
+            content: content || null,
+            tool_calls: toolCalls.map((tc) => ({
+              id: tc.id,
+              type: "function" as const,
+              function: {
+                name: tc.function.name,
+                arguments: tc.function.arguments,
+              },
+            })),
           });
 
-          messages.push({
-            role: "user",
-            content: `Observation: Unknown tool "${
-              parsed.action
-            }". Available tools: ${TOOLS.map((t) => t.name).join(", ")}.`,
-          });
+          for (const tc of toolCalls) {
+            const output = await runTool(
+              tc.function.name,
+              tc.function.arguments,
+            );
+            send("tool", {
+              name: tc.function.name,
+              arguments: tc.function.arguments,
+              output,
+            });
+            messages.push({
+              role: "tool",
+              tool_call_id: tc.id,
+              name: tc.function.name,
+              content: output,
+            });
+          }
           continue;
         }
 
-        // No action and no explicit final answer marker (rare).
-        finalAnswer = reply;
+        // No tool calls → the streamed content is the final answer.
         break;
       }
 
-      if (finalAnswer === null) {
-        finalAnswer = "I wasn't able to finish within the step limit.";
-      }
-
-      send("answer", { text: finalAnswer });
+      send("done", {});
     } catch (e) {
       send("error", { error: String(e) });
     } finally {
-      send("done", {});
       res.end();
     }
   });

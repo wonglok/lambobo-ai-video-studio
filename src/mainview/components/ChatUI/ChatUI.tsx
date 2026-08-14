@@ -115,12 +115,6 @@ export function ChatUI() {
     </svg>
   );
 
-  const DotIcon = (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-      <circle cx="12" cy="12" r="6" />
-    </svg>
-  );
-
   const AttachIcon = (
     <svg
       width="16"
@@ -201,20 +195,10 @@ export function ChatUI() {
                       key={i}
                       className="flex items-start gap-1.5 text-[11px] text-tiffany-600/70"
                     >
-                      {step.type === "tool" ? (
-                        <span className="mt-0.5 shrink-0 text-tiffany-400">
-                          {WrenchIcon}
-                        </span>
-                      ) : (
-                        <span className="mt-0.5 shrink-0 text-tiffany-300">
-                          {DotIcon}
-                        </span>
-                      )}
-                      <span className="truncate">
-                        {step.type === "tool"
-                          ? `Tool: ${step.text}`
-                          : step.text}
+                      <span className="mt-0.5 shrink-0 text-tiffany-400">
+                        {WrenchIcon}
                       </span>
+                      <span className="truncate">Tool: {step.text}</span>
                     </div>
                   ))}
                 </div>
