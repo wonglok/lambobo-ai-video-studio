@@ -6,6 +6,7 @@ export interface AgentStep {
   type: "thought" | "tool";
   text: string;
   detail?: string;
+  args?: string;
 }
 
 export interface ChatMessage {
@@ -14,6 +15,7 @@ export interface ChatMessage {
   content: string;
   image?: string;
   images?: string[];
+  notices?: string[];
   steps: AgentStep[];
 }
 
@@ -260,6 +262,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
                   type: "tool",
                   text: data.name as string,
                   detail: data.output as string,
+                  args: data.arguments as string,
                 },
               ],
             }));
@@ -279,6 +282,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
             }));
             break;
           }
+          case "notice":
+            updateAssistant((m) => ({
+              ...m,
+              notices: [...(m.notices ?? []), data.text as string],
+            }));
+            break;
           case "error":
             set({ error: data.error || "Something went wrong" });
             break;

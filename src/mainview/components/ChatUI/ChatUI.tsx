@@ -4,6 +4,18 @@ import { useChatStore } from "../../stores/chatStore";
 
 const API_BASE = `http://localhost:${(window as any).PORT}`;
 
+/** Extract a readable summary of a tool call's JSON arguments. */
+function summarizeArgs(args?: string): string {
+  if (!args) return "";
+  try {
+    const obj = JSON.parse(args);
+    const strings = Object.values(obj).filter((v) => typeof v === "string");
+    return strings.join(", ");
+  } catch {
+    return args;
+  }
+}
+
 interface Props {
   projectId: string;
 }
@@ -350,16 +362,50 @@ export function ChatUI({ projectId }: Props) {
               <div key={m.id} className="flex flex-col gap-1.5">
                 {m.steps.length > 0 && (
                   <div className="flex flex-col gap-1">
-                    {m.steps.map((step, i) => (
+                    {m.steps.map((step, i) => {
+                      const argSummary = summarizeArgs(step.args);
+                      return (
+                        <div
+                          key={i}
+                          className="flex items-start gap-1.5 text-[11px] text-tiffany-600/70"
+                        >
+                          <span className="mt-0.5 shrink-0 text-tiffany-400">
+                            {WrenchIcon}
+                          </span>
+                          <span className="truncate">
+                            <span className="font-medium">Tool: {step.text}</span>
+                            {argSummary && (
+                              <span className="text-tiffany-400"> · {argSummary}</span>
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {m.notices && m.notices.length > 0 && (
+                  <div className="flex flex-col gap-1">
+                    {m.notices.map((n, i) => (
                       <div
                         key={i}
-                        className="flex items-start gap-1.5 text-[11px] text-tiffany-600/70"
+                        className="text-xs text-tiffany-600/70 italic whitespace-pre-wrap"
                       >
-                        <span className="mt-0.5 shrink-0 text-tiffany-400">
-                          {WrenchIcon}
-                        </span>
-                        <span className="truncate">Tool: {step.text}</span>
+                        {n}
                       </div>
+                    ))}
+                  </div>
+                )}
+
+                {m.images && m.images.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {m.images.map((img, i) => (
+                      <img
+                        key={i}
+                        src={img}
+                        alt={`result ${i + 1}`}
+                        className="max-w-48 max-h-48 rounded-lg border border-tiffany-200 object-contain"
+                      />
                     ))}
                   </div>
                 )}
