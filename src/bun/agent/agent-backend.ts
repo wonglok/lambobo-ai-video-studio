@@ -21,7 +21,7 @@ import { TOOLS, toolDefinitions, runTool } from "./tools";
 // ========== Constants ==========
 
 const DEFAULT_MODEL = "mlx-community/gemma-4-e2b-4bit";
-const MAX_ITERATIONS = 10;
+const MAX_ITERATIONS = 5;
 
 type Role = "system" | "user" | "assistant" | "tool";
 
@@ -78,10 +78,14 @@ function toOpenAIMessages(messages: ChatMessage[]): any[] {
 function buildSystemPrompt(): string {
   const toolList = TOOLS.map((t) => `- ${t.name}: ${t.description}`).join("\n");
   return [
-    "You are a helpful assistant that uses tool to help the user to achieve their goal.",
+    "You are a helpful assistant that uses tools to help the user achieve their goal.",
     "",
     "Available tools:",
     toolList,
+    "",
+    "Rules:",
+    "- Call a tool only when you actually need its result. Once you have enough information, answer the user directly WITHOUT calling any tool.",
+    "- Do not call the same tool twice with the same arguments.",
   ].join("\n");
 }
 
@@ -261,6 +265,7 @@ export async function agentBackend({
       /^[a-zA-Z0-9_-]{1,64}$/.test(body.projectId)
         ? body.projectId
         : null;
+
     if (projectId === null) {
       send("error", { error: "Invalid project ID" });
       res.end();
@@ -268,16 +273,14 @@ export async function agentBackend({
     }
 
     const incoming = Array.isArray(body.messages) ? body.messages : [];
-    const history: ChatMessage[] = incoming
-      // .filter((m: any) => m && (m.role === "user" || m.role === "assistant"))
-      .map((m: any) => ({
-        role: m.role,
-        content: typeof m.content === "string" ? m.content : "",
-        image:
-          typeof m.image === "string" && isValidImageDataUrl(m.image)
-            ? m.image
-            : undefined,
-      }));
+    const history: ChatMessage[] = incoming.map((m: any) => ({
+      role: m.role,
+      content: typeof m.content === "string" ? m.content : "",
+      image:
+        typeof m.image === "string" && isValidImageDataUrl(m.image)
+          ? m.image
+          : undefined,
+    }));
 
     const messages: ChatMessage[] = [
       { role: "system", content: buildSystemPrompt() },
@@ -289,9 +292,13 @@ export async function agentBackend({
       apiKey: "local",
     });
 
-    const abortController = req;
+    const abortController = new AbortController();
+    res.on("close", () => abortController.abort());
 
     try {
+      const seenToolKeys = new Set<string>();
+      let streamedAny = false;
+
       for (let i = 0; i < MAX_ITERATIONS; i++) {
         const stream = await client.chat.completions.create(
           {
@@ -306,7 +313,6 @@ export async function agentBackend({
         );
 
         let content = "";
-        let finishReason = "";
         const toolCalls: {
           id: string;
           function: { name: string; arguments: string };
@@ -315,12 +321,12 @@ export async function agentBackend({
         for await (const chunk of stream) {
           const choice = chunk.choices?.[0];
           const delta = choice?.delta;
-          if (choice?.finish_reason) finishReason = choice.finish_reason;
           if (!delta) continue;
 
           if (delta.content) {
             content += delta.content;
             send("delta", { text: delta.content });
+            streamedAny = true;
           }
 
           if (delta.tool_calls) {
@@ -345,6 +351,15 @@ export async function agentBackend({
 
         // If the model requested tools, run them and feed results back in.
         if (toolCalls.length > 0) {
+          const toolKey = toolCalls
+            .map((tc) => `${tc.function.name}:${tc.function.arguments}`)
+            .join("||");
+          if (toolKey && seenToolKeys.has(toolKey)) {
+            // Stuck repeating a tool call — stop.
+            break;
+          }
+          if (toolKey) seenToolKeys.add(toolKey);
+
           messages.push({
             role: "assistant",
             content: content || null,
@@ -384,6 +399,9 @@ export async function agentBackend({
         break;
       }
 
+      if (!streamedAny) {
+        send("delta", { text: "Done." });
+      }
       send("done", {});
     } catch (e) {
       send("error", { error: String(e) });

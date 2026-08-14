@@ -55,9 +55,9 @@ export function ChatUI({ projectId }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [confirmDeleteSession, setConfirmDeleteSession] = useState<string | null>(
-    null,
-  );
+  const [confirmDeleteSession, setConfirmDeleteSession] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -389,9 +389,14 @@ export function ChatUI({ projectId }: Props) {
                             {WrenchIcon}
                           </span>
                           <span className="truncate">
-                            <span className="font-medium">Tool: {step.text}</span>
+                            <span className="font-medium">
+                              Tool: {step.text}
+                            </span>
                             {argSummary && (
-                              <span className="text-tiffany-400"> · {argSummary}</span>
+                              <span className="text-tiffany-400">
+                                {" "}
+                                · {argSummary}
+                              </span>
                             )}
                           </span>
                         </div>
