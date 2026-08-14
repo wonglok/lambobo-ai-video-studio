@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useGenerationStore } from "../../stores/generationStore";
+import { useProjectStore } from "../../stores/projectStore";
 
 interface Props {
   projectId: string;
@@ -7,6 +8,7 @@ interface Props {
 
 export default function GenerateImageTab({ projectId }: Props) {
   const store = useGenerationStore();
+  const { openFolder } = useProjectStore();
   const csvInputRef = useRef<HTMLInputElement>(null);
   const characterFileRef = useRef<HTMLInputElement>(null);
   const imageLogRef = useRef<HTMLPreElement | any>(null);
@@ -64,7 +66,26 @@ export default function GenerateImageTab({ projectId }: Props) {
     e.target.value = "";
   };
 
+  const handleOpenOutputFolder = async () => {
+    await openFolder(projectId, "output");
+  };
+
   // ========== SVG Icons ==========
+
+  const FolderIcon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+    </svg>
+  );
 
   const ImageEditIcon = (
     <svg
@@ -661,6 +682,15 @@ export default function GenerateImageTab({ projectId }: Props) {
           Generate Image
         </button>
       )}
+
+      {/* ===== Show output folder ===== */}
+      <button
+        onClick={handleOpenOutputFolder}
+        className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-tiffany-50 hover:bg-tiffany-100 text-tiffany-700 text-sm font-medium rounded-xl border border-tiffany-200 transition-colors"
+      >
+        {FolderIcon}
+        Show Output Folder
+      </button>
 
       {/* ===== Error ===== */}
       {store.imageEdit.error && (

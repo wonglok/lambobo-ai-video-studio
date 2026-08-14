@@ -245,8 +245,8 @@ export default function GenerateVideoTab({ projectId }: Props) {
                 {CsvIcon}
                 <span className="font-medium">{store.csvFilename}</span>
                 <span className="text-tiffany-600/60">
-                  ({store.csvRows.length} rows,{" "}
-                  {store.csvColumns.length} columns)
+                  ({store.csvRows.length} rows, {store.csvColumns.length}{" "}
+                  columns)
                 </span>
                 <span className="text-tiffany-600/60">
                   — {store.csvSelectedIndices.size} selected
@@ -317,11 +317,7 @@ export default function GenerateVideoTab({ projectId }: Props) {
                               type="text"
                               value={row[col] ?? ""}
                               onChange={(e) =>
-                                store.updateCsvCell(
-                                  rowIdx,
-                                  col,
-                                  e.target.value,
-                                )
+                                store.updateCsvCell(rowIdx, col, e.target.value)
                               }
                               disabled={store.batchRunning}
                               className="w-full min-w-[120px] px-2 py-1 bg-transparent border border-transparent hover:border-tiffany-200 focus:border-tiffany-300 focus:outline-none focus:ring-1 focus:ring-tiffany-300/30 rounded text-tiffany-800 transition-colors disabled:opacity-50"
@@ -644,9 +640,7 @@ export default function GenerateVideoTab({ projectId }: Props) {
         <button
           onClick={handleGenerateVideo}
           disabled={
-            store.batchRunning ||
-            !store.video.prompt.trim() ||
-            store.uploading
+            store.batchRunning || !store.video.prompt.trim() || store.uploading
           }
           className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-600 hover:bg-tiffany-700 active:bg-tiffany-800 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
         >
