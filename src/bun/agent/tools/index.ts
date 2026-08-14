@@ -9,6 +9,7 @@ import updateFileTool from "./update-file";
 import removeFileTool from "./remove-file";
 import grepFilesTool from "./grep-files";
 import searchFilesTool from "./search-files";
+import showImageTool from "./show-image";
 
 export type { AgentTool, ToolRunContext } from "./types";
 
@@ -23,6 +24,7 @@ export const TOOLS: AgentTool[] = [
   removeFileTool,
   grepFilesTool,
   searchFilesTool,
+  showImageTool,
 ];
 
 /** Build the OpenAI `tools` array from the tool objects. */

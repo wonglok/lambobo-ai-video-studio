@@ -13,6 +13,7 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   image?: string;
+  images?: string[];
   steps: AgentStep[];
 }
 
@@ -269,6 +270,15 @@ export const useChatStore = create<ChatStore>((set, get) => ({
               content: m.content + (data.text as string),
             }));
             break;
+          case "image": {
+            const url = data.url as string;
+            const fullUrl = url.startsWith("http") ? url : `${API_BASE}${url}`;
+            updateAssistant((m) => ({
+              ...m,
+              images: [...(m.images ?? []), fullUrl],
+            }));
+            break;
+          }
           case "error":
             set({ error: data.error || "Something went wrong" });
             break;

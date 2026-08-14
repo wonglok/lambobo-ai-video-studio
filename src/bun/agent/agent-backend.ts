@@ -389,7 +389,7 @@ export async function agentBackend({
               TOOLS,
               tc.function.name,
               tc.function.arguments,
-              { projectId },
+              { projectId, emit: send },
             );
             send("tool", {
               name: tc.function.name,
