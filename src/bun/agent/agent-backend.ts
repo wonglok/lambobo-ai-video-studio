@@ -5,9 +5,12 @@ import {
   mkdirSync,
   writeFileSync,
   readdirSync,
+  statSync,
+  renameSync,
+  rmSync,
 } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, dirname, sep } from "node:path";
 import OpenAI from "openai";
 import { getAgentServerPort } from "../render-media";
 
@@ -45,8 +48,98 @@ function ensureDir(dir: string): void {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 }
 
+function workspaceDir(projectId: string): string {
+  return join(AGENTS_DIR, projectId);
+}
+
 function memoriesDir(projectId: string): string {
   return join(AGENTS_DIR, projectId, MEMORIES_DIR_NAME);
+}
+
+/** Resolve a workspace-relative path safely (no traversal / absolute paths). */
+function resolveWorkspacePath(
+  projectId: string,
+  relativePath: string,
+): string | null {
+  if (typeof relativePath !== "string" || !relativePath) return null;
+  if (relativePath.includes("..") || relativePath.includes("\0")) return null;
+  const normalized = relativePath.replace(/\\/g, "/");
+  if (normalized.startsWith("/")) return null;
+  const base = workspaceDir(projectId);
+  const resolved = join(base, normalized);
+  if (resolved !== base && !resolved.startsWith(base + sep)) return null;
+  return resolved;
+}
+
+type FileKind = "image" | "video" | "text" | "other";
+
+const IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"];
+const VIDEO_EXTS = [".mp4", ".mov", ".m4v", ".webm", ".mkv", ".avi"];
+const TEXT_EXTS = [
+  ".md",
+  ".txt",
+  ".json",
+  ".csv",
+  ".log",
+  ".html",
+  ".js",
+  ".ts",
+  ".tsx",
+  ".jsx",
+  ".py",
+  ".css",
+  ".yml",
+  ".yaml",
+];
+
+function classifyFile(name: string): FileKind {
+  const ext = name.slice(name.lastIndexOf(".")).toLowerCase();
+  if (IMAGE_EXTS.includes(ext)) return "image";
+  if (VIDEO_EXTS.includes(ext)) return "video";
+  if (TEXT_EXTS.includes(ext)) return "text";
+  return "other";
+}
+
+interface WorkspaceFile {
+  path: string;
+  name: string;
+  ext: string;
+  size: number;
+  mtime: number;
+  kind: FileKind;
+}
+
+function walkFiles(base: string, prefix = ""): WorkspaceFile[] {
+  const results: WorkspaceFile[] = [];
+  let entries: string[];
+  try {
+    entries = readdirSync(base);
+  } catch {
+    return results;
+  }
+  for (const entry of entries) {
+    const full = join(base, entry);
+    const rel = prefix ? `${prefix}/${entry}` : entry;
+    let st;
+    try {
+      st = statSync(full);
+    } catch {
+      continue;
+    }
+    if (st.isDirectory()) {
+      results.push(...walkFiles(full, rel));
+    } else {
+      results.push({
+        path: rel,
+        name: entry,
+        ext: entry.slice(entry.lastIndexOf(".")).toLowerCase(),
+        size: st.size,
+        mtime: st.mtimeMs,
+        kind: classifyFile(entry),
+      });
+    }
+  }
+  return results;
 }
 
 // ========== Tools ==========
