@@ -2,26 +2,23 @@ import { type Application } from "express";
 import {
   existsSync,
   readFileSync,
-  mkdirSync,
   writeFileSync,
-  readdirSync,
-  statSync,
   renameSync,
   rmSync,
-  realpathSync,
 } from "node:fs";
-import { homedir } from "node:os";
-import { join, dirname, sep } from "node:path";
+import { join, dirname } from "node:path";
 import OpenAI from "openai";
 import { getAgentServerPort } from "../render-media";
+import {
+  workspaceDir,
+  resolveWorkspacePath,
+  walkFiles,
+  classifyFile,
+  ensureDir,
+} from "./workspace";
+import { TOOLS, toolDefinitions, runTool } from "./tools";
 
 // ========== Constants ==========
-
-const APP_DATA_DIR = join(homedir(), "media-studio");
-const JSON_DIR = join(APP_DATA_DIR, "json");
-const PROJECTS_FILE = join(JSON_DIR, "projects.json");
-const AGENTS_DIR = join(APP_DATA_DIR, "agents");
-const MEMORIES_DIR_NAME = "memories";
 
 const DEFAULT_MODEL = "mlx-community/gemma-4-E4B-it-bf16";
 const MAX_ITERATIONS = 100;
@@ -41,241 +38,6 @@ interface ChatMessage {
   tool_call_id?: string;
   name?: string;
   tool_calls?: ToolCall[];
-}
-
-// ========== Workspace helpers ==========
-
-function ensureDir(dir: string): void {
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-}
-
-function workspaceDir(projectId: string): string {
-  return join(AGENTS_DIR, projectId);
-}
-
-function memoriesDir(projectId: string): string {
-  return join(AGENTS_DIR, projectId, MEMORIES_DIR_NAME);
-}
-
-const PROJECT_ID_RE = /^[a-zA-Z0-9_-]{1,64}$/;
-
-function isValidProjectId(id: string): boolean {
-  return PROJECT_ID_RE.test(id);
-}
-
-/** Resolve a workspace-relative path safely (no traversal / absolute paths). */
-function resolveWorkspacePath(
-  projectId: string,
-  relativePath: string,
-): string | null {
-  if (!isValidProjectId(projectId)) return null;
-  if (typeof relativePath !== "string" || !relativePath) return null;
-  if (relativePath.includes("..") || relativePath.includes("\0")) return null;
-  const normalized = relativePath.replace(/\\/g, "/");
-  if (normalized.startsWith("/")) return null;
-  const base = workspaceDir(projectId);
-  const resolved = join(base, normalized);
-  if (resolved !== base && !resolved.startsWith(base + sep)) return null;
-
-  // Defense in depth: if the target exists, ensure its real path (symlinks
-  // resolved) is still inside the real agent workspace.
-  if (existsSync(resolved)) {
-    try {
-      const realResolved = realpathSync(resolved);
-      const realAgents = realpathSync(AGENTS_DIR);
-      if (!realResolved.startsWith(realAgents + sep)) return null;
-    } catch {
-      return null;
-    }
-  }
-  return resolved;
-}
-
-type FileKind = "image" | "video" | "text" | "other";
-
-const IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"];
-const VIDEO_EXTS = [".mp4", ".mov", ".m4v", ".webm", ".mkv", ".avi"];
-const TEXT_EXTS = [
-  ".md",
-  ".txt",
-  ".json",
-  ".csv",
-  ".log",
-  ".html",
-  ".js",
-  ".ts",
-  ".tsx",
-  ".jsx",
-  ".py",
-  ".css",
-  ".yml",
-  ".yaml",
-];
-
-function classifyFile(name: string): FileKind {
-  const ext = name.slice(name.lastIndexOf(".")).toLowerCase();
-  if (IMAGE_EXTS.includes(ext)) return "image";
-  if (VIDEO_EXTS.includes(ext)) return "video";
-  if (TEXT_EXTS.includes(ext)) return "text";
-  return "other";
-}
-
-interface WorkspaceFile {
-  path: string;
-  name: string;
-  ext: string;
-  size: number;
-  mtime: number;
-  kind: FileKind;
-}
-
-function walkFiles(base: string, prefix = ""): WorkspaceFile[] {
-  const results: WorkspaceFile[] = [];
-  let entries: string[];
-  try {
-    entries = readdirSync(base);
-  } catch {
-    return results;
-  }
-  for (const entry of entries) {
-    const full = join(base, entry);
-    const rel = prefix ? `${prefix}/${entry}` : entry;
-    let st;
-    try {
-      st = statSync(full);
-    } catch {
-      continue;
-    }
-    if (st.isDirectory()) {
-      results.push(...walkFiles(full, rel));
-    } else {
-      results.push({
-        path: rel,
-        name: entry,
-        ext: entry.slice(entry.lastIndexOf(".")).toLowerCase(),
-        size: st.size,
-        mtime: st.mtimeMs,
-        kind: classifyFile(entry),
-      });
-    }
-  }
-  return results;
-}
-
-// ========== Tools ==========
-
-const TOOLS = [
-  {
-    type: "function",
-    function: {
-      name: "get_time",
-      description: "Return the current date and time.",
-      parameters: {
-        type: "object",
-        properties: {},
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "list_projects",
-      description: "List all projects in the studio (name and description).",
-      parameters: {
-        type: "object",
-        properties: {},
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "save_memory",
-      description:
-        "Write a memory note into the agent's workspace. Use this to remember facts about the user or project.",
-      parameters: {
-        type: "object",
-        properties: {
-          title: { type: "string", description: "Short title for the memory" },
-          content: {
-            type: "string",
-            description: "The memory content to store",
-          },
-        },
-        required: ["title", "content"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "list_memories",
-      description:
-        "Read back the memory notes the agent has previously saved in the workspace.",
-      parameters: {
-        type: "object",
-        properties: {},
-        additionalProperties: false,
-      },
-    },
-  },
-];
-
-async function runTool(
-  projectId: string,
-  name: string,
-  args: string,
-): Promise<string> {
-  let parsed: Record<string, unknown> = {};
-  try {
-    parsed = args ? JSON.parse(args) : {};
-  } catch {
-    // leave empty on malformed args
-  }
-
-  switch (name) {
-    case "get_time":
-      return new Date().toString();
-    case "list_projects":
-      try {
-        if (!existsSync(PROJECTS_FILE)) return "[]";
-        const projects = JSON.parse(readFileSync(PROJECTS_FILE, "utf-8"));
-        return JSON.stringify(
-          (projects as { name: string; description: string }[]).map((p) => ({
-            name: p.name,
-            description: p.description,
-          })),
-        );
-      } catch (e) {
-        return `Error reading projects: ${String(e)}`;
-      }
-    case "save_memory": {
-      const title =
-        typeof parsed.title === "string" && parsed.title.trim()
-          ? parsed.title.trim()
-          : "untitled";
-      const content = typeof parsed.content === "string" ? parsed.content : "";
-      const dir = memoriesDir(projectId);
-      ensureDir(dir);
-      const safeTitle = title.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 64);
-      const filename = `${safeTitle || "memory"}-${Date.now()}.md`;
-      writeFileSync(join(dir, filename), `# ${title}\n\n${content}\n`, "utf-8");
-      return `Saved memory "${title}" to ${filename}`;
-    }
-    case "list_memories": {
-      const dir = memoriesDir(projectId);
-      if (!existsSync(dir)) return "No memories yet.";
-      const entries = readdirSync(dir).filter((e) => e.endsWith(".md"));
-      if (entries.length === 0) return "No memories yet.";
-      return entries
-        .map((e) => `--- ${e} ---\n${readFileSync(join(dir, e), "utf-8")}`)
-        .join("\n\n");
-    }
-    default:
-      return `Unknown tool: ${name}`;
-  }
 }
 
 /** Only accept inline base64 image data URLs (SSRF guard). */
@@ -430,7 +192,7 @@ export async function agentBackend({
     try {
       const base64 = String(image).replace(/^data:[^;]+;base64,/, "");
       const buffer = Buffer.from(base64, "base64");
-      const dir = join(AGENTS_DIR, String(projectId));
+      const dir = workspaceDir(String(projectId));
       ensureDir(dir);
       const safeName = (filename || `upload-${Date.now()}`).replace(
         /[^a-zA-Z0-9._-]/g,
@@ -508,7 +270,7 @@ export async function agentBackend({
       {
         role: "system",
         content:
-          "You are a helpful assistant inside an AI video studio app. Use the available tools when they help answer the user's question. You can save important facts to memory with save_memory and recall them with list_memories.",
+          "You are a helpful assistant inside an AI video studio app. Use the available tools when they help answer the user's question. You have filesystem tools scoped to your workspace (list_files, read_file, write_file, update_file, remove_file, grep_files, search_files) and memory tools (save_memory, list_memories).",
       },
       ...history,
     ];
@@ -523,7 +285,7 @@ export async function agentBackend({
         const stream = await client.chat.completions.create({
           model,
           messages: toOpenAIMessages(messages),
-          tools: TOOLS as any,
+          tools: toolDefinitions(TOOLS),
           temperature: 0.7,
           stream: true,
         });
@@ -580,9 +342,10 @@ export async function agentBackend({
 
           for (const tc of toolCalls) {
             const output = await runTool(
-              projectId,
+              TOOLS,
               tc.function.name,
               tc.function.arguments,
+              { projectId },
             );
             send("tool", {
               name: tc.function.name,
