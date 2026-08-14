@@ -78,7 +78,9 @@ function toOpenAIMessages(messages: ChatMessage[]): any[] {
 function buildSystemPrompt(): string {
   const toolList = TOOLS.map((t) => `- ${t.name}: ${t.description}`).join("\n");
   return [
-    "You help the user achive their goal with the tools you have.",
+    "You are a helpful assistant that uses tool to help the user out.",
+    "",
+    "IMPORTANT: When the user asks about files, memories, or anything stored in your workspace, you MUST call the appropriate tool to get real data instead of guessing or answering from memory.",
     "",
     "Available tools:",
     toolList,
@@ -86,6 +88,7 @@ function buildSystemPrompt(): string {
     "Guidelines:",
     "- Filesystem tools (list_files, read_file, write_file, update_file, remove_file, grep_files, search_files) are scoped to your workspace directory.",
     "- Use save_memory to remember important facts about the user or project, and list_memories to recall them later.",
+    "- Always report the actual results returned by the tools back to the user.",
   ].join("\n");
 }
 
@@ -297,18 +300,22 @@ export async function agentBackend({
           model,
           messages: toOpenAIMessages(messages),
           tools: toolDefinitions(TOOLS),
+          tool_choice: "auto",
           temperature: 0.7,
           stream: true,
         });
 
         let content = "";
+        let finishReason = "";
         const toolCalls: {
           id: string;
           function: { name: string; arguments: string };
         }[] = [];
 
         for await (const chunk of stream) {
-          const delta = chunk.choices?.[0]?.delta;
+          const choice = chunk.choices?.[0];
+          const delta = choice?.delta;
+          if (choice?.finish_reason) finishReason = choice.finish_reason;
           if (!delta) continue;
 
           if (delta.content) {
@@ -333,6 +340,30 @@ export async function agentBackend({
                 toolCalls[index].function.arguments += tc.function.arguments;
               }
             }
+          }
+        }
+
+        // Some local servers signal tool intent via finish_reason but don't
+        // stream the tool_calls deltas. Fall back to a non-streaming call.
+        if (toolCalls.length === 0 && finishReason === "tool_calls") {
+          const completion = await client.chat.completions.create({
+            model,
+            messages: toOpenAIMessages(messages),
+            tools: toolDefinitions(TOOLS),
+            tool_choice: "auto",
+            temperature: 0.7,
+            stream: false,
+          });
+          const msg = completion.choices?.[0]?.message;
+          content = typeof msg?.content === "string" ? msg.content : "";
+          for (const tc of (msg?.tool_calls ?? []) as any[]) {
+            toolCalls.push({
+              id: tc.id ?? "",
+              function: {
+                name: tc.function?.name ?? "",
+                arguments: tc.function?.arguments ?? "",
+              },
+            });
           }
         }
 
