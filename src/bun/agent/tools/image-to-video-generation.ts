@@ -44,7 +44,7 @@ async function readSSE(
 }
 
 const tool: AgentTool = {
-  name: "generate_video",
+  name: "image_to_video_generation",
   description: "Generate a video from a prompt and an image in the workspace.",
   parameters: {
     type: "object",
@@ -65,10 +65,11 @@ const tool: AgentTool = {
     if (!isValidProjectId(ctx.projectId)) return "Invalid project ID.";
 
     const prompt = typeof args.prompt === "string" ? args.prompt.trim() : "";
-    if (!prompt) return "generate_video requires a prompt.";
+    if (!prompt) return "image_to_video_generation requires a prompt.";
 
     const image = typeof args.image === "string" ? args.image.trim() : "";
-    if (!image) return "generate_video requires an image from the workspace.";
+    if (!image)
+      return "image_to_video_generation requires an image from the workspace.";
 
     const abs = resolveWorkspacePath(ctx.projectId, image);
     if (!abs || !existsSync(abs) || classifyFile(image) !== "image") {
