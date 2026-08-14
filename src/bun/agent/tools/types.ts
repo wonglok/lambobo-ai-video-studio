@@ -2,6 +2,8 @@ export interface ToolRunContext {
   projectId: string;
   /** Optional SSE emit function so tools can stream events to the client. */
   emit?: (event: string, data: Record<string, unknown>) => void;
+  /** The app backend port, for tools that call internal endpoints. */
+  backendPort?: number;
 }
 
 export interface AgentTool {

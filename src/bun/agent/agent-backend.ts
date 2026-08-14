@@ -90,9 +90,11 @@ function buildSystemPrompt(): string {
 export async function agentBackend({
   app,
   getUvPath: _getUvPath,
+  backendPort,
 }: {
   app: Application;
   getUvPath: () => Promise<string>;
+  backendPort: number;
 }) {
   // ===== Workspace file manager =====
 
@@ -389,7 +391,7 @@ export async function agentBackend({
               TOOLS,
               tc.function.name,
               tc.function.arguments,
-              { projectId, emit: send },
+              { projectId, emit: send, backendPort },
             );
             send("tool", {
               name: tc.function.name,

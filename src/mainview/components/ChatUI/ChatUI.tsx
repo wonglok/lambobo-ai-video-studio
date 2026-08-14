@@ -410,6 +410,19 @@ export function ChatUI({ projectId }: Props) {
                   </div>
                 )}
 
+                {m.videos && m.videos.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {m.videos.map((v, i) => (
+                      <video
+                        key={i}
+                        src={v}
+                        controls
+                        className="max-w-64 max-h-48 rounded-lg border border-tiffany-200"
+                      />
+                    ))}
+                  </div>
+                )}
+
                 {m.content ? (
                   <div className="flex justify-start">
                     <div className="max-w-[80%] px-3 py-2 rounded-xl bg-white border border-tiffany-200 text-tiffany-900 text-sm whitespace-pre-wrap">

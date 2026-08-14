@@ -341,7 +341,7 @@ export async function runSetup({}: {}): Promise<SetupState> {
   renderMediaRoutes({ app, getUvPath });
   //
   //
-  agentBackend({ app, getUvPath });
+  agentBackend({ app, getUvPath, backendPort: BACKEND_PORT });
   //
 
   app.listen(BACKEND_PORT);

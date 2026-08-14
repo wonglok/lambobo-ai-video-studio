@@ -12,6 +12,7 @@ const APP_DATA_DIR = join(homedir(), "media-studio");
 const JSON_DIR = join(APP_DATA_DIR, "json");
 
 export const AGENTS_DIR = join(APP_DATA_DIR, "agents");
+export const UPLOAD_DIR = join(APP_DATA_DIR, "upload");
 export const MEMORIES_DIR_NAME = "memories";
 export const PROJECTS_FILE = join(JSON_DIR, "projects.json");
 
