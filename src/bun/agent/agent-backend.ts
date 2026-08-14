@@ -74,6 +74,22 @@ function toOpenAIMessages(messages: ChatMessage[]): any[] {
   });
 }
 
+/** Build the system prompt, listing every tool and its description. */
+function buildSystemPrompt(): string {
+  const toolList = TOOLS.map((t) => `- ${t.name}: ${t.description}`).join("\n");
+  return [
+    "You are a helpful assistant inside an AI video studio app.",
+    "Use the available tools when they help answer the user's question.",
+    "",
+    "Available tools:",
+    toolList,
+    "",
+    "Guidelines:",
+    "- Filesystem tools (list_files, read_file, write_file, update_file, remove_file, grep_files, search_files) are scoped to your workspace directory.",
+    "- Use save_memory to remember important facts about the user or project, and list_memories to recall them later.",
+  ].join("\n");
+}
+
 // ========== Routes ==========
 
 export async function agentBackend({
@@ -267,11 +283,7 @@ export async function agentBackend({
       }));
 
     const messages: ChatMessage[] = [
-      {
-        role: "system",
-        content:
-          "You are a helpful assistant inside an AI video studio app. Use the available tools when they help answer the user's question. You have filesystem tools scoped to your workspace (list_files, read_file, write_file, update_file, remove_file, grep_files, search_files) and memory tools (save_memory, list_memories).",
-      },
+      { role: "system", content: buildSystemPrompt() },
       ...history,
     ];
 

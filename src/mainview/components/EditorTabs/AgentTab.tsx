@@ -354,11 +354,11 @@ export default function AgentTab({ projectId }: Props) {
         )}
       </div>
 
-      <AgentWorkspace projectId={projectId} />
-
       {store.agent.serverRunning ? (
         <div className="">
           <ChatUI projectId={projectId} />
+          <div className="h-4" />
+          <AgentWorkspace projectId={projectId} />
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center gap-2 p-8 border border-dashed border-tiffany-200 rounded-xl">
