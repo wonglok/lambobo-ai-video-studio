@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import Papa from "papaparse";
+import { parse, stringify } from "csv/sync";
 import {
   useWorkspaceStore,
   workspacePreviewUrl,
   type WorkspaceFile,
 } from "../stores/workspaceStore";
+import { useChatStore } from "../stores/chatStore";
 
 interface Props {
   projectId: string;
@@ -19,6 +20,8 @@ function formatSize(bytes: number): string {
 export default function AgentWorkspace({ projectId }: Props) {
   const ws = useWorkspaceStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatSending = useChatStore((s) => s.sending);
+  const prevSendingRef = useRef(false);
 
   const [preview, setPreview] = useState<WorkspaceFile | null>(null);
   const [editing, setEditing] = useState<WorkspaceFile | null>(null);
@@ -33,6 +36,15 @@ export default function AgentWorkspace({ projectId }: Props) {
     ws.fetchFiles(projectId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
+
+  // Refresh the file list whenever the chat finishes a response.
+  useEffect(() => {
+    if (prevSendingRef.current && !chatSending) {
+      ws.fetchFiles(projectId);
+    }
+    prevSendingRef.current = chatSending;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatSending]);
 
   // ========== Handlers ==========
 
@@ -56,12 +68,13 @@ export default function AgentWorkspace({ projectId }: Props) {
     setPreview(null);
     const content = await ws.readFileContent(projectId, f.path);
     if (f.ext === ".csv") {
-      const parsed = Papa.parse<string[]>(content ?? "", {
-        skipEmptyLines: "greedy",
-      });
+      const parsed = parse(content ?? "", {
+        skip_empty_lines: true,
+        relax_column_count: true,
+      }) as string[][];
       setEditing(null);
       setCsvEditing(f);
-      setCsvGrid(parsed.data);
+      setCsvGrid(parsed);
     } else {
       setCsvEditing(null);
       setEditing(f);
@@ -77,7 +90,7 @@ export default function AgentWorkspace({ projectId }: Props) {
 
   const handleCsvSave = async () => {
     if (!csvEditing) return;
-    await ws.writeFileContent(projectId, csvEditing.path, Papa.unparse(csvGrid));
+    await ws.writeFileContent(projectId, csvEditing.path, stringify(csvGrid));
     setCsvEditing(null);
   };
 

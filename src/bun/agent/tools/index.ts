@@ -9,6 +9,7 @@ import grepFilesTool from "./grep-files";
 import searchFilesTool from "./search-files";
 import showImageTool from "./show-image";
 import generateVideoTool from "./generate-video";
+import writeCsvTool from "./write-csv";
 
 export type { AgentTool, ToolRunContext } from "./types";
 
@@ -23,6 +24,7 @@ export const TOOLS: AgentTool[] = [
   searchFilesTool,
   showImageTool,
   generateVideoTool,
+  writeCsvTool,
 ];
 
 /** Build the OpenAI `tools` array from the tool objects. */
