@@ -8,25 +8,25 @@ interface Props {
   projectId: string;
 }
 
-async function uploadImageToProject(
+async function uploadToAgentWorkspace(
   projectId: string,
   dataUrl: string,
   filename: string,
 ): Promise<void> {
   try {
-    const res = await fetch(`${API_BASE}/api/upload/image`, {
+    const res = await fetch(`${API_BASE}/api/agent/upload`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ image: dataUrl, filename, projectId }),
     });
     if (!res.ok) {
       console.error(
-        "Failed to upload image to project:",
+        "Failed to upload to agent workspace:",
         await res.text(),
       );
     }
   } catch (e) {
-    console.error("Failed to upload image to project:", e);
+    console.error("Failed to upload to agent workspace:", e);
   }
 }
 
@@ -54,7 +54,13 @@ export function ChatUI({ projectId }: Props) {
     const hasImage = Boolean(chat.pendingImage);
     if ((!hasText && !hasImage) || chat.sending || !serverRunning) return;
     if (inputRef.current) inputRef.current.value = "";
-    chat.sendMessage(value.trim(), port, model, chat.pendingImage ?? undefined);
+    chat.sendMessage(
+      value.trim(),
+      port,
+      model,
+      projectId,
+      chat.pendingImage ?? undefined,
+    );
   };
 
   const handleAttach = () => fileRef.current?.click();
@@ -66,7 +72,7 @@ export function ChatUI({ projectId }: Props) {
     reader.onload = () => {
       const dataUrl = reader.result as string;
       chat.setPendingImage(dataUrl);
-      uploadImageToProject(
+      uploadToAgentWorkspace(
         projectId,
         dataUrl,
         `chat-${Date.now()}-${file.name}`,

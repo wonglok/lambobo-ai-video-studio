@@ -75,6 +75,7 @@ interface ChatStore {
     content: string,
     port: number,
     model: string,
+    projectId: string,
     image?: string,
   ) => Promise<void>;
   reset: () => void;
@@ -88,7 +89,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   setPendingImage: (dataUrl) => set({ pendingImage: dataUrl }),
 
-  sendMessage: async (content, port, model, image) => {
+  sendMessage: async (content, port, model, projectId, image) => {
     const text = content.trim();
     if ((!text && !image) || get().sending) return;
 
@@ -129,7 +130,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       const res = await fetch(`${API_BASE}/api/agent/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history, port, model }),
+        body: JSON.stringify({ messages: history, port, model, projectId }),
       });
 
       if (!res.ok) {

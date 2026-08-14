@@ -1,5 +1,11 @@
 import { type Application } from "express";
-import { existsSync, readFileSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  mkdirSync,
+  writeFileSync,
+  readdirSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import OpenAI from "openai";
@@ -10,6 +16,8 @@ import { getAgentServerPort } from "../render-media";
 const APP_DATA_DIR = join(homedir(), "media-studio");
 const JSON_DIR = join(APP_DATA_DIR, "json");
 const PROJECTS_FILE = join(JSON_DIR, "projects.json");
+const AGENTS_DIR = join(APP_DATA_DIR, "agents");
+const MEMORIES_DIR_NAME = "memories";
 
 const DEFAULT_MODEL = "mlx-community/gemma-4-E4B-it-bf16";
 const MAX_ITERATIONS = 100;
@@ -29,6 +37,16 @@ interface ChatMessage {
   tool_call_id?: string;
   name?: string;
   tool_calls?: ToolCall[];
+}
+
+// ========== Workspace helpers ==========
+
+function ensureDir(dir: string): void {
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+}
+
+function memoriesDir(projectId: string): string {
+  return join(AGENTS_DIR, projectId, MEMORIES_DIR_NAME);
 }
 
 // ========== Tools ==========
@@ -58,9 +76,52 @@ const TOOLS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "save_memory",
+      description:
+        "Write a memory note into the agent's workspace. Use this to remember facts about the user or project.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Short title for the memory" },
+          content: {
+            type: "string",
+            description: "The memory content to store",
+          },
+        },
+        required: ["title", "content"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_memories",
+      description:
+        "Read back the memory notes the agent has previously saved in the workspace.",
+      parameters: {
+        type: "object",
+        properties: {},
+        additionalProperties: false,
+      },
+    },
+  },
 ];
 
-async function runTool(name: string, _args: string): Promise<string> {
+async function runTool(
+  projectId: string,
+  name: string,
+  args: string,
+): Promise<string> {
+  let parsed: Record<string, unknown> = {};
+  try {
+    parsed = args ? JSON.parse(args) : {};
+  } catch {
+    // leave empty on malformed args
+  }
+
   switch (name) {
     case "get_time":
       return new Date().toString();
@@ -77,6 +138,28 @@ async function runTool(name: string, _args: string): Promise<string> {
       } catch (e) {
         return `Error reading projects: ${String(e)}`;
       }
+    case "save_memory": {
+      const title =
+        typeof parsed.title === "string" && parsed.title.trim()
+          ? parsed.title.trim()
+          : "untitled";
+      const content = typeof parsed.content === "string" ? parsed.content : "";
+      const dir = memoriesDir(projectId);
+      ensureDir(dir);
+      const safeTitle = title.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 64);
+      const filename = `${safeTitle || "memory"}-${Date.now()}.md`;
+      writeFileSync(join(dir, filename), `# ${title}\n\n${content}\n`, "utf-8");
+      return `Saved memory "${title}" to ${filename}`;
+    }
+    case "list_memories": {
+      const dir = memoriesDir(projectId);
+      if (!existsSync(dir)) return "No memories yet.";
+      const entries = readdirSync(dir).filter((e) => e.endsWith(".md"));
+      if (entries.length === 0) return "No memories yet.";
+      return entries
+        .map((e) => `--- ${e} ---\n${readFileSync(join(dir, e), "utf-8")}`)
+        .join("\n\n");
+    }
     default:
       return `Unknown tool: ${name}`;
   }
@@ -125,6 +208,43 @@ export async function agentBackend({
   app: Application;
   getUvPath: () => Promise<string>;
 }) {
+  // Save user-uploaded images/videos into the agent's workspace.
+  app.post("/api/agent/upload", async (req, res) => {
+    const { image, filename, projectId } = req.body || {};
+
+    if (!image) {
+      res.status(400).json({ error: "File data is required (base64)" });
+      return;
+    }
+    if (!projectId || !/^[a-zA-Z0-9_-]{1,64}$/.test(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+
+    try {
+      const base64 = String(image).replace(/^data:[^;]+;base64,/, "");
+      const buffer = Buffer.from(base64, "base64");
+      const dir = join(AGENTS_DIR, String(projectId));
+      ensureDir(dir);
+      const safeName = (filename || `upload-${Date.now()}`).replace(
+        /[^a-zA-Z0-9._-]/g,
+        "_",
+      );
+      const filePath = join(dir, safeName);
+      writeFileSync(filePath, buffer);
+      res.json({
+        success: true,
+        path: filePath,
+        filename: safeName,
+        size: buffer.length,
+      });
+    } catch (e) {
+      res
+        .status(500)
+        .json({ error: "Failed to save file", details: String(e) });
+    }
+  });
+
   app.post("/api/agent/chat", async (req, res) => {
     res.writeHead(200, {
       "Content-Type": "text/event-stream",
@@ -155,6 +275,17 @@ export async function agentBackend({
         ? body.model.trim()
         : DEFAULT_MODEL;
 
+    const projectId =
+      typeof body.projectId === "string" &&
+      /^[a-zA-Z0-9_-]{1,64}$/.test(body.projectId)
+        ? body.projectId
+        : null;
+    if (projectId === null) {
+      send("error", { error: "Invalid project ID" });
+      res.end();
+      return;
+    }
+
     const incoming = Array.isArray(body.messages) ? body.messages : [];
     const history: ChatMessage[] = incoming
       .filter((m: any) => m && (m.role === "user" || m.role === "assistant"))
@@ -171,7 +302,7 @@ export async function agentBackend({
       {
         role: "system",
         content:
-          "You are a helpful assistant inside an AI video studio app. Use the available tools when they help answer the user's question.",
+          "You are a helpful assistant inside an AI video studio app. Use the available tools when they help answer the user's question. You can save important facts to memory with save_memory and recall them with list_memories.",
       },
       ...history,
     ];
@@ -243,6 +374,7 @@ export async function agentBackend({
 
           for (const tc of toolCalls) {
             const output = await runTool(
+              projectId,
               tc.function.name,
               tc.function.arguments,
             );
