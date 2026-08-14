@@ -1,5 +1,12 @@
 import { useEffect } from "react";
 import { useGenerationStore } from "../../stores/generationStore";
+import { ChatUI } from "../ChatUI/ChatUI";
+
+const MODEL_PRESETS = [
+  "mlx-community/gemma-4-E2B-it-qat-4bit",
+  "mlx-community/gemma-4-E4B-it-qat-4bit",
+  "mlx-community/gemma-4-26b-a4b-4bit",
+];
 
 export default function AgentTab() {
   const store = useGenerationStore();
@@ -10,6 +17,9 @@ export default function AgentTab() {
   }, []);
 
   const serverUrl = `http://localhost:${store.agent.port}`;
+  const modelOptions = MODEL_PRESETS.includes(store.agent.model)
+    ? MODEL_PRESETS
+    : [store.agent.model, ...MODEL_PRESETS];
 
   // ========== SVG Icons ==========
 
@@ -63,12 +73,7 @@ export default function AgentTab() {
   );
 
   const StopIcon = (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-    >
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
       <rect x="5" y="5" width="14" height="14" rx="2" />
     </svg>
   );
@@ -218,6 +223,38 @@ export default function AgentTab() {
           Server
         </label>
 
+        <div className="flex flex-wrap items-end gap-3 mb-3">
+          <div className="flex-1 min-w-[260px]">
+            <label className="block text-xs font-medium text-tiffany-700 mb-1.5">
+              Model
+            </label>
+            <div className=" gap-2">
+              <input
+                type="text"
+                value={store.agent.model}
+                onChange={(e) => store.setAgentModel(e.target.value)}
+                disabled={store.agent.serverRunning || store.agent.starting}
+                placeholder="mlx-community/..."
+                className="flex-1 w-[350px] px-3 py-2 bg-tiffany-50 border border-tiffany-200 rounded-lg text-tiffany-900 text-sm focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all disabled:opacity-50"
+              />
+              <br />
+              <select
+                value={store.agent.model}
+                onChange={(e) => store.setAgentModel(e.target.value)}
+                disabled={store.agent.serverRunning || store.agent.starting}
+                title="Choose a model"
+                className="shrink-0 w-[350px]  px-2 py-2 bg-tiffany-50 border border-tiffany-200 rounded-lg text-tiffany-900 text-sm focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {modelOptions.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
         <div className="flex flex-wrap items-end gap-3">
           <div>
             <label className="block text-xs font-medium text-tiffany-700 mb-1.5">
@@ -245,7 +282,9 @@ export default function AgentTab() {
           ) : (
             <button
               onClick={() => store.startAgentServer()}
-              disabled={store.agent.installing || store.agent.installed === false}
+              disabled={
+                store.agent.installing || store.agent.installed === false
+              }
               className="flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50"
             >
               {PlayIcon}
@@ -272,15 +311,13 @@ export default function AgentTab() {
             </span>
           )}
           {store.agent.serverRunning && (
-            <a
-              href={serverUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 text-tiffany-600 hover:text-tiffany-800 transition-colors"
+            <button
+              onClick={() => store.openAgentServer()}
+              className="inline-flex items-center gap-1.5 text-tiffany-600 hover:text-tiffany-800 transition-colors cursor-pointer"
             >
               {ExternalLinkIcon}
               Open {serverUrl}
-            </a>
+            </button>
           )}
         </div>
 
@@ -299,6 +336,12 @@ export default function AgentTab() {
             {store.agent.serverError}
           </div>
         )}
+      </div>
+
+      <div className="">
+        {/*  */}
+        <ChatUI></ChatUI>
+        {/*  */}
       </div>
     </div>
   );

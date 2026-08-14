@@ -1217,7 +1217,7 @@ export async function renderMediaRoutes({
   });
 
   app.post("/api/agent/start", async (req, res) => {
-    const { port } = req.body || {};
+    const { port, model } = req.body || {};
     const portNum = Number(port);
     if (!Number.isInteger(portNum) || portNum < 1 || portNum > 65535) {
       res
@@ -1225,6 +1225,8 @@ export async function renderMediaRoutes({
         .json({ error: "Port must be an integer between 1 and 65535" });
       return;
     }
+    const modelName =
+      typeof model === "string" && model.trim() ? model.trim() : MLX_VLM_MODEL;
 
     res.writeHead(200, {
       "Content-Type": "text/event-stream",
@@ -1241,11 +1243,11 @@ export async function renderMediaRoutes({
       const bin = await getMlxVlmServerBin();
       send("progress", {
         status: "starting",
-        label: `Starting mlx-vlm server on port ${portNum}...`,
+        label: `Starting mlx-vlm server (${modelName}) on port ${portNum}...`,
       });
 
       const proc = spawn(
-        [bin, "--model", MLX_VLM_MODEL, "--port", String(portNum)],
+        [bin, "--model", modelName, "--port", String(portNum)],
         {
           stdout: "pipe",
           stderr: "pipe",
@@ -1295,6 +1297,28 @@ export async function renderMediaRoutes({
         // process may already be dead
       }
     }
+    res.json({ ok: true });
+  });
+
+  app.post("/api/agent/open", (req, res) => {
+    const { url } = req.body || {};
+    const target = typeof url === "string" ? url.trim() : "";
+
+    // Only open localhost http(s) URLs (avoid opening arbitrary schemes/files).
+    if (!/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/.*)?$/i.test(target)) {
+      res.status(400).json({ error: "Invalid URL" });
+      return;
+    }
+
+    spawn(["open", target], {
+      stdout: "ignore",
+      stderr: "ignore",
+      onExit: (_proc, exitCode, _signalCode, _error) => {
+        if (exitCode !== 0) {
+          console.error(`open: "open ${target}" exited with code ${exitCode}`);
+        }
+      },
+    });
     res.json({ ok: true });
   });
 

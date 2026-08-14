@@ -82,6 +82,7 @@ interface ImageEditState {
 }
 
 interface AgentState {
+  model: string;
   port: number;
   installing: boolean;
   installingLogs: string[];
@@ -138,11 +139,13 @@ interface GenerationStore {
 
   // Agent (mlx-vlm)
   agent: AgentState;
+  setAgentModel: (v: string) => void;
   setAgentPort: (v: number) => void;
   checkAgentStatus: () => Promise<void>;
   installMlxVlm: () => Promise<void>;
   startAgentServer: () => Promise<void>;
   stopAgentServer: () => Promise<void>;
+  openAgentServer: () => Promise<void>;
 
   // Project videos picker
   projectVideos: ProjectVideo[];
@@ -446,7 +449,8 @@ const initialImageEdit: ImageEditState = {
 };
 
 const initialAgent: AgentState = {
-  port: 8080,
+  model: "mlx-community/gemma-4-E4B-it-qat-4bit",
+  port: 8881,
   installing: false,
   installingLogs: [],
   installingError: null,
@@ -1508,6 +1512,8 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
   // ---- Agent (mlx-vlm) ----
   agent: { ...initialAgent },
 
+  setAgentModel: (model) => set((s) => ({ agent: { ...s.agent, model } })),
+
   setAgentPort: (port) => set((s) => ({ agent: { ...s.agent, port } })),
 
   checkAgentStatus: async () => {
@@ -1559,7 +1565,10 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
             set((s) => ({
               agent: {
                 ...s.agent,
-                installingLogs: [...s.agent.installingLogs, data.text as string],
+                installingLogs: [
+                  ...s.agent.installingLogs,
+                  data.text as string,
+                ],
               },
             }));
             break;
@@ -1607,7 +1616,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       const res = await fetch(`${API_BASE}/api/agent/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ port: agent.port }),
+        body: JSON.stringify({ model: agent.model, port: agent.port }),
       });
 
       if (!res.ok) {
@@ -1671,6 +1680,20 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     set((s) => ({
       agent: { ...s.agent, starting: false, serverRunning: false },
     }));
+  },
+
+  openAgentServer: async () => {
+    const { agent } = get();
+    const url = `http://localhost:${agent.port}`;
+    try {
+      await fetch(`${API_BASE}/api/agent/open`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+    } catch {
+      // ignore open failures
+    }
   },
 
   // ---- Project Videos ----
