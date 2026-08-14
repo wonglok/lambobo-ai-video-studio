@@ -113,6 +113,22 @@ export function ChatUI({ projectId }: Props) {
     }
   };
 
+  useEffect(() => {
+    if (!confirmDeleteSession) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setConfirmDeleteSession(null);
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        confirmDeleteSessionAction();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [confirmDeleteSession]);
+
   // ========== SVG Icons ==========
 
   const SendIcon = (

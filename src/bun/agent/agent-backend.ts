@@ -21,7 +21,7 @@ import { TOOLS, toolDefinitions, runTool } from "./tools";
 // ========== Constants ==========
 
 const DEFAULT_MODEL = "mlx-community/gemma-4-e2b-4bit";
-const MAX_ITERATIONS = 100;
+const MAX_ITERATIONS = 10;
 
 type Role = "system" | "user" | "assistant" | "tool";
 
@@ -269,7 +269,7 @@ export async function agentBackend({
 
     const incoming = Array.isArray(body.messages) ? body.messages : [];
     const history: ChatMessage[] = incoming
-      .filter((m: any) => m && (m.role === "user" || m.role === "assistant"))
+      // .filter((m: any) => m && (m.role === "user" || m.role === "assistant"))
       .map((m: any) => ({
         role: m.role,
         content: typeof m.content === "string" ? m.content : "",
@@ -289,8 +289,7 @@ export async function agentBackend({
       apiKey: "local",
     });
 
-    const abortController = new AbortController();
-    res.on("close", () => abortController.abort());
+    const abortController = req;
 
     try {
       for (let i = 0; i < MAX_ITERATIONS; i++) {
@@ -299,7 +298,7 @@ export async function agentBackend({
             model,
             messages: toOpenAIMessages(messages),
             tools: toolDefinitions(TOOLS),
-            tool_choice: "required",
+            tool_choice: "auto",
             temperature: 0.7,
             stream: true,
           },
@@ -341,33 +340,6 @@ export async function agentBackend({
                 toolCalls[index].function.arguments += tc.function.arguments;
               }
             }
-          }
-        }
-
-        // Some local servers signal tool intent via finish_reason but don't
-        // stream the tool_calls deltas. Fall back to a non-streaming call.
-        if (toolCalls.length === 0 && finishReason === "tool_calls") {
-          const completion = await client.chat.completions.create(
-            {
-              model,
-              messages: toOpenAIMessages(messages),
-              tools: toolDefinitions(TOOLS),
-              tool_choice: "auto",
-              temperature: 0.7,
-              stream: false,
-            },
-            { signal: abortController.signal },
-          );
-          const msg = completion.choices?.[0]?.message;
-          content = typeof msg?.content === "string" ? msg.content : "";
-          for (const tc of (msg?.tool_calls ?? []) as any[]) {
-            toolCalls.push({
-              id: tc.id ?? "",
-              function: {
-                name: tc.function?.name ?? "",
-                arguments: tc.function?.arguments ?? "",
-              },
-            });
           }
         }
 
