@@ -5,6 +5,7 @@ import readFileTool from "./read-file";
 import writeFileTool from "./write-file";
 import updateFileTool from "./update-file";
 import removeFileTool from "./remove-file";
+import renameFileTool from "./rename-file";
 import grepFilesTool from "./grep-files";
 import searchFilesTool from "./search-files";
 import showImageTool from "./show-image";
@@ -21,6 +22,7 @@ export const TOOLS: AgentTool[] = [
   writeFileTool,
   updateFileTool,
   removeFileTool,
+  renameFileTool,
   grepFilesTool,
   searchFilesTool,
   showImageTool,
