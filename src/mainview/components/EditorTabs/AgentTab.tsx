@@ -356,11 +356,18 @@ export default function AgentTab({ projectId }: Props) {
 
       <AgentWorkspace projectId={projectId} />
 
-      <div className="">
-        {/*  */}
-        <ChatUI projectId={projectId}></ChatUI>
-        {/*  */}
-      </div>
+      {store.agent.serverRunning ? (
+        <div className="">
+          <ChatUI projectId={projectId} />
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center gap-2 p-8 border border-dashed border-tiffany-200 rounded-xl">
+          <span className="text-tiffany-400">{AgentIcon}</span>
+          <p className="text-xs text-tiffany-400 italic">
+            Start the mlx-vlm server above to chat with the agent.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
