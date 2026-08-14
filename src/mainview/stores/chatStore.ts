@@ -98,6 +98,7 @@ interface ChatStore {
   selectSession: (id: string) => void;
   deleteSession: (id: string) => void;
   resetActiveSession: () => void;
+  stop: () => void;
   sendMessage: (
     content: string,
     port: number,
@@ -106,6 +107,8 @@ interface ChatStore {
     image?: string,
   ) => Promise<void>;
 }
+
+let chatAbortController: AbortController | null = null;
 
 const firstSession = newSession();
 
@@ -228,11 +231,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         ),
       }));
 
+    chatAbortController = new AbortController();
+
     try {
       const res = await fetch(`${API_BASE}/api/agent/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: history, port, model, projectId }),
+        signal: chatAbortController.signal,
       });
 
       if (!res.ok) {
@@ -271,9 +277,20 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         }
       });
     } catch (e) {
-      set({ error: String(e) });
+      if ((e as any)?.name !== "AbortError") {
+        set({ error: String(e) });
+      }
     } finally {
+      chatAbortController = null;
       set({ sending: false });
     }
+  },
+
+  stop: () => {
+    if (chatAbortController) {
+      chatAbortController.abort();
+      chatAbortController = null;
+    }
+    set({ sending: false });
   },
 }));

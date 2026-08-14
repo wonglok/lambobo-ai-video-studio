@@ -78,17 +78,10 @@ function toOpenAIMessages(messages: ChatMessage[]): any[] {
 function buildSystemPrompt(): string {
   const toolList = TOOLS.map((t) => `- ${t.name}: ${t.description}`).join("\n");
   return [
-    "You are a helpful assistant that uses tool to help the user out.",
-    "",
-    "IMPORTANT: When the user asks about files, memories, or anything stored in your workspace, you MUST call the appropriate tool to get real data instead of guessing or answering from memory.",
+    "You are a helpful assistant that uses tool to help the user to achieve their goal.",
     "",
     "Available tools:",
     toolList,
-    "",
-    "Guidelines:",
-    "- Filesystem tools (list_files, read_file, write_file, update_file, remove_file, grep_files, search_files) are scoped to your workspace directory.",
-    "- Use save_memory to remember important facts about the user or project, and list_memories to recall them later.",
-    "- Always report the actual results returned by the tools back to the user.",
   ].join("\n");
 }
 
@@ -294,129 +287,127 @@ export async function agentBackend({
       apiKey: "local",
     });
 
-    const MAX_ROUNDS = 10;
-    let round = 0;
-    let keepWorking = true;
+    const abortController = new AbortController();
+    res.on("close", () => abortController.abort());
 
     try {
-      while (keepWorking && round < MAX_ROUNDS) {
-        round++;
-
-        for (let i = 0; i < MAX_ITERATIONS; i++) {
-          const stream = await client.chat.completions.create({
+      for (let i = 0; i < MAX_ITERATIONS; i++) {
+        const stream = await client.chat.completions.create(
+          {
             model,
             messages: toOpenAIMessages(messages),
             tools: toolDefinitions(TOOLS),
-            tool_choice: "auto",
+            tool_choice: "required",
             temperature: 0.7,
             stream: true,
-          });
+          },
+          { signal: abortController.signal },
+        );
 
-          let content = "";
-          let finishReason = "";
-          const toolCalls: {
-            id: string;
-            function: { name: string; arguments: string };
-          }[] = [];
+        let content = "";
+        let finishReason = "";
+        const toolCalls: {
+          id: string;
+          function: { name: string; arguments: string };
+        }[] = [];
 
-          for await (const chunk of stream) {
-            const choice = chunk.choices?.[0];
-            const delta = choice?.delta;
-            if (choice?.finish_reason) finishReason = choice.finish_reason;
-            if (!delta) continue;
+        for await (const chunk of stream) {
+          const choice = chunk.choices?.[0];
+          const delta = choice?.delta;
+          if (choice?.finish_reason) finishReason = choice.finish_reason;
+          if (!delta) continue;
 
-            if (delta.content) {
-              content += delta.content;
-              send("delta", { text: delta.content });
-            }
+          if (delta.content) {
+            content += delta.content;
+            send("delta", { text: delta.content });
+          }
 
-            if (delta.tool_calls) {
-              for (const tc of delta.tool_calls) {
-                const index = tc.index ?? 0;
-                if (!toolCalls[index]) {
-                  toolCalls[index] = {
-                    id: tc.id ?? "",
-                    function: { name: "", arguments: "" },
-                  };
-                }
-                if (tc.id) toolCalls[index].id = tc.id;
-                if (tc.function?.name) {
-                  toolCalls[index].function.name += tc.function.name;
-                }
-                if (tc.function?.arguments) {
-                  toolCalls[index].function.arguments += tc.function.arguments;
-                }
+          if (delta.tool_calls) {
+            for (const tc of delta.tool_calls) {
+              const index = tc.index ?? 0;
+              if (!toolCalls[index]) {
+                toolCalls[index] = {
+                  id: tc.id ?? "",
+                  function: { name: "", arguments: "" },
+                };
+              }
+              if (tc.id) toolCalls[index].id = tc.id;
+              if (tc.function?.name) {
+                toolCalls[index].function.name += tc.function.name;
+              }
+              if (tc.function?.arguments) {
+                toolCalls[index].function.arguments += tc.function.arguments;
               }
             }
           }
+        }
 
-          // Some local servers signal tool intent via finish_reason but don't
-          // stream the tool_calls deltas. Fall back to a non-streaming call.
-          if (toolCalls.length === 0 && finishReason === "tool_calls") {
-            const completion = await client.chat.completions.create({
+        // Some local servers signal tool intent via finish_reason but don't
+        // stream the tool_calls deltas. Fall back to a non-streaming call.
+        if (toolCalls.length === 0 && finishReason === "tool_calls") {
+          const completion = await client.chat.completions.create(
+            {
               model,
               messages: toOpenAIMessages(messages),
               tools: toolDefinitions(TOOLS),
               tool_choice: "auto",
               temperature: 0.7,
               stream: false,
+            },
+            { signal: abortController.signal },
+          );
+          const msg = completion.choices?.[0]?.message;
+          content = typeof msg?.content === "string" ? msg.content : "";
+          for (const tc of (msg?.tool_calls ?? []) as any[]) {
+            toolCalls.push({
+              id: tc.id ?? "",
+              function: {
+                name: tc.function?.name ?? "",
+                arguments: tc.function?.arguments ?? "",
+              },
             });
-            const msg = completion.choices?.[0]?.message;
-            content = typeof msg?.content === "string" ? msg.content : "";
-            for (const tc of (msg?.tool_calls ?? []) as any[]) {
-              toolCalls.push({
-                id: tc.id ?? "",
-                function: {
-                  name: tc.function?.name ?? "",
-                  arguments: tc.function?.arguments ?? "",
-                },
-              });
-            }
           }
-
-          // If the model requested tools, run them and feed results back in.
-          if (toolCalls.length > 0) {
-            messages.push({
-              role: "assistant",
-              content: content || null,
-              tool_calls: toolCalls.map((tc) => ({
-                id: tc.id,
-                type: "function" as const,
-                function: {
-                  name: tc.function.name,
-                  arguments: tc.function.arguments,
-                },
-              })),
-            });
-
-            for (const tc of toolCalls) {
-              const output = await runTool(
-                TOOLS,
-                tc.function.name,
-                tc.function.arguments,
-                { projectId },
-              );
-              send("tool", {
-                name: tc.function.name,
-                arguments: tc.function.arguments,
-                output,
-              });
-              messages.push({
-                role: "tool",
-                tool_call_id: tc.id,
-                name: tc.function.name,
-                content: output,
-              });
-            }
-            continue;
-          }
-
-          // No tool calls → the streamed content is the final answer.
-          messages.push({ role: "assistant", content });
-          break;
         }
 
-        keepWorking = await continueToWork(client, model, messages);
+        // If the model requested tools, run them and feed results back in.
+        if (toolCalls.length > 0) {
+          messages.push({
+            role: "assistant",
+            content: content || null,
+            tool_calls: toolCalls.map((tc) => ({
+              id: tc.id,
+              type: "function" as const,
+              function: {
+                name: tc.function.name,
+                arguments: tc.function.arguments,
+              },
+            })),
+          });
+
+          for (const tc of toolCalls) {
+            const output = await runTool(
+              TOOLS,
+              tc.function.name,
+              tc.function.arguments,
+              { projectId },
+            );
+            send("tool", {
+              name: tc.function.name,
+              arguments: tc.function.arguments,
+              output,
+            });
+            messages.push({
+              role: "tool",
+              tool_call_id: tc.id,
+              name: tc.function.name,
+              content: output,
+            });
+          }
+          continue;
+        }
+
+        // No tool calls → the streamed content is the final answer.
+        break;
       }
 
       send("done", {});
@@ -426,60 +417,4 @@ export async function agentBackend({
       res.end();
     }
   });
-}
-
-async function continueToWork(
-  client: OpenAI,
-  model: string,
-  messages: ChatMessage[],
-): Promise<boolean> {
-  // Build a readable transcript of the conversation (skipping the system prompt).
-  const transcript = messages
-    .slice(1)
-    .map((m) => {
-      if (m.role === "tool") return `tool result: ${m.content ?? ""}`;
-      if (m.role === "assistant" && m.tool_calls)
-        return "assistant: (called tools)";
-      return `${m.role}: ${m.content ?? ""}`;
-    })
-    .join("\n");
-
-  const judgeMessages: any[] = [
-    {
-      role: "system",
-      content:
-        'You are a task-completion judge. Decide whether the user\'s request in the conversation has been FULLY satisfied. Respond with JSON only, in this exact shape: {"achieved": true} if satisfied, or {"achieved": false} if more work is still needed.',
-    },
-    {
-      role: "user",
-      content: `Conversation:\n${transcript}\n\nReturn JSON: {"achieved": true} or {"achieved": false}.`,
-    },
-  ];
-
-  try {
-    const completion = await client.chat.completions.create({
-      model,
-      messages: judgeMessages,
-      temperature: 0,
-      stream: false,
-      response_format: { type: "json_object" },
-    });
-
-    const raw = completion.choices?.[0]?.message?.content ?? "";
-    let parsed: { achieved?: unknown };
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      const match = raw.match(/\{[\s\S]*\}/);
-      if (!match) return false;
-      parsed = JSON.parse(match[0]);
-    }
-
-    const achieved = Boolean(parsed?.achieved);
-    // Return false when the goal is achieved (stop working).
-    return !achieved;
-  } catch {
-    // On judge failure, stop to avoid looping forever.
-    return false;
-  }
 }

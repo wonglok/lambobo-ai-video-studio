@@ -246,6 +246,12 @@ export function ChatUI({ projectId }: Props) {
     </svg>
   );
 
+  const StopIcon = (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <rect x="5" y="5" width="14" height="14" rx="2" />
+    </svg>
+  );
+
   const canSend = serverRunning && !chat.sending;
 
   return (
@@ -429,14 +435,24 @@ export function ChatUI({ projectId }: Props) {
               disabled={!serverRunning || chat.sending}
               className="flex-1 px-3 py-2 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
             />
-            <button
-              onClick={handleSend}
-              disabled={!canSend}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-tiffany-500 hover:bg-tiffany-600 active:bg-tiffany-700 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
-            >
-              {chat.sending ? SpinnerIcon : SendIcon}
-              Send
-            </button>
+            {chat.sending ? (
+              <button
+                onClick={() => chat.stop()}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
+              >
+                {StopIcon}
+                Stop
+              </button>
+            ) : (
+              <button
+                onClick={handleSend}
+                disabled={!canSend}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-tiffany-500 hover:bg-tiffany-600 active:bg-tiffany-700 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
+              >
+                {SendIcon}
+                Send
+              </button>
+            )}
           </div>
         </div>
       </div>
