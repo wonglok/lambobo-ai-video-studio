@@ -399,7 +399,7 @@ export default function GenerateImageTab({ projectId }: Props) {
           Output Size
         </label>
         <div className="flex flex-wrap gap-2">
-          {[512, 1024, 1500, 2048].map((size) => {
+          {[320, 480, 512, 640, 1024, 1500, 2048].map((size) => {
             const isSelected = store.imageEdit.outputSize === size;
             return (
               <button

@@ -1299,8 +1299,10 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     }));
 
     // Preprocess the character image: resize to max 1024px and re-encode as PNG.
+    // use the same size as output
     const processed = await resizeImageToPng(
       resolveImageUrl(imageEdit.characterImage.url),
+      imageEdit.outputSize,
     );
     if (!processed) {
       set((s) => ({
