@@ -36,23 +36,7 @@ const TEMP_DIR = join(APP_DATA_DIR, "temp");
 const PROJECTS_FILE = join(JSON_DIR, "projects.json");
 
 const MLXGEN_MODEL = "AbstractFramework/qwen-image-edit-2511-4bit";
-const MLX_VLM_MODEL = "mlx-community/gemma-4-E4B-it-bf16";
-
-// /**
-//  * Gemma 4 target models and their corresponding MTP draft ("assistant") models.
-//  * When the selected target model is in this map, the server is started with the
-//  * draft model and MTP arguments for speculative decoding.
-//  */
-// const DRAFT_MODELS: Record<string, string> = {
-//   "mlx-community/gemma-4-E2B-it-bf16":
-//     "mlx-community/gemma-4-E2B-it-assistant-bf16",
-//   "mlx-community/gemma-4-E4B-it-bf16":
-//     "mlx-community/gemma-4-E4B-it-assistant-bf16",
-//   "mlx-community/gemma-4-26B-A4B-it-bf16":
-//     "mlx-community/gemma-4-26B-A4B-it-assistant-bf16",
-//   "mlx-community/gemma-4-31B-it-bf16":
-//     "mlx-community/gemma-4-31B-it-assistant-bf16",
-// };
+const MLX_VLM_MODEL = "mlx-community/gemma-4-e2b-4bit";
 
 // ========== Project Types ==========
 

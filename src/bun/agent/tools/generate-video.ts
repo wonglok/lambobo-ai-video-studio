@@ -5,7 +5,12 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { resolveWorkspacePath, classifyFile, UPLOAD_DIR } from "../workspace";
+import {
+  isValidProjectId,
+  resolveWorkspacePath,
+  classifyFile,
+  UPLOAD_DIR,
+} from "../workspace";
 import type { AgentTool } from "./types";
 
 async function readSSE(
@@ -62,6 +67,8 @@ const tool: AgentTool = {
     required: ["prompt", "image"],
   },
   run: async (args, ctx) => {
+    if (!isValidProjectId(ctx.projectId)) return "Invalid project ID.";
+
     const prompt = typeof args.prompt === "string" ? args.prompt.trim() : "";
     if (!prompt) return "generate_video requires a prompt.";
 
