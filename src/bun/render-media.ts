@@ -57,18 +57,30 @@ function ensureDir(dir: string) {
   }
 }
 
+const PROJECT_ID_RE = /^[a-zA-Z0-9_-]{1,64}$/;
+
+function isValidProjectId(id: string): boolean {
+  return PROJECT_ID_RE.test(id);
+}
+
 /**
  * Resolve an output directory for generated media. Returns the directory path,
- * or null when the supplied directory is outside the allowed roots.
+ * or null when the project id or supplied directory is invalid / outside the
+ * allowed roots.
  */
 function resolveOutputDir(
   outputDir: unknown,
   projectId: string,
 ): string | null {
+  if (!isValidProjectId(projectId)) return null;
+
   const base =
     typeof outputDir === "string" && outputDir.trim()
       ? outputDir.trim()
       : join(OUTPUT_DIR, projectId);
+
+  // Defense in depth: reject null bytes and `..` traversal segments.
+  if (base.includes("\0") || base.split(/[/\\]/).includes("..")) return null;
 
   ensureDir(base);
   let realBase: string;
@@ -674,8 +686,8 @@ export async function renderMediaRoutes({
       res.status(400).json({ error: "Image path is required" });
       return;
     }
-    if (!projectId) {
-      res.status(400).json({ error: "Project ID is required" });
+    if (!projectId || !isValidProjectId(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
       return;
     }
 
@@ -825,8 +837,8 @@ export async function renderMediaRoutes({
       res.status(400).json({ error: "Prompt is required" });
       return;
     }
-    if (!projectId) {
-      res.status(400).json({ error: "Project ID is required" });
+    if (!projectId || !isValidProjectId(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
       return;
     }
 
