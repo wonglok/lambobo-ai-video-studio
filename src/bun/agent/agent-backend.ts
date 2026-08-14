@@ -294,8 +294,14 @@ export async function agentBackend({
       apiKey: "local",
     });
 
-    let runOnce = async () => {
-      try {
+    const MAX_ROUNDS = 10;
+    let round = 0;
+    let keepWorking = true;
+
+    try {
+      while (keepWorking && round < MAX_ROUNDS) {
+        round++;
+
         for (let i = 0; i < MAX_ITERATIONS; i++) {
           const stream = await client.chat.completions.create({
             model,
@@ -406,24 +412,63 @@ export async function agentBackend({
           }
 
           // No tool calls → the streamed content is the final answer.
+          messages.push({ role: "assistant", content });
           break;
         }
-      } catch (e) {
-        send("error", { error: String(e) });
-      } finally {
-        if (await continueToWork()) {
-          await runOnce();
-        }
+
+        keepWorking = await continueToWork(client, model, messages);
       }
-    };
 
-    await runOnce();
-
-    send("done", {});
-    res.end();
+      send("done", {});
+    } catch (e) {
+      send("error", { error: String(e) });
+    } finally {
+      res.end();
+    }
   });
 }
 
-async function continueToWork(): Promise<boolean> {
-  return true;
+async function continueToWork(
+  client: OpenAI,
+  model: string,
+  messages: ChatMessage[],
+): Promise<boolean> {
+  // Build a readable transcript of the conversation (skipping the system prompt).
+  const transcript = messages
+    .slice(1)
+    .map((m) => {
+      if (m.role === "tool") return `tool result: ${m.content ?? ""}`;
+      if (m.role === "assistant" && m.tool_calls)
+        return "assistant: (called tools)";
+      return `${m.role}: ${m.content ?? ""}`;
+    })
+    .join("\n");
+
+  const judgeMessages: any[] = [
+    {
+      role: "system",
+      content:
+        'You are a task-completion judge. Reply with exactly "YES" if the user\'s request in the conversation has been FULLY satisfied, or "NO" if more work is still needed. Output only YES or NO.',
+    },
+    {
+      role: "user",
+      content: `Conversation:\n${transcript}\n\nHas the user's goal been fully achieved?`,
+    },
+  ];
+
+  try {
+    const completion = await client.chat.completions.create({
+      model,
+      messages: judgeMessages,
+      temperature: 0,
+      stream: false,
+    });
+    const answer = completion.choices?.[0]?.message?.content ?? "";
+    const achieved = /^\s*yes\b/i.test(answer.trim());
+    // Return false when the goal is achieved (stop working).
+    return !achieved;
+  } catch {
+    // On judge failure, stop to avoid looping forever.
+    return false;
+  }
 }
