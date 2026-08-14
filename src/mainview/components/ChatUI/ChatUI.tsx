@@ -460,6 +460,17 @@ export function ChatUI({ projectId }: Props) {
                     </div>
                   )
                 )}
+
+                {m.trace && (
+                  <details className="text-[11px] text-tiffany-600/60">
+                    <summary className="cursor-pointer">
+                      Trace ({m.trace.length} messages)
+                    </summary>
+                    <pre className="mt-1 max-h-48 overflow-auto p-2 bg-tiffany-50 rounded-lg whitespace-pre-wrap text-tiffany-600">
+                      {JSON.stringify(m.trace, null, 2)}
+                    </pre>
+                  </details>
+                )}
               </div>
             ),
           )}

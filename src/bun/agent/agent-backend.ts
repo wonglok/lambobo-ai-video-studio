@@ -89,6 +89,26 @@ function buildSystemPrompt(): string {
   ].join("\n");
 }
 
+/** Build a sanitized trace of the conversation for the client (no secrets/system). */
+function sanitizeTrace(messages: ChatMessage[]): any[] {
+  return messages
+    .filter((m) => m.role !== "system")
+    .map((m) => {
+      if (m.role === "tool") {
+        const text = typeof m.content === "string" ? m.content : "";
+        return {
+          role: "tool",
+          name: m.name ?? "",
+          content: text.length > 500 ? `${text.slice(0, 500)}…` : text,
+        };
+      }
+      const out: any = { role: m.role, content: m.content ?? "" };
+      if (m.tool_calls) out.tool_calls = m.tool_calls;
+      if (m.image) out.image = "(image)";
+      return out;
+    });
+}
+
 // ========== Routes ==========
 
 export async function agentBackend({
@@ -410,6 +430,7 @@ export async function agentBackend({
       if (!streamedAny) {
         send("delta", { text: "Done." });
       }
+      send("messages", { messages: sanitizeTrace(messages) });
       send("done", {});
     } catch (e) {
       send("error", { error: String(e) });

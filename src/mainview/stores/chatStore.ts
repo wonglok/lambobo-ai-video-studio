@@ -17,6 +17,7 @@ export interface ChatMessage {
   images?: string[];
   videos?: string[];
   notices?: string[];
+  trace?: any[];
   steps: AgentStep[];
 }
 
@@ -179,10 +180,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const session = get().sessions.find((sess) => sess.id === sessionId);
     if (!session) return;
 
-    // History sent to the backend: prior user/assistant turns only.
-    const history = session.messages
-      .filter((m) => m.content.trim() || (m.image && m.image.trim()))
-      .map((m) => ({ role: m.role, content: m.content, image: m.image }));
+    // History sent to the backend: prior turns plus the new user message.
+    const history = [
+      ...session.messages
+        .filter((m) => m.content.trim() || (m.image && m.image.trim()))
+        .map((m) => ({ role: m.role, content: m.content, image: m.image })),
+      { role: "user" as const, content: text, image },
+    ];
 
     const userMsg: ChatMessage = {
       id: nextMsgId(),
@@ -298,6 +302,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
             }));
             break;
           }
+          case "messages":
+            updateAssistant((m) => ({
+              ...m,
+              trace: data.messages as any[],
+            }));
+            break;
           case "error":
             set({ error: data.error || "Something went wrong" });
             break;
