@@ -142,6 +142,7 @@ const tool: AgentTool = {
       }
 
       let resultPath: string | null = null;
+      let resultFilename: string | null = null;
       let error: string | null = null;
 
       await readSSE(res, (event, data) => {
@@ -151,6 +152,7 @@ const tool: AgentTool = {
             break;
           case "complete":
             resultPath = data.path as string;
+            resultFilename = data.filename as string;
             break;
           case "error":
             error = data.error || "Video generation failed";
@@ -161,7 +163,13 @@ const tool: AgentTool = {
       if (error) return error;
       if (!resultPath) return "Video generation did not produce a result.";
 
-      const url = `/api/files?path=${encodeURIComponent(resultPath)}`;
+      const relPath =
+        resultFilename ||
+        (resultPath as string).split("/").pop() ||
+        "video.mp4";
+      const url = `/api/agent/file/preview?projectId=${encodeURIComponent(
+        ctx.projectId,
+      )}&path=${encodeURIComponent(relPath)}`;
       ctx.emit?.("video", { url });
 
       return `Generated video from "${image}": ${resultPath}`;

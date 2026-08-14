@@ -145,11 +145,10 @@ function openInFinder(dirPath: string) {
 let _allowedRealDirs: string[] | null = null;
 function getAllowedRealDirs(): string[] {
   if (_allowedRealDirs) return _allowedRealDirs;
-  [OUTPUT_DIR, UPLOAD_DIR, AGENTS_DIR].forEach((d) => ensureDir(d));
+  [OUTPUT_DIR, UPLOAD_DIR].forEach((d) => ensureDir(d));
   _allowedRealDirs = [
     realpathSync(OUTPUT_DIR) + sep,
     realpathSync(UPLOAD_DIR) + sep,
-    realpathSync(AGENTS_DIR) + sep,
   ];
   return _allowedRealDirs;
 }
