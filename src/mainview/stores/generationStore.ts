@@ -1188,7 +1188,11 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       });
     } catch (e) {
       set((s) => ({
-        imageEdit: { ...s.imageEdit, installing: false, installingError: String(e) },
+        imageEdit: {
+          ...s.imageEdit,
+          installing: false,
+          installingError: String(e),
+        },
       }));
     }
   },
