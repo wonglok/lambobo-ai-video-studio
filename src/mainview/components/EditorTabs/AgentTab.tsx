@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useGenerationStore } from "../../stores/generationStore";
 import { ChatUI } from "../ChatUI/ChatUI";
 
@@ -15,11 +15,18 @@ interface Props {
 
 export default function AgentTab({ projectId }: Props) {
   const store = useGenerationStore();
+  const serverLogsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     store.checkAgentStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (serverLogsRef.current) {
+      serverLogsRef.current.scrollTop = serverLogsRef.current.scrollHeight;
+    }
+  }, [store.agent.serverLogs]);
 
   const serverUrl = `http://localhost:${store.agent.port}`;
   const modelOptions = MODEL_PRESETS.includes(store.agent.model)
@@ -327,7 +334,10 @@ export default function AgentTab({ projectId }: Props) {
         </div>
 
         {store.agent.serverLogs.length > 0 && (
-          <div className="mt-2 p-3 bg-tiffany-50 border border-tiffany-200 rounded-xl max-h-48 overflow-y-auto">
+          <div
+            ref={serverLogsRef}
+            className="mt-2 p-3 bg-tiffany-50 border border-tiffany-200 rounded-xl max-h-48 overflow-y-auto"
+          >
             <p className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
               Server Logs
             </p>
