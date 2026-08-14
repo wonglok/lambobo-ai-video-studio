@@ -1,6 +1,6 @@
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { memoriesDir, ensureDir } from "../workspace";
+import { memoriesDir } from "../workspace";
 import type { AgentTool } from "./types";
 
 const tool: AgentTool = {
@@ -22,10 +22,14 @@ const tool: AgentTool = {
         : "untitled";
     const content = typeof args.content === "string" ? args.content : "";
     const dir = memoriesDir(ctx.projectId);
-    ensureDir(dir);
+    // Owner-only permissions for the memories directory and files.
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
     const safeTitle = title.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 64);
     const filename = `${safeTitle || "memory"}-${Date.now()}.md`;
-    writeFileSync(join(dir, filename), `# ${title}\n\n${content}\n`, "utf-8");
+    writeFileSync(join(dir, filename), `# ${title}\n\n${content}\n`, {
+      encoding: "utf-8",
+      mode: 0o600,
+    });
     return `Saved memory "${title}" to ${filename}`;
   },
 };

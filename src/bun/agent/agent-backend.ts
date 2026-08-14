@@ -78,8 +78,7 @@ function toOpenAIMessages(messages: ChatMessage[]): any[] {
 function buildSystemPrompt(): string {
   const toolList = TOOLS.map((t) => `- ${t.name}: ${t.description}`).join("\n");
   return [
-    "You are a helpful assistant inside an AI video studio app.",
-    "Use the available tools when they help answer the user's question.",
+    "You help the user achive their goal with the tools you have.",
     "",
     "Available tools:",
     toolList,

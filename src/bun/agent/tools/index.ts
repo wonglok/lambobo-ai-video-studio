@@ -1,6 +1,5 @@
 import type { AgentTool, ToolRunContext } from "./types";
 import getTimeTool from "./get-time";
-import listProjectsTool from "./list-projects";
 import saveMemoryTool from "./save-memory";
 import listMemoriesTool from "./list-memories";
 import listFilesTool from "./list-files";
@@ -15,7 +14,6 @@ export type { AgentTool, ToolRunContext } from "./types";
 
 export const TOOLS: AgentTool[] = [
   getTimeTool,
-  listProjectsTool,
   saveMemoryTool,
   listMemoriesTool,
   listFilesTool,
