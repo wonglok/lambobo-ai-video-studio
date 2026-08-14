@@ -1,0 +1,408 @@
+import { useEffect, useRef, useState } from "react";
+import {
+  useWorkspaceStore,
+  workspacePreviewUrl,
+  type WorkspaceFile,
+} from "../stores/workspaceStore";
+
+interface Props {
+  projectId: string;
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export default function AgentWorkspace({ projectId }: Props) {
+  const ws = useWorkspaceStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [preview, setPreview] = useState<WorkspaceFile | null>(null);
+  const [editing, setEditing] = useState<WorkspaceFile | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+
+  useEffect(() => {
+    ws.fetchFiles(projectId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
+
+  // ========== Handlers ==========
+
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      ws.uploadFile(projectId, reader.result as string, file.name);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handlePreview = (f: WorkspaceFile) => {
+    setEditing(null);
+    setPreview(f);
+  };
+
+  const handleEdit = async (f: WorkspaceFile) => {
+    setPreview(null);
+    const content = await ws.readFileContent(projectId, f.path);
+    setEditing(f);
+    setEditContent(content ?? "");
+  };
+
+  const handleSave = async () => {
+    if (!editing) return;
+    await ws.writeFileContent(projectId, editing.path, editContent);
+    setEditing(null);
+  };
+
+  const handleRename = (f: WorkspaceFile) => {
+    setRenaming(f.path);
+    setRenameValue(f.name);
+  };
+
+  const confirmRename = async (f: WorkspaceFile) => {
+    const dir = f.path.slice(0, f.path.lastIndexOf("/") + 1);
+    await ws.renameFile(projectId, f.path, dir + renameValue);
+    setRenaming(null);
+  };
+
+  const handleDelete = async (f: WorkspaceFile) => {
+    if (window.confirm(`Delete "${f.path}"?`)) {
+      await ws.removeFile(projectId, f.path);
+      if (preview?.path === f.path) setPreview(null);
+      if (editing?.path === f.path) setEditing(null);
+    }
+  };
+
+  // ========== SVG Icons ==========
+
+  const UploadIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
+    </svg>
+  );
+
+  const TrashIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  );
+
+  const PencilIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+    </svg>
+  );
+
+  const EyeIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+
+  const FileIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+    </svg>
+  );
+
+  const ImageIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <polyline points="21 15 16 10 5 21" />
+    </svg>
+  );
+
+  const VideoIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polygon points="23 7 16 12 23 17 23 7" />
+      <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+    </svg>
+  );
+
+  const CloseIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+
+  const kindIcon = (f: WorkspaceFile) => {
+    if (f.kind === "image") return <span className="text-tiffany-500">{ImageIcon}</span>;
+    if (f.kind === "video") return <span className="text-tiffany-500">{VideoIcon}</span>;
+    if (f.kind === "text") return <span className="text-tiffany-500">{FileIcon}</span>;
+    return <span className="text-tiffany-400">{FileIcon}</span>;
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Header + upload */}
+      <div className="flex items-center justify-between">
+        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider">
+          Agent Workspace
+        </label>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+        >
+          {UploadIcon}
+          Upload File
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          onChange={handleUpload}
+          className="hidden"
+        />
+      </div>
+
+      {ws.error && (
+        <div className="p-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-xs">
+          {ws.error}
+        </div>
+      )}
+
+      {/* File list */}
+      <div className="border border-tiffany-200 rounded-xl overflow-hidden">
+        <div className="max-h-64 overflow-y-auto">
+          {ws.loading ? (
+            <p className="text-xs text-tiffany-400 italic text-center py-6">
+              Loading files...
+            </p>
+          ) : ws.files.length === 0 ? (
+            <p className="text-xs text-tiffany-400 italic text-center py-6">
+              No files yet. Upload a file or let the agent save a memory.
+            </p>
+          ) : (
+            <ul className="divide-y divide-tiffany-100">
+              {ws.files.map((f) => (
+                <li
+                  key={f.path}
+                  className="flex items-center gap-2 px-3 py-2 hover:bg-tiffany-50/60 transition-colors"
+                >
+                  {kindIcon(f)}
+                  <div className="flex-1 min-w-0">
+                    {renaming === f.path ? (
+                      <input
+                        type="text"
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") confirmRename(f);
+                          if (e.key === "Escape") setRenaming(null);
+                        }}
+                        autoFocus
+                        className="w-full px-2 py-1 bg-white border border-tiffany-300 rounded text-xs text-tiffany-900 focus:outline-none focus:ring-1 focus:ring-tiffany-300"
+                      />
+                    ) : (
+                      <p className="text-xs text-tiffany-800 truncate" title={f.path}>
+                        {f.path}
+                      </p>
+                    )}
+                    <p className="text-[10px] text-tiffany-400">
+                      {f.kind} · {formatSize(f.size)}
+                    </p>
+                  </div>
+
+                  {renaming === f.path ? (
+                    <button
+                      onClick={() => confirmRename(f)}
+                      className="px-2 py-1 text-[10px] font-medium text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                    >
+                      Save
+                    </button>
+                  ) : (
+                    <>
+                      {(f.kind === "image" || f.kind === "video") && (
+                        <button
+                          onClick={() => handlePreview(f)}
+                          className="p-1.5 text-tiffany-500 hover:bg-tiffany-100 rounded transition-colors"
+                          title="Preview"
+                        >
+                          {EyeIcon}
+                        </button>
+                      )}
+                      {f.kind === "text" && (
+                        <button
+                          onClick={() => handleEdit(f)}
+                          className="p-1.5 text-tiffany-500 hover:bg-tiffany-100 rounded transition-colors"
+                          title="Edit"
+                        >
+                          {PencilIcon}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleRename(f)}
+                        className="p-1.5 text-tiffany-500 hover:bg-tiffany-100 rounded transition-colors"
+                        title="Rename"
+                      >
+                        {PencilIcon}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(f)}
+                        className="p-1.5 text-red-400 hover:bg-red-50 rounded transition-colors"
+                        title="Delete"
+                      >
+                        {TrashIcon}
+                      </button>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {/* Preview panel */}
+      {preview && (
+        <div className="border border-tiffany-200 rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 bg-tiffany-50 border-b border-tiffany-200">
+            <span className="text-xs font-medium text-tiffany-700 truncate">
+              {preview.path}
+            </span>
+            <button
+              onClick={() => setPreview(null)}
+              className="p-1 text-tiffany-500 hover:bg-tiffany-100 rounded transition-colors"
+              title="Close"
+            >
+              {CloseIcon}
+            </button>
+          </div>
+          <div className="p-2 flex justify-center bg-tiffany-50/40">
+            {preview.kind === "image" ? (
+              <img
+                src={workspacePreviewUrl(projectId, preview.path)}
+                alt={preview.name}
+                className="max-h-72 max-w-full object-contain"
+              />
+            ) : (
+              <video
+                src={workspacePreviewUrl(projectId, preview.path)}
+                controls
+                className="max-h-72 max-w-full"
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Editor panel */}
+      {editing && (
+        <div className="border border-tiffany-200 rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 bg-tiffany-50 border-b border-tiffany-200">
+            <span className="text-xs font-medium text-tiffany-700 truncate">
+              Editing {editing.path}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={handleSave}
+                className="px-2 py-1 text-[10px] font-medium text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setEditing(null)}
+                className="p-1 text-tiffany-500 hover:bg-tiffany-100 rounded transition-colors"
+                title="Close"
+              >
+                {CloseIcon}
+              </button>
+            </div>
+          </div>
+          <textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            rows={10}
+            className="w-full px-3 py-2 bg-white text-tiffany-900 text-xs font-mono focus:outline-none resize-y"
+          />
+        </div>
+      )}
+    </div>
+  );
+}

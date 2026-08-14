@@ -301,6 +301,88 @@ export async function agentBackend({
   app: Application;
   getUvPath: () => Promise<string>;
 }) {
+  // ===== Workspace file manager =====
+
+  app.get("/api/agent/files", (req, res) => {
+    const projectId = String(req.query.projectId ?? "");
+    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(projectId)) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    const base = workspaceDir(projectId);
+    if (!existsSync(base)) {
+      res.json({ files: [] });
+      return;
+    }
+    res.json({ files: walkFiles(base) });
+  });
+
+  app.get("/api/agent/file/content", (req, res) => {
+    const projectId = String(req.query.projectId ?? "");
+    const path = String(req.query.path ?? "");
+    const abs = resolveWorkspacePath(projectId, path);
+    if (!abs || !existsSync(abs)) {
+      res.status(404).json({ error: "File not found" });
+      return;
+    }
+    res.json({ content: readFileSync(abs, "utf-8") });
+  });
+
+  app.post("/api/agent/file/content", (req, res) => {
+    const { projectId, path, content } = req.body || {};
+    const abs = resolveWorkspacePath(projectId, path);
+    if (!abs) {
+      res.status(400).json({ error: "Invalid path" });
+      return;
+    }
+    ensureDir(dirname(abs));
+    writeFileSync(abs, String(content ?? ""), "utf-8");
+    res.json({ ok: true });
+  });
+
+  app.post("/api/agent/rename", (req, res) => {
+    const { projectId, path, newName } = req.body || {};
+    const abs = resolveWorkspacePath(projectId, path);
+    const newAbs = resolveWorkspacePath(projectId, newName);
+    if (!abs || !newAbs) {
+      res.status(400).json({ error: "Invalid path" });
+      return;
+    }
+    if (!existsSync(abs)) {
+      res.status(404).json({ error: "File not found" });
+      return;
+    }
+    ensureDir(dirname(newAbs));
+    renameSync(abs, newAbs);
+    res.json({ ok: true });
+  });
+
+  app.post("/api/agent/delete", (req, res) => {
+    const { projectId, path } = req.body || {};
+    const abs = resolveWorkspacePath(projectId, path);
+    if (!abs) {
+      res.status(400).json({ error: "Invalid path" });
+      return;
+    }
+    if (!existsSync(abs)) {
+      res.status(404).json({ error: "File not found" });
+      return;
+    }
+    rmSync(abs, { recursive: true, force: true });
+    res.json({ ok: true });
+  });
+
+  app.get("/api/agent/file/preview", (req, res) => {
+    const projectId = String(req.query.projectId ?? "");
+    const path = String(req.query.path ?? "");
+    const abs = resolveWorkspacePath(projectId, path);
+    if (!abs || !existsSync(abs)) {
+      res.status(404).json({ error: "File not found" });
+      return;
+    }
+    res.sendFile(abs);
+  });
+
   // Save user-uploaded images/videos into the agent's workspace.
   app.post("/api/agent/upload", async (req, res) => {
     const { image, filename, projectId } = req.body || {};

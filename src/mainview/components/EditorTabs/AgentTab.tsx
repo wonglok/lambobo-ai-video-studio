@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useGenerationStore } from "../../stores/generationStore";
 import { ChatUI } from "../ChatUI/ChatUI";
+import AgentWorkspace from "../AgentWorkspace";
 
 const MODEL_PRESETS = [
   "mlx-community/gemma-4-E2B-it-bf16",
@@ -352,6 +353,8 @@ export default function AgentTab({ projectId }: Props) {
           </div>
         )}
       </div>
+
+      <AgentWorkspace projectId={projectId} />
 
       <div className="">
         {/*  */}
