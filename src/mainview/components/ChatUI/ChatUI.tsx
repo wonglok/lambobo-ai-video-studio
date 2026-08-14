@@ -1,3 +1,300 @@
+import { useEffect, useRef } from "react";
+import { useGenerationStore } from "../../stores/generationStore";
+import { useChatStore } from "../../stores/chatStore";
+
 export function ChatUI() {
-  return <>chat</>;
+  const gen = useGenerationStore();
+  const chat = useChatStore();
+
+  const port = gen.agent.port;
+  const model = gen.agent.model;
+  const serverRunning = gen.agent.serverRunning;
+
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [chat.messages, chat.sending]);
+
+  const handleSend = () => {
+    const value = inputRef.current?.value ?? "";
+    const hasText = value.trim().length > 0;
+    const hasImage = Boolean(chat.pendingImage);
+    if ((!hasText && !hasImage) || chat.sending || !serverRunning) return;
+    if (inputRef.current) inputRef.current.value = "";
+    chat.sendMessage(value.trim(), port, model, chat.pendingImage ?? undefined);
+  };
+
+  const handleAttach = () => fileRef.current?.click();
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      chat.setPendingImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  // ========== SVG Icons ==========
+
+  const SendIcon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="22" y1="2" x2="11" y2="13" />
+      <polygon points="22 2 15 22 11 13 2 9 22 2" />
+    </svg>
+  );
+
+  const BotIcon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <circle cx="9" cy="9" r="1" />
+      <circle cx="15" cy="9" r="1" />
+      <line x1="9" y1="14" x2="15" y2="14" />
+    </svg>
+  );
+
+  const WrenchIcon = (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+    </svg>
+  );
+
+  const SpinnerIcon = (
+    <svg
+      className="animate-spin text-tiffany-500"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+      <path d="M12 2a10 10 0 0 1 10 10" strokeOpacity="0.75" />
+    </svg>
+  );
+
+  const AttachIcon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
+  );
+
+  const RemoveIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+
+  const canSend = serverRunning && !chat.sending;
+
+  return (
+    <div className="flex flex-col border border-tiffany-200 rounded-xl overflow-hidden bg-white">
+      {/* Header */}
+      <div className="flex items-center gap-2 px-4 py-3 bg-tiffany-50 border-b border-tiffany-200">
+        <span className="text-tiffany-500">{BotIcon}</span>
+        <span className="text-sm font-semibold text-tiffany-900">Agent Chat</span>
+        <span className="ml-auto text-xs text-tiffany-600/60">
+          {serverRunning ? "Connected" : "Server offline"}
+        </span>
+      </div>
+
+      {/* Messages */}
+      <div
+        ref={scrollRef}
+        className="flex flex-col gap-3 p-4 h-72 overflow-y-auto bg-tiffany-50/40"
+      >
+        {chat.messages.length === 0 && (
+          <div className="m-auto text-center text-xs text-tiffany-400 italic max-w-xs">
+            {serverRunning
+              ? "Ask the agent anything. It can use tools like get_time or list_projects."
+              : "Start the mlx-vlm server above to begin chatting."}
+          </div>
+        )}
+
+        {chat.messages.map((m) =>
+          m.role === "user" ? (
+            <div key={m.id} className="flex justify-end">
+              <div className="max-w-[80%] px-3 py-2 rounded-xl bg-tiffany-500 text-white text-sm whitespace-pre-wrap">
+                {m.image && (
+                  <img
+                    src={m.image}
+                    alt="uploaded"
+                    className="mb-2 max-w-48 rounded-lg"
+                  />
+                )}
+                {m.content}
+              </div>
+            </div>
+          ) : (
+            <div key={m.id} className="flex flex-col gap-1.5">
+              {m.steps.length > 0 && (
+                <div className="flex flex-col gap-1">
+                  {m.steps.map((step, i) => (
+                    <div
+                      key={i}
+                      className="flex items-start gap-1.5 text-[11px] text-tiffany-600/70"
+                    >
+                      {step.type === "tool" ? (
+                        <span className="mt-0.5 shrink-0 text-tiffany-400">
+                          {WrenchIcon}
+                        </span>
+                      ) : (
+                        <span className="mt-0.5 shrink-0 text-tiffany-400">
+                          {SpinnerIcon}
+                        </span>
+                      )}
+                      <span className="truncate">
+                        {step.type === "tool"
+                          ? `Tool: ${step.text}`
+                          : step.text}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {m.content ? (
+                <div className="flex justify-start">
+                  <div className="max-w-[80%] px-3 py-2 rounded-xl bg-white border border-tiffany-200 text-tiffany-900 text-sm whitespace-pre-wrap">
+                    {m.content}
+                  </div>
+                </div>
+              ) : (
+                chat.sending && (
+                  <div className="flex justify-start">
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-tiffany-200 text-tiffany-400 text-sm">
+                      {SpinnerIcon}
+                      Thinking...
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+          ),
+        )}
+
+        {chat.error && (
+          <div className="px-3 py-2 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs">
+            {chat.error}
+          </div>
+        )}
+      </div>
+
+      {/* Input */}
+      <div className="border-t border-tiffany-200 bg-white">
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+
+        {chat.pendingImage && (
+          <div className="flex items-center gap-2 px-3 pt-2">
+            <img
+              src={chat.pendingImage}
+              alt="pending"
+              className="w-14 h-14 rounded-lg object-cover border border-tiffany-200"
+            />
+            <button
+              onClick={() => chat.setPendingImage(null)}
+              className="flex items-center justify-center w-6 h-6 rounded-full bg-tiffany-100 text-tiffany-600 hover:bg-tiffany-200 transition-colors"
+              title="Remove image"
+            >
+              {RemoveIcon}
+            </button>
+          </div>
+        )}
+
+        <div className="flex items-end gap-2 px-3 py-3">
+          <button
+            onClick={handleAttach}
+            disabled={!serverRunning || chat.sending}
+            className="flex items-center justify-center w-10 h-10 shrink-0 rounded-xl border border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50 transition-all"
+            title="Attach image"
+          >
+            {AttachIcon}
+          </button>
+          <textarea
+            ref={inputRef}
+            rows={2}
+            placeholder="Type a message..."
+            onKeyDown={handleKeyDown}
+            disabled={!serverRunning || chat.sending}
+            className="flex-1 px-3 py-2 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
+          />
+          <button
+            onClick={handleSend}
+            disabled={!canSend}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-tiffany-500 hover:bg-tiffany-600 active:bg-tiffany-700 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
+          >
+            {chat.sending ? SpinnerIcon : SendIcon}
+            Send
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

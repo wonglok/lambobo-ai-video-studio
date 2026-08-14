@@ -449,7 +449,7 @@ const initialImageEdit: ImageEditState = {
 };
 
 const initialAgent: AgentState = {
-  model: "mlx-community/gemma-4-E4B-it-qat-4bit",
+  model: "mlx-community/gemma-4-E4B-it-bf16",
   port: 8881,
   installing: false,
   installingLogs: [],

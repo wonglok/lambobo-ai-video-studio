@@ -3,9 +3,10 @@ import { useGenerationStore } from "../../stores/generationStore";
 import { ChatUI } from "../ChatUI/ChatUI";
 
 const MODEL_PRESETS = [
-  "mlx-community/gemma-4-E2B-it-qat-4bit",
-  "mlx-community/gemma-4-E4B-it-qat-4bit",
-  "mlx-community/gemma-4-26b-a4b-4bit",
+  "mlx-community/gemma-4-E2B-it-bf16",
+  "mlx-community/gemma-4-E4B-it-bf16",
+  "mlx-community/gemma-4-26B-A4B-it-bf16",
+  "mlx-community/gemma-4-31B-it-bf16",
 ];
 
 export default function AgentTab() {

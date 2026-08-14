@@ -20,6 +20,12 @@ let activeProc: Subprocess | null = null;
 // Track the long-running mlx-vlm server process (separate from render jobs).
 let agentServerProc: Subprocess | null = null;
 let agentStopRequested = false;
+let agentServerPort: number | null = null;
+
+/** Port the app started the mlx-vlm server on (null when the server is not running). */
+export function getAgentServerPort(): number | null {
+  return agentServerPort;
+}
 
 const APP_DATA_DIR = join(homedir(), "media-studio");
 const OUTPUT_DIR = join(APP_DATA_DIR, "output");
@@ -30,7 +36,23 @@ const TEMP_DIR = join(APP_DATA_DIR, "temp");
 const PROJECTS_FILE = join(JSON_DIR, "projects.json");
 
 const MLXGEN_MODEL = "AbstractFramework/qwen-image-edit-2511-4bit";
-const MLX_VLM_MODEL = "mlx-community/gemma-4-E4B-it-qat-4bit";
+const MLX_VLM_MODEL = "mlx-community/gemma-4-E4B-it-bf16";
+
+/**
+ * Gemma 4 target models and their corresponding MTP draft ("assistant") models.
+ * When the selected target model is in this map, the server is started with the
+ * draft model and MTP arguments for speculative decoding.
+ */
+const DRAFT_MODELS: Record<string, string> = {
+  "mlx-community/gemma-4-E2B-it-bf16":
+    "mlx-community/gemma-4-E2B-it-assistant-bf16",
+  "mlx-community/gemma-4-E4B-it-bf16":
+    "mlx-community/gemma-4-E4B-it-assistant-bf16",
+  "mlx-community/gemma-4-26B-A4B-it-bf16":
+    "mlx-community/gemma-4-26B-A4B-it-assistant-bf16",
+  "mlx-community/gemma-4-31B-it-bf16":
+    "mlx-community/gemma-4-31B-it-assistant-bf16",
+};
 
 // ========== Project Types ==========
 
@@ -1246,15 +1268,27 @@ export async function renderMediaRoutes({
         label: `Starting mlx-vlm server (${modelName}) on port ${portNum}...`,
       });
 
-      const proc = spawn(
-        [bin, "--model", modelName, "--port", String(portNum)],
-        {
-          stdout: "pipe",
-          stderr: "pipe",
-        },
-      );
+      const args: string[] = [bin, "--model", modelName, "--port", String(portNum)];
+
+      const draftModel = DRAFT_MODELS[modelName];
+      if (draftModel) {
+        args.push(
+          "--draft-model",
+          draftModel,
+          "--draft-kind",
+          "mtp",
+          "--draft-block-size",
+          "4",
+        );
+      }
+
+      const proc = spawn(args, {
+        stdout: "pipe",
+        stderr: "pipe",
+      });
 
       agentServerProc = proc;
+      agentServerPort = portNum;
 
       const stdoutPromise = streamToSSE(
         proc.stdout as ReadableStream<Uint8Array>,
@@ -1284,6 +1318,7 @@ export async function renderMediaRoutes({
       send("error", { error: String(e) });
     } finally {
       agentServerProc = null;
+      agentServerPort = null;
       res.end();
     }
   });
@@ -1297,6 +1332,7 @@ export async function renderMediaRoutes({
         // process may already be dead
       }
     }
+    agentServerPort = null;
     res.json({ ok: true });
   });
 
