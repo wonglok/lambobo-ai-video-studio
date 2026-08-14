@@ -4,8 +4,9 @@ import { ChatUI } from "../ChatUI/ChatUI";
 import AgentWorkspace from "../AgentWorkspace";
 
 const MODEL_PRESETS = [
-  "mlx-mlx-community/gemma-4-e2b-4bit",
-  "mlx-mlx-community/gemma-4-e4b-4bit",
+  "mlx-community/gemma-4-e2b-4bit",
+  "mlx-community/gemma-4-e4b-4bit",
+  "mlx-community/gemma-4-26b-a4b-4bit",
 ];
 
 interface Props {
@@ -240,15 +241,6 @@ export default function AgentTab({ projectId }: Props) {
               Model
             </label>
             <div className=" gap-2">
-              {/* <input
-                type="text"
-                value={store.agent.model}
-                onChange={(e) => store.setAgentModel(e.target.value)}
-                disabled={store.agent.serverRunning || store.agent.starting}
-                placeholder="mlx-community/..."
-                className="flex-1 w-[350px] px-3 py-2 bg-tiffany-50 border border-tiffany-200 rounded-lg text-tiffany-900 text-sm focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all disabled:opacity-50"
-              /> */}
-              {/* <br /> */}
               <select
                 value={store.agent.model}
                 onChange={(e) => store.setAgentModel(e.target.value)}
