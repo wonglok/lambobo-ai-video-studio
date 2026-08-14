@@ -123,7 +123,11 @@ export async function runSetup({}: {}): Promise<SetupState> {
 
   let primary = Screen.getPrimaryDisplay();
   // mainWindow.setFullScreen(true);
-  mainWindow.setFrame(0, 0, primary.bounds.width, primary.bounds.height);
+  if (process.env.NODE_ENV === "development") {
+    mainWindow.setFrame(0, 0, primary.bounds.width / 3, primary.bounds.height);
+  } else {
+    mainWindow.setFrame(0, 0, primary.bounds.width, primary.bounds.height);
+  }
 
   const app = express();
   app.use(cors());

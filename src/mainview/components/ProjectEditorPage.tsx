@@ -5,6 +5,7 @@ import { useGenerationStore } from "../stores/generationStore";
 import ExtendVideoTab from "./EditorTabs/ExtendVideoTab";
 import GenerateImageTab from "./EditorTabs/GenerateImageTab";
 import GenerateVideoTab from "./EditorTabs/GenerateVideoTab";
+import AgentTab from "./EditorTabs/AgentTab";
 
 export default function ProjectEditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -98,6 +99,24 @@ export default function ProjectEditorPage() {
       <path d="M2 12h20" />
       <path d="M11 8v3" />
       <path d="M11 13v3" />
+    </svg>
+  );
+
+  const AgentIcon = (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <circle cx="9" cy="9" r="1" />
+      <circle cx="15" cy="9" r="1" />
+      <line x1="9" y1="14" x2="15" y2="14" />
     </svg>
   );
 
@@ -196,6 +215,17 @@ export default function ProjectEditorPage() {
               {ImageEditIcon}
               Edit Image
             </button>
+            <button
+              onClick={() => store.setActiveTab("agent")}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+                store.activeTab === "agent"
+                  ? "bg-tiffany-100 text-tiffany-800"
+                  : "text-tiffany-600 hover:bg-tiffany-50 hover:text-tiffany-700"
+              }`}
+            >
+              {AgentIcon}
+              Agent
+            </button>
           </div>
 
           {/* ========== IMAGE GENERATION PANEL ========== */}
@@ -206,6 +236,9 @@ export default function ProjectEditorPage() {
 
           {/* ========== EXTEND VIDEO PANEL ========== */}
           {store.activeTab === "extend" && <ExtendVideoTab projectId={id!} />}
+
+          {/* ========== AGENT PANEL ========== */}
+          {store.activeTab === "agent" && <AgentTab />}
         </div>
       </div>
     </div>

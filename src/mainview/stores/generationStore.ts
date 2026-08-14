@@ -6,7 +6,7 @@ const API_BASE = `http://localhost:${(window as any).PORT}`;
 
 // ========== Types ==========
 
-export type GenerationTab = "image" | "video" | "extend";
+export type GenerationTab = "image" | "video" | "extend" | "agent";
 export type AspectRatio = "1:1" | "16:9" | "9:16" | "4:3" | "3:4";
 export type Resolution = "320p" | "480p" | "640p" | "720p";
 
@@ -81,6 +81,18 @@ interface ImageEditState {
   modelDownloaded: boolean | null;
 }
 
+interface AgentState {
+  port: number;
+  installing: boolean;
+  installingLogs: string[];
+  installingError: string | null;
+  installed: boolean | null;
+  starting: boolean;
+  serverRunning: boolean;
+  serverLogs: string[];
+  serverError: string | null;
+}
+
 interface GenerationStore {
   // Tab
   activeTab: GenerationTab;
@@ -123,6 +135,14 @@ interface GenerationStore {
   downloadMlxGenModel: () => Promise<void>;
   generateEditedImage: (projectId: string) => Promise<void>;
   generateBatchEditedImages: (projectId: string) => Promise<void>;
+
+  // Agent (mlx-vlm)
+  agent: AgentState;
+  setAgentPort: (v: number) => void;
+  checkAgentStatus: () => Promise<void>;
+  installMlxVlm: () => Promise<void>;
+  startAgentServer: () => Promise<void>;
+  stopAgentServer: () => Promise<void>;
 
   // Project videos picker
   projectVideos: ProjectVideo[];
@@ -423,6 +443,18 @@ const initialImageEdit: ImageEditState = {
   logs: [],
   mlxgenInstalled: null,
   modelDownloaded: null,
+};
+
+const initialAgent: AgentState = {
+  port: 8080,
+  installing: false,
+  installingLogs: [],
+  installingError: null,
+  installed: null,
+  starting: false,
+  serverRunning: false,
+  serverLogs: [],
+  serverError: null,
 };
 
 // ========== Store ==========
@@ -1473,6 +1505,174 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     }
   },
 
+  // ---- Agent (mlx-vlm) ----
+  agent: { ...initialAgent },
+
+  setAgentPort: (port) => set((s) => ({ agent: { ...s.agent, port } })),
+
+  checkAgentStatus: async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/agent/status`);
+      if (!res.ok) return;
+      const data = await res.json();
+      set((s) => ({
+        agent: {
+          ...s.agent,
+          installed: Boolean(data.installed),
+          serverRunning: Boolean(data.serverRunning),
+        },
+      }));
+    } catch {
+      // Leave status unknown (null) if the check fails.
+    }
+  },
+
+  installMlxVlm: async () => {
+    const { agent } = get();
+    if (agent.installing) return;
+
+    set((s) => ({
+      agent: {
+        ...s.agent,
+        installing: true,
+        installingError: null,
+        installingLogs: [],
+      },
+    }));
+
+    try {
+      const res = await fetch(`${API_BASE}/api/agent/install`, {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        set((s) => ({
+          agent: { ...s.agent, installing: false, installingError: err },
+        }));
+        return;
+      }
+
+      await readSSEStream(res, (event, data) => {
+        switch (event) {
+          case "log":
+            set((s) => ({
+              agent: {
+                ...s.agent,
+                installingLogs: [...s.agent.installingLogs, data.text as string],
+              },
+            }));
+            break;
+          case "complete":
+            set((s) => ({ agent: { ...s.agent, installing: false } }));
+            get().checkAgentStatus();
+            break;
+          case "error":
+            set((s) => ({
+              agent: {
+                ...s.agent,
+                installing: false,
+                installingError: data.error || "Install failed",
+              },
+            }));
+            break;
+        }
+      });
+    } catch (e) {
+      set((s) => ({
+        agent: {
+          ...s.agent,
+          installing: false,
+          installingError: String(e),
+        },
+      }));
+    }
+  },
+
+  startAgentServer: async () => {
+    const { agent } = get();
+    if (agent.starting || agent.serverRunning) return;
+
+    set((s) => ({
+      agent: {
+        ...s.agent,
+        starting: true,
+        serverRunning: true,
+        serverError: null,
+        serverLogs: [],
+      },
+    }));
+
+    try {
+      const res = await fetch(`${API_BASE}/api/agent/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ port: agent.port }),
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        set((s) => ({
+          agent: {
+            ...s.agent,
+            starting: false,
+            serverRunning: false,
+            serverError: err,
+          },
+        }));
+        return;
+      }
+
+      await readSSEStream(res, (event, data) => {
+        switch (event) {
+          case "log":
+            set((s) => ({
+              agent: {
+                ...s.agent,
+                serverLogs: [...s.agent.serverLogs, data.text as string],
+              },
+            }));
+            break;
+          case "complete":
+            set((s) => ({
+              agent: { ...s.agent, starting: false, serverRunning: false },
+            }));
+            break;
+          case "error":
+            set((s) => ({
+              agent: {
+                ...s.agent,
+                starting: false,
+                serverRunning: false,
+                serverError: data.error || "Server error",
+              },
+            }));
+            break;
+        }
+      });
+    } catch (e) {
+      set((s) => ({
+        agent: {
+          ...s.agent,
+          starting: false,
+          serverRunning: false,
+          serverError: String(e),
+        },
+      }));
+    }
+  },
+
+  stopAgentServer: async () => {
+    try {
+      await fetch(`${API_BASE}/api/agent/stop`, { method: "POST" });
+    } catch {
+      // ignore stop failures
+    }
+    set((s) => ({
+      agent: { ...s.agent, starting: false, serverRunning: false },
+    }));
+  },
+
   // ---- Project Videos ----
   projectVideos: [],
   projectVideosLoading: false,
@@ -1560,6 +1760,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       video: { ...initialVideo },
       extend: { ...initialExtend },
       imageEdit: { ...initialImageEdit },
+      agent: { ...initialAgent },
       uploading: false,
       uploadError: null,
       uploadedImageUrl: null,

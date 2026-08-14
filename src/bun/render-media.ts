@@ -17,6 +17,10 @@ import { spawn, type Subprocess } from "bun";
 // Track the currently active spawn process so it can be cancelled
 let activeProc: Subprocess | null = null;
 
+// Track the long-running mlx-vlm server process (separate from render jobs).
+let agentServerProc: Subprocess | null = null;
+let agentStopRequested = false;
+
 const APP_DATA_DIR = join(homedir(), "media-studio");
 const OUTPUT_DIR = join(APP_DATA_DIR, "output");
 const UPLOAD_DIR = join(APP_DATA_DIR, "upload");
@@ -26,6 +30,7 @@ const TEMP_DIR = join(APP_DATA_DIR, "temp");
 const PROJECTS_FILE = join(JSON_DIR, "projects.json");
 
 const MLXGEN_MODEL = "AbstractFramework/qwen-image-edit-2511-4bit";
+const MLX_VLM_MODEL = "mlx-community/gemma-4-E4B-it-qat-4bit";
 
 // ========== Project Types ==========
 
@@ -170,6 +175,39 @@ function isMlxgenInstalled(): boolean {
   // Fall back to PATH lookup (Bun native, synchronous).
   try {
     return Bun.which("mlxgen") !== null;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Resolve the `mlx_vlm.server` executable installed via `uv tool install mlx-vlm`.
+ * uv tool installs binaries into `~/.local/bin`; fall back to relying on PATH.
+ */
+async function getMlxVlmServerBin(): Promise<string> {
+  const candidates = [
+    join(homedir(), ".local", "bin", "mlx_vlm.server"),
+    "/opt/homebrew/bin/mlx_vlm.server",
+    "/usr/local/bin/mlx_vlm.server",
+  ];
+  for (const p of candidates) {
+    if (existsSync(p)) return p;
+  }
+  return "mlx_vlm.server";
+}
+
+/** True when the `mlx_vlm.server` executable is installed (known paths or PATH). */
+function isMlxVlmInstalled(): boolean {
+  const candidates = [
+    join(homedir(), ".local", "bin", "mlx_vlm.server"),
+    "/opt/homebrew/bin/mlx_vlm.server",
+    "/usr/local/bin/mlx_vlm.server",
+  ];
+  for (const p of candidates) {
+    if (existsSync(p)) return true;
+  }
+  try {
+    return Bun.which("mlx_vlm.server") !== null;
   } catch {
     return false;
   }
@@ -1112,6 +1150,152 @@ export async function renderMediaRoutes({
       }
       res.end();
     }
+  });
+
+  // ========== Agent (mlx-vlm) ==========
+
+  app.get("/api/agent/status", (_req, res) => {
+    res.json({
+      installed: isMlxVlmInstalled(),
+      serverRunning: agentServerProc !== null,
+    });
+  });
+
+  app.post("/api/agent/install", async (_req, res) => {
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: string, data: object) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      const uvPath = await getUvPath();
+      send("progress", {
+        status: "starting",
+        label: "Installing mlx-vlm...",
+      });
+
+      const proc = spawn([uvPath, "tool", "install", "mlx-vlm"], {
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+
+      activeProc = proc;
+
+      const stdoutPromise = streamToSSE(
+        proc.stdout as ReadableStream<Uint8Array>,
+        "Install mlx-vlm",
+        send,
+      );
+      const stderrText = await streamToSSE(
+        proc.stderr as ReadableStream<Uint8Array>,
+        "Install mlx-vlm",
+        send,
+      );
+      await stdoutPromise;
+
+      const exitCode = await proc.exited;
+      if (exitCode === 0) {
+        send("complete", { success: true });
+      } else {
+        send("error", {
+          error: stderrText || `Process exited with code ${exitCode}`,
+          exitCode,
+        });
+      }
+    } catch (e) {
+      send("error", { error: String(e) });
+    } finally {
+      activeProc = null;
+      res.end();
+    }
+  });
+
+  app.post("/api/agent/start", async (req, res) => {
+    const { port } = req.body || {};
+    const portNum = Number(port);
+    if (!Number.isInteger(portNum) || portNum < 1 || portNum > 65535) {
+      res
+        .status(400)
+        .json({ error: "Port must be an integer between 1 and 65535" });
+      return;
+    }
+
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: string, data: object) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      const bin = await getMlxVlmServerBin();
+      send("progress", {
+        status: "starting",
+        label: `Starting mlx-vlm server on port ${portNum}...`,
+      });
+
+      const proc = spawn(
+        [bin, "--model", MLX_VLM_MODEL, "--port", String(portNum)],
+        {
+          stdout: "pipe",
+          stderr: "pipe",
+        },
+      );
+
+      agentServerProc = proc;
+
+      const stdoutPromise = streamToSSE(
+        proc.stdout as ReadableStream<Uint8Array>,
+        "Agent",
+        send,
+      );
+      const stderrText = await streamToSSE(
+        proc.stderr as ReadableStream<Uint8Array>,
+        "Agent",
+        send,
+      );
+      await stdoutPromise;
+
+      const exitCode = await proc.exited;
+      if (agentStopRequested) {
+        send("complete", { success: true, stopped: true });
+        agentStopRequested = false;
+      } else if (exitCode === 0) {
+        send("complete", { success: true });
+      } else {
+        send("error", {
+          error: stderrText || `Server exited with code ${exitCode}`,
+          exitCode,
+        });
+      }
+    } catch (e) {
+      send("error", { error: String(e) });
+    } finally {
+      agentServerProc = null;
+      res.end();
+    }
+  });
+
+  app.post("/api/agent/stop", (_req, res) => {
+    agentStopRequested = true;
+    if (agentServerProc) {
+      try {
+        agentServerProc.kill();
+      } catch {
+        // process may already be dead
+      }
+    }
+    res.json({ ok: true });
   });
 
   // List all projects
