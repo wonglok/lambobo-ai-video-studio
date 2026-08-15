@@ -129,7 +129,7 @@ const tool: AgentTool = {
         imagePath: imageName,
         projectId: ctx.projectId,
         outputDir: workspaceDir(ctx.projectId),
-        width: 640,
+        width: 448,
         height: 448,
         frames,
         frameRate: 24,

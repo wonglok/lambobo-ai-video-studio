@@ -76,8 +76,8 @@ const tool: AgentTool = {
         prompt,
         projectId: ctx.projectId,
         outputDir: workspaceDir(ctx.projectId),
-        width: 480,
-        height: 480,
+        width: 448,
+        height: 448,
         frames,
         frameRate: 24,
       };
@@ -125,7 +125,9 @@ const tool: AgentTool = {
       if (!resultPath) return "Video generation did not produce a result.";
 
       const relPath =
-        resultFilename || (resultPath as string).split("/").pop() || "video.mp4";
+        resultFilename ||
+        (resultPath as string).split("/").pop() ||
+        "video.mp4";
       const url = `/api/agent/file/preview?projectId=${encodeURIComponent(
         ctx.projectId,
       )}&path=${encodeURIComponent(relPath)}`;
