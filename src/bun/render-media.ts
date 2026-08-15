@@ -36,6 +36,7 @@ const JSON_DIR = join(APP_DATA_DIR, "json");
 const PYTHON_DIR = join(APP_DATA_DIR, "python-src");
 const TEMP_DIR = join(APP_DATA_DIR, "temp");
 const PROJECTS_FILE = join(JSON_DIR, "projects.json");
+const CHARACTERS_FILE = join(JSON_DIR, "characters.json");
 
 const MLXGEN_MODEL = "AbstractFramework/qwen-image-edit-2511-4bit";
 const MLX_VLM_MODEL = "mlx-community/gemma-4-e2b-it-4bit";
@@ -61,6 +62,15 @@ export interface Project {
   description: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Character {
+  id: string;
+  projectId: string;
+  name: string;
+  filename: string;
+  source: "upload" | "generated";
+  createdAt: string;
 }
 
 // ========== Project Helpers ==========
@@ -131,6 +141,24 @@ function readProjects(): Project[] {
 function writeProjects(projects: Project[]) {
   ensureDir(JSON_DIR);
   writeFileSync(PROJECTS_FILE, JSON.stringify(projects, null, 2), "utf-8");
+}
+
+function readCharacters(): Character[] {
+  ensureDir(JSON_DIR);
+  if (!existsSync(CHARACTERS_FILE)) {
+    writeFileSync(CHARACTERS_FILE, "[]", "utf-8");
+    return [];
+  }
+  try {
+    return JSON.parse(readFileSync(CHARACTERS_FILE, "utf-8"));
+  } catch {
+    return [];
+  }
+}
+
+function writeCharacters(characters: Character[]) {
+  ensureDir(JSON_DIR);
+  writeFileSync(CHARACTERS_FILE, JSON.stringify(characters, null, 2), "utf-8");
 }
 
 function makeId(): string {
@@ -1696,6 +1724,64 @@ export async function renderMediaRoutes({
 
     const [removed] = projects.splice(index, 1);
     writeProjects(projects);
+    res.json(removed);
+  });
+
+  // ===== Character CRUD =====
+
+  app.get("/api/characters", (req, res) => {
+    const projectId = String(req.query.projectId ?? "");
+    if (!isValidProjectId(projectId)) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    const characters = readCharacters().filter(
+      (c) => c.projectId === projectId,
+    );
+    res.json(characters);
+  });
+
+  app.post("/api/characters", (req, res) => {
+    const { projectId, name, filename, source } = req.body || {};
+    if (!projectId || !isValidProjectId(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    if (!filename || !String(filename).trim()) {
+      res.status(400).json({ error: "Filename is required" });
+      return;
+    }
+    const safeFilename = String(filename).split(/[/\\]/).pop() || "";
+    const characters = readCharacters();
+    const character: Character = {
+      id: makeId(),
+      projectId: String(projectId),
+      name: String(name ?? "").trim() || safeFilename,
+      filename: safeFilename,
+      source: source === "generated" ? "generated" : "upload",
+      createdAt: new Date().toISOString(),
+    };
+    characters.push(character);
+    writeCharacters(characters);
+    res.status(201).json(character);
+  });
+
+  app.delete("/api/characters/:id", (req, res) => {
+    const projectId = String(req.query.projectId ?? "");
+    if (!isValidProjectId(projectId)) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    const characters = readCharacters();
+    const index = characters.findIndex(
+      (c) => c.id === req.params.id && c.projectId === projectId,
+    );
+    if (index === -1) {
+      res.status(404).json({ error: "Character not found" });
+      return;
+    }
+    const [removed] = characters.splice(index, 1);
+    writeCharacters(characters);
     res.json(removed);
   });
 
