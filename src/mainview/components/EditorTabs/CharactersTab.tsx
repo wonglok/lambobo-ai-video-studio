@@ -84,6 +84,9 @@ export default function CharactersTab({ projectId }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [previewCharacter, setPreviewCharacter] = useState<Character | null>(
+    null,
+  );
 
   useEffect(() => {
     characterStore.fetchCharacters(projectId);
@@ -329,6 +332,24 @@ export default function CharactersTab({ projectId }: Props) {
     </svg>
   );
 
+  const MaximizeIcon = (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="15 3 21 3 21 9" />
+      <polyline points="9 21 3 21 3 15" />
+      <line x1="21" y1="3" x2="14" y2="10" />
+      <line x1="3" y1="21" x2="10" y2="14" />
+    </svg>
+  );
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-2">
@@ -445,7 +466,12 @@ export default function CharactersTab({ projectId }: Props) {
           {characterStore.characters.map((c) => {
             const url = charUrl(c.filename);
             return (
-              <div key={c.id} className="relative group">
+              <div
+                key={c.id}
+                className="relative group cursor-pointer"
+                onClick={() => setPreviewCharacter(c)}
+                title="Preview image"
+              >
                 {url ? (
                   <CharacterCard imageUrl={url} name={c.name} />
                 ) : (
@@ -453,7 +479,17 @@ export default function CharactersTab({ projectId }: Props) {
                     {CharacterIcon}
                   </div>
                 )}
-                <div className="absolute top-1 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div
+                  className="absolute top-1 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={() => setPreviewCharacter(c)}
+                    className="w-6 h-6 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-tiffany-500 transition-colors"
+                    title="Preview image"
+                  >
+                    {MaximizeIcon}
+                  </button>
                   <button
                     onClick={() => startEdit(c)}
                     className="w-6 h-6 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-tiffany-500 transition-colors"
@@ -521,6 +557,44 @@ export default function CharactersTab({ projectId }: Props) {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Character image preview modal */}
+      {previewCharacter && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setPreviewCharacter(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-card p-5 w-full max-w-2xl max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-tiffany-900">
+                {previewCharacter.name}
+              </h3>
+              <button
+                onClick={() => setPreviewCharacter(null)}
+                className="w-6 h-6 rounded-full text-tiffany-500 hover:bg-tiffany-100 hover:text-tiffany-700 flex items-center justify-center transition-colors"
+                title="Close"
+              >
+                {CloseIcon}
+              </button>
+            </div>
+
+            <div className="flex-1 min-h-0 flex items-center justify-center bg-tiffany-50 rounded-xl overflow-hidden">
+              {charUrl(previewCharacter.filename) ? (
+                <img
+                  src={charUrl(previewCharacter.filename)!}
+                  alt={previewCharacter.name}
+                  className="max-h-[65vh] max-w-full object-contain"
+                />
+              ) : (
+                <div className="text-tiffany-400 py-16">{CharacterIcon}</div>
+              )}
+            </div>
           </div>
         </div>
       )}
