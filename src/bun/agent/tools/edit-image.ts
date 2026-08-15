@@ -13,7 +13,32 @@ import {
   AGENT_UPLOAD_DIR,
   workspaceDir,
 } from "../workspace";
+import sharp from "sharp";
 import type { AgentTool } from "./types";
+
+/** Maximum allowed dimension (px) for both input and output images. */
+const MAX_DIM = 1024;
+
+/** Resize an image to at most MAX_DIM on the longest edge, keeping aspect ratio. */
+async function resizeToMax(
+  input: Buffer,
+): Promise<{ buffer: Buffer; width: number; height: number }> {
+  const resized = await sharp(input)
+    .resize({
+      width: MAX_DIM,
+      height: MAX_DIM,
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .png()
+    .toBuffer();
+  const meta = await sharp(resized).metadata();
+  return {
+    buffer: resized,
+    width: meta.width ?? MAX_DIM,
+    height: meta.height ?? MAX_DIM,
+  };
+}
 
 async function readSSE(
   response: Response,
@@ -61,14 +86,6 @@ const tool: AgentTool = {
         type: "string",
         description: "Path of the image in the workspace to edit",
       },
-      width: {
-        type: "number",
-        description: "Output width in pixels (optional)",
-      },
-      height: {
-        type: "number",
-        description: "Output height in pixels (optional)",
-      },
     },
     required: ["prompt", "image"],
   },
@@ -106,18 +123,29 @@ const tool: AgentTool = {
 
     if (!ctx.backendPort) return "Image backend not available.";
 
-    // Copy the image into the project's agent-upload dir so the mlxgen
-    // endpoint can resolve it by bare filename.
+    // Resize the source image to at most 1024px (keeping aspect ratio) and
+    // re-encode as PNG, then stage it into the project's agent-upload dir so
+    // the mlxgen endpoint can resolve it by bare filename.
+    let resized: { buffer: Buffer; width: number; height: number };
+    try {
+      resized = await resizeToMax(readFileSync(realAbs));
+    } catch (e) {
+      return `Failed to process image: ${String(e)}`;
+    }
+
     const uploadProjectDir = join(AGENT_UPLOAD_DIR, ctx.projectId);
     if (!existsSync(uploadProjectDir)) {
       mkdirSync(uploadProjectDir, { recursive: true });
     }
-    const origName = image.split("/").pop() || "image.png";
-    const imageName = `agent-${Date.now()}-${origName.replace(
+    const origBase = (image.split("/").pop() || "image.png").replace(
+      /\.[^.]+$/,
+      "",
+    );
+    const imageName = `agent-${Date.now()}-${origBase.replace(
       /[^a-zA-Z0-9._-]/g,
       "_",
-    )}`;
-    writeFileSync(join(uploadProjectDir, imageName), readFileSync(realAbs));
+    )}.png`;
+    writeFileSync(join(uploadProjectDir, imageName), resized.buffer);
 
     ctx.emit?.("notice", { text: `Editing image "${image}"...` });
 
@@ -126,13 +154,9 @@ const tool: AgentTool = {
         prompt,
         imagePath: imageName,
         projectId: ctx.projectId,
+        width: resized.width,
+        height: resized.height,
       };
-      if (typeof args.width === "number" && args.width > 0) {
-        body.width = args.width;
-      }
-      if (typeof args.height === "number" && args.height > 0) {
-        body.height = args.height;
-      }
 
       const res = await fetch(
         `http://localhost:${ctx.backendPort}/api/mlxgen/generate`,

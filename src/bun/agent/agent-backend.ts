@@ -91,7 +91,7 @@ function buildSystemPrompt(): string {
     "",
     "## Getting started",
     "",
-    "When the user greets you (e.g. says \"hi\" or \"hello\") or asks for help, FIRST ask them what they want to do:",
+    'When the user greets you (e.g. says "hi" or "hello") or asks for help, FIRST ask them what they want to do:',
     "1. Edit an image",
     "2. Render a video from text",
     "3. Render a video from an image",
@@ -102,7 +102,7 @@ function buildSystemPrompt(): string {
     "",
     "### Step 1 — Image",
     "- Call `list_files` to see what is in the agent workspace.",
-    "- List every image file (files whose `kind` is \"image\") to the user as a numbered list so they can pick one.",
+    '- List every image file (files whose `kind` is "image") to the user as a numbered list so they can pick one.',
     "- You may call `show_image` to preview an image before the user decides.",
     "- If there are no images, tell the user and ask them to upload one first.",
     "",
@@ -122,7 +122,7 @@ function buildSystemPrompt(): string {
     "### Step 1 — Image (optional)",
     "- Ask the user whether they want to animate an image or generate a video from text alone.",
     "- If they want an image, call `list_files` to see what is in the agent workspace.",
-    "- List every image file (files whose `kind` is \"image\") to the user as a numbered list so they can pick one.",
+    '- List every image file (files whose `kind` is "image") to the user as a numbered list so they can pick one.',
     "- You may call `show_image` to preview an image before the user decides.",
     "- If there are no images, tell the user and ask them to upload one, or offer to proceed with text only.",
     "",
@@ -458,17 +458,6 @@ export async function agentBackend({
       apiKey: "local",
     });
 
-    const abortController = new AbortController();
-
-    let ttt = setInterval(() => {
-      if (req?.signal?.aborted) {
-        clearInterval(ttt);
-        abortController.abort();
-      }
-    });
-
-    // res.on("close", () => abortController.abort());
-
     try {
       const seenToolKeys = new Set<string>();
       let streamedAny = false;
@@ -484,7 +473,7 @@ export async function agentBackend({
             reasoning_effort: "high",
             stream: true,
           },
-          { signal: abortController.signal },
+          { signal: req.signal },
         );
 
         let content = "";
@@ -565,7 +554,7 @@ export async function agentBackend({
                 projectId,
                 emit: send,
                 backendPort,
-                signal: abortController.signal,
+                signal: req.signal,
               },
             );
             send("tool", {

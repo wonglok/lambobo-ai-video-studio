@@ -58,6 +58,7 @@ export function ChatUI({ projectId }: Props) {
   const [confirmDeleteSession, setConfirmDeleteSession] = useState<
     string | null
   >(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -285,6 +286,22 @@ export function ChatUI({ projectId }: Props) {
     </svg>
   );
 
+  const CloseIcon = (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+
   const canSend = serverRunning && !chat.sending;
 
   return (
@@ -373,7 +390,8 @@ export function ChatUI({ projectId }: Props) {
                     <img
                       src={m.image}
                       alt="uploaded"
-                      className="mb-2 max-w-48 rounded-lg"
+                      onClick={() => setPreviewImage(m.image!)}
+                      className="mb-2 max-w-48 rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
                     />
                   )}
                   {m.content}
@@ -441,7 +459,8 @@ export function ChatUI({ projectId }: Props) {
                         key={i}
                         src={img}
                         alt={`result ${i + 1}`}
-                        className="max-w-48 max-h-48 rounded-lg border border-tiffany-200 object-contain"
+                        onClick={() => setPreviewImage(img)}
+                        className="max-w-48 max-h-48 rounded-lg border border-tiffany-200 object-contain cursor-pointer hover:opacity-80 transition-opacity"
                       />
                     ))}
                   </div>
@@ -589,6 +608,28 @@ export function ChatUI({ projectId }: Props) {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Image preview modal */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6"
+          onClick={() => setPreviewImage(null)}
+        >
+          <button
+            onClick={() => setPreviewImage(null)}
+            className="absolute top-4 right-4 flex items-center justify-center w-9 h-9 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
+            title="Close"
+          >
+            {CloseIcon}
+          </button>
+          <img
+            src={previewImage}
+            alt="preview"
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-full max-h-full rounded-lg shadow-2xl object-contain"
+          />
         </div>
       )}
     </div>
