@@ -31,6 +31,7 @@ const APP_DATA_DIR = join(homedir(), "media-studio");
 const OUTPUT_DIR = join(APP_DATA_DIR, "output");
 const UPLOAD_DIR = join(APP_DATA_DIR, "upload");
 const AGENT_UPLOAD_DIR = join(APP_DATA_DIR, "agent-upload");
+const EXTRACTED_FRAMES_DIR = join(APP_DATA_DIR, "extracted-frames");
 const AGENTS_DIR = join(APP_DATA_DIR, "agents");
 const JSON_DIR = join(APP_DATA_DIR, "json");
 const PYTHON_DIR = join(APP_DATA_DIR, "python-src");
@@ -1783,6 +1784,38 @@ export async function renderMediaRoutes({
     const [removed] = characters.splice(index, 1);
     writeCharacters(characters);
     res.json(removed);
+  });
+
+  // Save an extracted video frame into the project's extracted-frames folder.
+  app.post("/api/extracted-frames", (req, res) => {
+    const { image, filename, projectId } = req.body || {};
+    if (!image) {
+      res.status(400).json({ error: "Image data is required (base64)" });
+      return;
+    }
+    if (!projectId || !isValidProjectId(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    try {
+      const base64 = String(image).replace(/^data:[^;]+;base64,/, "");
+      const buffer = Buffer.from(base64, "base64");
+      const dir = join(EXTRACTED_FRAMES_DIR, String(projectId));
+      ensureDir(dir);
+      const safeName = (filename || `frame-${Date.now()}.png`).replace(
+        /[^a-zA-Z0-9._-]/g,
+        "_",
+      );
+      writeFileSync(join(dir, safeName), buffer);
+      res.json({
+        success: true,
+        path: join(dir, safeName),
+        filename: safeName,
+        size: buffer.length,
+      });
+    } catch (e) {
+      res.status(500).json({ error: "Failed to save frame", details: String(e) });
+    }
   });
 
   // Open project folder in Finder

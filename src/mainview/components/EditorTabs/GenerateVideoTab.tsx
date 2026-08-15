@@ -482,7 +482,7 @@ export default function GenerateVideoTab({ projectId }: Props) {
           Duration (seconds)
         </label>
         <div className="flex flex-wrap gap-2">
-          {[3, 5, 7.5, 10, 12.5, 15, 17.5, 20].map((d) => (
+          {[0.5, 3, 5, 7.5, 10, 12.5, 15, 17.5, 20].map((d) => (
             <button
               key={d}
               onClick={() => store.setVideoDuration(d)}
@@ -528,7 +528,7 @@ export default function GenerateVideoTab({ projectId }: Props) {
           Resolution
         </label>
         <div className="flex flex-wrap gap-2">
-          {(["320p", "480p", "576p", "640p", "720p"] as const).map(
+          {(["320p", "480p", "576p", "640p", "720p", "1080p"] as const).map(
             (res: any) => (
               <button
                 key={res}
