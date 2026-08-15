@@ -10,12 +10,14 @@ interface Props {
   items: SheetItem[];
 }
 
+// Base layout in "cell units"; scaled up so the sheet's longest edge is TARGET px.
 const CELL_W = 160;
 const CELL_H = 160;
 const LABEL_H = 18;
 const GAP = 12;
 const PADDING = 12;
 const COLUMNS = 5;
+const TARGET = 4096;
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -32,11 +34,13 @@ function drawContain(
   img: HTMLImageElement,
   x: number,
   y: number,
+  cellW: number,
+  cellH: number,
 ) {
-  const scale = Math.min(CELL_W / img.width, CELL_H / img.height);
+  const scale = Math.min(cellW / img.width, cellH / img.height);
   const dw = img.width * scale;
   const dh = img.height * scale;
-  ctx.drawImage(img, x + (CELL_W - dw) / 2, y + (CELL_H - dh) / 2, dw, dh);
+  ctx.drawImage(img, x + (cellW - dw) / 2, y + (cellH - dh) / 2, dw, dh);
 }
 
 export default function CharacterSheet({ items }: Props) {
@@ -50,8 +54,19 @@ export default function CharacterSheet({ items }: Props) {
 
     const cols = Math.max(1, COLUMNS);
     const rows = Math.ceil(items.length / cols) || 1;
-    const width = cols * CELL_W + (cols - 1) * GAP + PADDING * 2;
-    const height = rows * (CELL_H + LABEL_H) + (rows - 1) * GAP + PADDING * 2;
+
+    const baseWidth = cols * CELL_W + (cols - 1) * GAP + PADDING * 2;
+    const baseHeight =
+      rows * (CELL_H + LABEL_H) + (rows - 1) * GAP + PADDING * 2;
+    const scale = TARGET / Math.max(baseWidth, baseHeight);
+
+    const cellW = CELL_W * scale;
+    const cellH = CELL_H * scale;
+    const labelH = LABEL_H * scale;
+    const gap = GAP * scale;
+    const pad = PADDING * scale;
+    const width = Math.round(baseWidth * scale);
+    const height = Math.round(baseHeight * scale);
 
     canvas.width = width;
     canvas.height = height;
@@ -61,7 +76,7 @@ export default function CharacterSheet({ items }: Props) {
 
     if (items.length === 0) {
       ctx.fillStyle = "#94a3b8";
-      ctx.font = "12px sans-serif";
+      ctx.font = `${Math.round(12 * scale)}px sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText("No characters yet", width / 2, height / 2);
@@ -74,12 +89,12 @@ export default function CharacterSheet({ items }: Props) {
     items.forEach(async (item, i) => {
       const col = i % cols;
       const row = Math.floor(i / cols);
-      const x = PADDING + col * (CELL_W + GAP);
-      const y = PADDING + row * (CELL_H + LABEL_H + GAP);
+      const x = pad + col * (cellW + gap);
+      const y = pad + row * (cellH + labelH + gap);
 
       // Cell background
       ctx.fillStyle = "#f0fdfa";
-      ctx.fillRect(x, y, CELL_W, CELL_H + LABEL_H);
+      ctx.fillRect(x, y, cellW, cellH + labelH);
 
       let img: HTMLImageElement | null = null;
       try {
@@ -89,16 +104,16 @@ export default function CharacterSheet({ items }: Props) {
       }
       if (cancelled) return;
 
-      if (img) drawContain(ctx, img, x, y);
+      if (img) drawContain(ctx, img, x, y, cellW, cellH);
 
       // Label bar
       ctx.fillStyle = "rgba(0,0,0,0.65)";
-      ctx.fillRect(x, y + CELL_H, CELL_W, LABEL_H);
+      ctx.fillRect(x, y + cellH, cellW, labelH);
       ctx.fillStyle = "#ffffff";
-      ctx.font = "11px sans-serif";
+      ctx.font = `${Math.round(11 * scale)}px sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(item.name, x + CELL_W / 2, y + CELL_H + LABEL_H / 2);
+      ctx.fillText(item.name, x + cellW / 2, y + cellH + labelH / 2);
     });
 
     return () => {
