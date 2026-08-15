@@ -1,0 +1,352 @@
+import { useEffect } from "react";
+import { useGenerationStore } from "../../stores/generationStore";
+
+interface Props {
+  projectId: string;
+}
+
+export default function TextToImageTab({ projectId }: Props) {
+  const store = useGenerationStore();
+
+  useEffect(() => {
+    store.checkTextToImageStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const busy =
+    store.textToImage.generating ||
+    store.textToImage.installing ||
+    store.textToImage.downloading;
+
+  const renderStatus = (
+    value: boolean | null,
+    okText: string,
+    missingText: string,
+  ) => {
+    if (value === null) {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-tiffany-400">
+          {SpinnerIcon}
+          Checking...
+        </span>
+      );
+    }
+    if (value) {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-emerald-600">
+          {CheckCircleIcon}
+          {okText}
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 text-amber-600">
+        {AlertCircleIcon}
+        {missingText}
+      </span>
+    );
+  };
+
+  // ========== SVG Icons ==========
+
+  const ImageIcon = (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <polyline points="21 15 16 10 5 21" />
+    </svg>
+  );
+
+  const InstallIcon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="16 18 22 12 16 6" />
+      <polyline points="8 6 2 12 8 18" />
+    </svg>
+  );
+
+  const DownloadIcon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+
+  const SparkleIcon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+
+  const SpinnerIcon = (
+    <svg
+      className="animate-spin text-tiffany-500"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+      <path d="M12 2a10 10 0 0 1 10 10" strokeOpacity="0.75" />
+    </svg>
+  );
+
+  const CheckCircleIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+      <polyline points="22 4 12 14.01 9 11.01" />
+    </svg>
+  );
+
+  const AlertCircleIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+  );
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center gap-2">
+        <span className="text-tiffany-500">{ImageIcon}</span>
+        <h2 className="text-base font-semibold text-tiffany-900">
+          Text-to-Image Generation
+        </h2>
+      </div>
+
+      {/* ===== Setup: install + download model ===== */}
+      <div>
+        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+          Model Setup
+        </label>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => store.installTextToImage()}
+            disabled={store.textToImage.installing}
+            className="flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50"
+          >
+            {store.textToImage.installing ? SpinnerIcon : InstallIcon}
+            Install mlx-gen
+          </button>
+          <button
+            onClick={() => store.downloadTextToImageModel()}
+            disabled={store.textToImage.downloading}
+            className="flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50"
+          >
+            {store.textToImage.downloading ? SpinnerIcon : DownloadIcon}
+            Download z-image Model
+          </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-2 text-xs font-medium">
+          {renderStatus(
+            store.textToImage.mlxgenInstalled,
+            "mlx-gen installed",
+            "mlx-gen not installed",
+          )}
+          {renderStatus(
+            store.textToImage.zModelDownloaded,
+            "z-image model downloaded",
+            "z-image model not downloaded",
+          )}
+        </div>
+
+        {store.textToImage.installingLogs.length > 0 && (
+          <div className="mt-2 p-3 bg-tiffany-50 border border-tiffany-200 rounded-xl max-h-32 overflow-y-auto">
+            <pre className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap">
+              {store.textToImage.installingLogs.join("")}
+            </pre>
+          </div>
+        )}
+        {store.textToImage.installingError && (
+          <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs">
+            {store.textToImage.installingError}
+          </div>
+        )}
+
+        {store.textToImage.downloadingLogs.length > 0 && (
+          <div className="mt-2 p-3 bg-tiffany-50 border border-tiffany-200 rounded-xl max-h-32 overflow-y-auto">
+            <pre className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap">
+              {store.textToImage.downloadingLogs.join("")}
+            </pre>
+          </div>
+        )}
+        {store.textToImage.downloadingError && (
+          <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs">
+            {store.textToImage.downloadingError}
+          </div>
+        )}
+      </div>
+
+      {/* ===== Prompt ===== */}
+      <div>
+        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+          Image Prompt
+        </label>
+        <textarea
+          value={store.textToImage.prompt}
+          onChange={(e) => store.setTextToImagePrompt(e.target.value)}
+          placeholder="Describe the image to generate, e.g. a little lamb standing in a sunny meadow."
+          rows={4}
+          disabled={busy}
+          className="w-full px-4 py-3 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
+        />
+      </div>
+
+      {/* ===== Aspect Ratio ===== */}
+      <div>
+        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+          Aspect Ratio
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {(["1:1", "16:9", "9:16", "4:3", "3:4"] as const).map((ratio) => (
+            <button
+              key={ratio}
+              onClick={() => store.setTextToImageAspectRatio(ratio)}
+              disabled={busy}
+              className={`px-4 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                store.textToImage.aspectRatio === ratio
+                  ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
+                  : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+              } disabled:opacity-50`}
+            >
+              {ratio}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ===== Resolution ===== */}
+      <div>
+        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+          Resolution
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {(["320p", "480p", "640p", "720p", "1080p"] as const).map((res) => (
+            <button
+              key={res}
+              onClick={() => store.setTextToImageResolution(res)}
+              disabled={busy}
+              className={`px-4 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                store.textToImage.resolution === res
+                  ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
+                  : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+              } disabled:opacity-50`}
+            >
+              {res}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ===== Generate ===== */}
+      {store.textToImage.generating ? (
+        <div className="flex items-center gap-2 px-4 py-3 bg-tiffany-50 border border-tiffany-200 rounded-xl">
+          {SpinnerIcon}
+          <span className="text-sm font-medium text-tiffany-700">
+            Generating...
+          </span>
+        </div>
+      ) : (
+        <button
+          onClick={() => store.generateTextToImage(projectId)}
+          disabled={busy || !store.textToImage.prompt.trim()}
+          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-600 hover:bg-tiffany-700 active:bg-tiffany-800 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
+        >
+          {SparkleIcon}
+          Generate Image
+        </button>
+      )}
+
+      {/* ===== Error ===== */}
+      {store.textToImage.error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+          {store.textToImage.error}
+        </div>
+      )}
+
+      {/* ===== Logs ===== */}
+      {store.textToImage.logs.length > 0 && (
+        <div className="p-4 bg-tiffany-50 border border-tiffany-200 rounded-xl max-h-40 overflow-y-auto">
+          <p className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+            Logs
+          </p>
+          <pre className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap">
+            {store.textToImage.logs.join("")}
+          </pre>
+        </div>
+      )}
+
+      {/* ===== Result ===== */}
+      {store.textToImage.result && (
+        <div>
+          <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+            Generated Image
+          </label>
+          <div className="rounded-xl overflow-hidden border border-tiffany-200 shadow-card inline-block">
+            <img
+              src={store.textToImage.result}
+              alt="Generated"
+              className="max-w-full h-auto"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

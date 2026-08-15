@@ -42,6 +42,7 @@ const PROJECTS_FILE = join(JSON_DIR, "projects.json");
 const CHARACTERS_FILE = join(JSON_DIR, "characters.json");
 
 const MLXGEN_MODEL = "AbstractFramework/qwen-image-edit-2511-4bit";
+const Z_IMAGE_MODEL = "AbstractFramework/z-image-turbo-4bit";
 const MLX_VLM_MODEL = "mlx-community/gemma-4-e2b-it-4bit";
 
 const VIDEO_STAGE_FLAGS: Record<string, string> = {
@@ -338,9 +339,9 @@ function huggingfaceCacheDir(): string {
   return join(homedir(), ".cache", "huggingface", "hub");
 }
 
-/** True when the MLX-Gen model has already been downloaded to the HF cache. */
-function isModelDownloaded(): boolean {
-  const modelDirName = `models--${MLXGEN_MODEL.replace("/", "--")}`;
+/** True when the given MLX-Gen model has already been downloaded to the HF cache. */
+function isModelDownloaded(model: string = MLXGEN_MODEL): boolean {
+  const modelDirName = `models--${model.replace("/", "--")}`;
   const snapshotsDir = join(huggingfaceCacheDir(), modelDirName, "snapshots");
   if (!existsSync(snapshotsDir)) return false;
   try {
@@ -1154,6 +1155,7 @@ export async function renderMediaRoutes({
     res.json({
       installed: isMlxgenInstalled(),
       modelDownloaded: isModelDownloaded(),
+      zModelDownloaded: isModelDownloaded(Z_IMAGE_MODEL),
     });
   });
 
@@ -1236,6 +1238,63 @@ export async function renderMediaRoutes({
       });
 
       const proc = spawn([mlxgen, "download", "--model", MLXGEN_MODEL], {
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+
+      activeProc = proc;
+
+      const stdoutPromise = streamToSSE(
+        proc.stdout as ReadableStream<Uint8Array>,
+        "Download",
+        send,
+      );
+      const stderrText = await streamToSSE(
+        proc.stderr as ReadableStream<Uint8Array>,
+        "Download",
+        send,
+      );
+      await stdoutPromise;
+
+      const exitCode = await proc.exited;
+      if (exitCode === 0) {
+        send("complete", { success: true });
+      } else {
+        send("error", {
+          error: stderrText || `Process exited with code ${exitCode}`,
+          exitCode,
+        });
+      }
+    } catch (e) {
+      send("error", { error: String(e) });
+    } finally {
+      activeProc = null;
+      res.end();
+    }
+  });
+
+  // ========== MLX-Gen: Download Z-Image Model ==========
+
+  app.post("/api/mlxgen/download-z-model", async (_req, res) => {
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: string, data: object) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      const mlxgen = await getMlxgenBin();
+      send("progress", {
+        status: "starting",
+        label: `Downloading model ${Z_IMAGE_MODEL}...`,
+      });
+
+      const proc = spawn([mlxgen, "download", "--model", Z_IMAGE_MODEL], {
         stdout: "pipe",
         stderr: "pipe",
       });
@@ -1425,6 +1484,118 @@ export async function renderMediaRoutes({
           // ignore cleanup failures
         }
       }
+      res.end();
+    }
+  });
+
+  // ========== MLX-Gen: Generate (Text-to-Image) ==========
+
+  app.post("/api/mlxgen/text-to-image", async (req, res) => {
+    const { prompt, projectId, width, height, steps } = req.body || {};
+
+    if (!prompt) {
+      res.status(400).json({ error: "Prompt is required" });
+      return;
+    }
+    if (!projectId) {
+      res.status(400).json({ error: "Project ID is required" });
+      return;
+    }
+    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: string, data: object) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      const mlxgen = await getMlxgenBin();
+      const projectOutputDir = join(OUTPUT_DIR, projectId);
+      ensureDir(projectOutputDir);
+
+      const outputFile = `zimage-${Date.now()}.png`;
+      const outputPath = join(projectOutputDir, outputFile);
+
+      send("progress", {
+        status: "starting",
+        label: "Generating image...",
+        outputFile,
+      });
+
+      // z-image-turbo is a few-step distillation model; default to 4 steps.
+      const resolvedSteps = Number(steps) > 0 ? Number(steps) : 4;
+
+      const args: string[] = [
+        mlxgen,
+        "generate",
+        "--model",
+        Z_IMAGE_MODEL,
+        "--prompt",
+        prompt,
+        "--output",
+        outputPath,
+        "--steps",
+        String(resolvedSteps),
+      ];
+
+      const outWidth = Number(width);
+      const outHeight = Number(height);
+      if (
+        Number.isInteger(outWidth) &&
+        outWidth > 0 &&
+        Number.isInteger(outHeight) &&
+        outHeight > 0
+      ) {
+        args.push("--width", String(outWidth), "--height", String(outHeight));
+      }
+
+      const proc = spawn(args, {
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+
+      activeProc = proc;
+
+      const stdoutPromise = streamToSSE(
+        proc.stdout as ReadableStream<Uint8Array>,
+        "MLXGen",
+        send,
+      );
+      const stderrText = await streamToSSE(
+        proc.stderr as ReadableStream<Uint8Array>,
+        "MLXGen",
+        send,
+      );
+      await stdoutPromise;
+
+      const exitCode = await proc.exited;
+      const success = exitCode === 0 && existsSync(outputPath);
+
+      if (success) {
+        send("complete", {
+          success: true,
+          path: outputPath,
+          filename: outputFile,
+        });
+      } else {
+        send("error", {
+          error: stderrText || `Process exited with code ${exitCode}`,
+          exitCode,
+        });
+      }
+    } catch (e) {
+      send("error", { error: String(e) });
+    } finally {
+      activeProc = null;
       res.end();
     }
   });

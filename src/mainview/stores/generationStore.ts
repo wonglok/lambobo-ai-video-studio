@@ -13,7 +13,8 @@ export type GenerationTab =
   | "agent"
   | "characters"
   | "extract"
-  | "sceneVisual";
+  | "sceneVisual"
+  | "textToImage";
 export type AspectRatio = "1:1" | "16:9" | "9:16" | "4:3" | "3:4";
 export type Resolution = "320p" | "480p" | "640p" | "720p" | "1080p";
 export type VideoMode = "distilled" | "one-stage" | "two-stage";
@@ -90,6 +91,24 @@ interface ImageEditState {
   modelDownloaded: boolean | null;
 }
 
+interface TextToImageState {
+  prompt: string;
+  aspectRatio: AspectRatio;
+  resolution: Resolution;
+  installing: boolean;
+  installingLogs: string[];
+  installingError: string | null;
+  downloading: boolean;
+  downloadingLogs: string[];
+  downloadingError: string | null;
+  generating: boolean;
+  result: string | null;
+  error: string | null;
+  logs: string[];
+  mlxgenInstalled: boolean | null;
+  zModelDownloaded: boolean | null;
+}
+
 interface AgentState {
   model: string;
   port: number;
@@ -147,6 +166,17 @@ interface GenerationStore {
   downloadMlxGenModel: () => Promise<void>;
   generateEditedImage: (projectId: string) => Promise<void>;
   generateBatchEditedImages: (projectId: string) => Promise<void>;
+
+  // Text-to-image (mlx-gen z-image-turbo)
+  textToImage: TextToImageState;
+  setTextToImagePrompt: (v: string) => void;
+  setTextToImageAspectRatio: (v: AspectRatio) => void;
+  setTextToImageResolution: (v: Resolution) => void;
+  clearTextToImageResult: () => void;
+  checkTextToImageStatus: () => Promise<void>;
+  installTextToImage: () => Promise<void>;
+  downloadTextToImageModel: () => Promise<void>;
+  generateTextToImage: (projectId: string) => Promise<void>;
 
   // Agent (mlx-vlm)
   agent: AgentState;
@@ -459,6 +489,24 @@ const initialImageEdit: ImageEditState = {
   logs: [],
   mlxgenInstalled: null,
   modelDownloaded: null,
+};
+
+const initialTextToImage: TextToImageState = {
+  prompt: "",
+  aspectRatio: "1:1",
+  resolution: "480p",
+  installing: false,
+  installingLogs: [],
+  installingError: null,
+  downloading: false,
+  downloadingLogs: [],
+  downloadingError: null,
+  generating: false,
+  result: null,
+  error: null,
+  logs: [],
+  mlxgenInstalled: null,
+  zModelDownloaded: null,
 };
 
 const initialAgent: AgentState = {
@@ -1527,6 +1575,259 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     }
   },
 
+  // ---- Text-to-image (mlx-gen z-image-turbo) ----
+  textToImage: { ...initialTextToImage },
+
+  setTextToImagePrompt: (prompt) =>
+    set((s) => ({ textToImage: { ...s.textToImage, prompt, error: null } })),
+
+  setTextToImageAspectRatio: (aspectRatio) =>
+    set((s) => ({ textToImage: { ...s.textToImage, aspectRatio } })),
+
+  setTextToImageResolution: (resolution) =>
+    set((s) => ({ textToImage: { ...s.textToImage, resolution } })),
+
+  clearTextToImageResult: () =>
+    set((s) => ({
+      textToImage: { ...s.textToImage, result: null, error: null, logs: [] },
+    })),
+
+  checkTextToImageStatus: async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/mlxgen/status`);
+      if (!res.ok) return;
+      const data = await res.json();
+      set((s) => ({
+        textToImage: {
+          ...s.textToImage,
+          mlxgenInstalled: Boolean(data.installed),
+          zModelDownloaded: Boolean(data.zModelDownloaded),
+        },
+      }));
+    } catch {
+      // Leave status unknown (null) if the check fails.
+    }
+  },
+
+  installTextToImage: async () => {
+    const { textToImage } = get();
+    if (textToImage.installing) return;
+
+    set((s) => ({
+      textToImage: {
+        ...s.textToImage,
+        installing: true,
+        installingError: null,
+        installingLogs: [],
+      },
+    }));
+
+    try {
+      const res = await fetch(`${API_BASE}/api/mlxgen/install`, {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        set((s) => ({
+          textToImage: {
+            ...s.textToImage,
+            installing: false,
+            installingError: err,
+          },
+        }));
+        return;
+      }
+
+      await readSSEStream(res, (event, data) => {
+        switch (event) {
+          case "log":
+            set((s) => ({
+              textToImage: {
+                ...s.textToImage,
+                installingLogs: [
+                  ...s.textToImage.installingLogs,
+                  data.text as string,
+                ],
+              },
+            }));
+            break;
+          case "complete":
+            set((s) => ({
+              textToImage: { ...s.textToImage, installing: false },
+            }));
+            get().checkTextToImageStatus();
+            break;
+          case "error":
+            set((s) => ({
+              textToImage: {
+                ...s.textToImage,
+                installing: false,
+                installingError: data.error || "Install failed",
+              },
+            }));
+            break;
+        }
+      });
+    } catch (e) {
+      set((s) => ({
+        textToImage: {
+          ...s.textToImage,
+          installing: false,
+          installingError: String(e),
+        },
+      }));
+    }
+  },
+
+  downloadTextToImageModel: async () => {
+    const { textToImage } = get();
+    if (textToImage.downloading) return;
+
+    set((s) => ({
+      textToImage: {
+        ...s.textToImage,
+        downloading: true,
+        downloadingError: null,
+        downloadingLogs: [],
+      },
+    }));
+
+    try {
+      const res = await fetch(`${API_BASE}/api/mlxgen/download-z-model`, {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        set((s) => ({
+          textToImage: {
+            ...s.textToImage,
+            downloading: false,
+            downloadingError: err,
+          },
+        }));
+        return;
+      }
+
+      await readSSEStream(res, (event, data) => {
+        switch (event) {
+          case "log":
+            set((s) => ({
+              textToImage: {
+                ...s.textToImage,
+                downloadingLogs: [
+                  ...s.textToImage.downloadingLogs,
+                  data.text as string,
+                ],
+              },
+            }));
+            break;
+          case "complete":
+            set((s) => ({
+              textToImage: { ...s.textToImage, downloading: false },
+            }));
+            get().checkTextToImageStatus();
+            break;
+          case "error":
+            set((s) => ({
+              textToImage: {
+                ...s.textToImage,
+                downloading: false,
+                downloadingError: data.error || "Download failed",
+              },
+            }));
+            break;
+        }
+      });
+    } catch (e) {
+      set((s) => ({
+        textToImage: {
+          ...s.textToImage,
+          downloading: false,
+          downloadingError: String(e),
+        },
+      }));
+    }
+  },
+
+  generateTextToImage: async (projectId) => {
+    const { textToImage } = get();
+    if (!textToImage.prompt.trim() || textToImage.generating) return;
+
+    const { width, height } = getDimensions(
+      textToImage.aspectRatio,
+      textToImage.resolution,
+    );
+
+    set((s) => ({
+      textToImage: {
+        ...s.textToImage,
+        generating: true,
+        error: null,
+        result: null,
+        logs: [],
+      },
+    }));
+
+    try {
+      const res = await fetch(`${API_BASE}/api/mlxgen/text-to-image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: textToImage.prompt.trim(),
+          projectId,
+          width,
+          height,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        set((s) => ({
+          textToImage: { ...s.textToImage, generating: false, error: err },
+        }));
+        return;
+      }
+
+      await readSSEStream(res, (event, data) => {
+        switch (event) {
+          case "log":
+            set((s) => ({
+              textToImage: {
+                ...s.textToImage,
+                logs: [...s.textToImage.logs, data.text as string],
+              },
+            }));
+            break;
+          case "complete":
+            set((s) => ({
+              textToImage: {
+                ...s.textToImage,
+                generating: false,
+                result: `http://localhost:${(window as any).PORT}/api/files?path=${encodeURIComponent(data.path)}`,
+              },
+            }));
+            get().fetchProjectImages(projectId);
+            break;
+          case "error":
+            set((s) => ({
+              textToImage: {
+                ...s.textToImage,
+                generating: false,
+                error: data.error || "Text-to-image generation failed",
+              },
+            }));
+            break;
+        }
+      });
+    } catch (e) {
+      set((s) => ({
+        textToImage: { ...s.textToImage, generating: false, error: String(e) },
+      }));
+    }
+  },
+
   // ---- Agent (mlx-vlm) ----
   agent: { ...initialAgent },
 
@@ -1818,6 +2119,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       video: { ...initialVideo },
       extend: { ...initialExtend },
       imageEdit: { ...initialImageEdit },
+      textToImage: { ...initialTextToImage },
       agent: { ...initialAgent },
       uploading: false,
       uploadError: null,
