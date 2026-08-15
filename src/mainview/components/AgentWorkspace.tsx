@@ -20,6 +20,7 @@ export default function AgentWorkspace({ projectId }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [preview, setPreview] = useState<WorkspaceFile | null>(null);
+  const [previewContent, setPreviewContent] = useState<string | null>(null);
   const [editing, setEditing] = useState<WorkspaceFile | null>(null);
   const [editContent, setEditContent] = useState("");
   const [renaming, setRenaming] = useState<string | null>(null);
@@ -44,9 +45,15 @@ export default function AgentWorkspace({ projectId }: Props) {
     e.target.value = "";
   };
 
-  const handlePreview = (f: WorkspaceFile) => {
+  const handleSelect = async (f: WorkspaceFile) => {
     setEditing(null);
     setPreview(f);
+    if (f.kind === "text") {
+      const content = await ws.readFileContent(projectId, f.path);
+      setPreviewContent(content ?? "");
+    } else {
+      setPreviewContent(null);
+    }
   };
 
   const handleEdit = async (f: WorkspaceFile) => {
@@ -88,7 +95,10 @@ export default function AgentWorkspace({ projectId }: Props) {
     const path = confirmDelete;
     await ws.removeFile(projectId, path);
     setConfirmDelete(null);
-    if (preview?.path === path) setPreview(null);
+    if (preview?.path === path) {
+      setPreview(null);
+      setPreviewContent(null);
+    }
     if (editing?.path === path) setEditing(null);
   };
 
@@ -187,22 +197,6 @@ export default function AgentWorkspace({ projectId }: Props) {
     >
       <path d="M12 20h9" />
       <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-    </svg>
-  );
-
-  const EyeIcon = (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-      <circle cx="12" cy="12" r="3" />
     </svg>
   );
 
@@ -326,165 +320,194 @@ export default function AgentWorkspace({ projectId }: Props) {
         </div>
       )}
 
-      {/* File list */}
-      <div className="border border-tiffany-200 rounded-xl overflow-hidden">
-        <div className="max-h-64 overflow-y-auto">
-          {ws.loading ? (
-            <p className="text-xs text-tiffany-400 italic text-center py-6">
-              Loading files...
-            </p>
-          ) : ws.files.length === 0 ? (
-            <p className="text-xs text-tiffany-400 italic text-center py-6">
-              No files yet. Upload a file or let the agent save a memory.
-            </p>
-          ) : (
-            <ul className="divide-y divide-tiffany-100">
-              {ws.files.map((f) => (
-                <li
-                  key={f.path}
-                  className="flex items-center gap-2 px-3 py-2 hover:bg-tiffany-50/60 transition-colors"
-                >
-                  {kindIcon(f)}
-                  <div className="flex-1 min-w-0">
-                    {renaming === f.path ? (
-                      <input
-                        type="text"
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") confirmRename(f);
-                          if (e.key === "Escape") setRenaming(null);
-                        }}
-                        autoFocus
-                        className="w-full px-2 py-1 bg-white border border-tiffany-300 rounded text-xs text-tiffany-900 focus:outline-none focus:ring-1 focus:ring-tiffany-300"
-                      />
-                    ) : (
-                      <p
-                        className="text-xs text-tiffany-800 truncate"
-                        title={f.path}
-                      >
-                        {f.path}
-                      </p>
-                    )}
-                    <p className="text-[10px] text-tiffany-400">
-                      {f.kind} · {formatSize(f.size)}
-                    </p>
-                  </div>
-
-                  {renaming === f.path ? (
-                    <button
-                      onClick={() => confirmRename(f)}
-                      className="px-2 py-1 text-[10px] font-medium text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+      <div className="flex gap-3 items-start">
+        {/* Left column: file list + editor */}
+        <div className="flex-1 min-w-0 flex flex-col gap-3">
+          {/* File list */}
+          <div className="border border-tiffany-200 rounded-xl overflow-hidden">
+            <div className="max-h-64 overflow-y-auto">
+              {ws.loading ? (
+                <p className="text-xs text-tiffany-400 italic text-center py-6">
+                  Loading files...
+                </p>
+              ) : ws.files.length === 0 ? (
+                <p className="text-xs text-tiffany-400 italic text-center py-6">
+                  No files yet. Upload a file or let the agent save a memory.
+                </p>
+              ) : (
+                <ul className="divide-y divide-tiffany-100">
+                  {ws.files.map((f) => (
+                    <li
+                      key={f.path}
+                      onClick={() => handleSelect(f)}
+                      className={`flex items-center gap-2 px-3 py-2 hover:bg-tiffany-50/60 transition-colors cursor-pointer ${
+                        preview?.path === f.path ? "bg-tiffany-100/60" : ""
+                      }`}
                     >
-                      Save
-                    </button>
-                  ) : (
-                    <>
-                      {(f.kind === "image" || f.kind === "video") && (
-                        <button
-                          onClick={() => handlePreview(f)}
-                          className="p-1.5 text-tiffany-500 hover:bg-tiffany-100 rounded transition-colors"
-                          title="Preview"
-                        >
-                          {EyeIcon}
-                        </button>
-                      )}
-                      {f.kind === "text" && (
-                        <button
-                          onClick={() => handleEdit(f)}
-                          className="p-1.5 text-tiffany-500 hover:bg-tiffany-100 rounded transition-colors"
-                          title="Edit"
-                        >
-                          {PencilIcon}
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleRename(f)}
-                        className="p-1.5 text-tiffany-500 hover:bg-tiffany-100 rounded transition-colors"
-                        title="Rename"
-                      >
-                        {PencilIcon}
-                      </button>
-                      <button
-                        onClick={() => handleDelete(f)}
-                        className="p-1.5 text-red-400 hover:bg-red-50 rounded transition-colors"
-                        title="Delete"
-                      >
-                        {TrashIcon}
-                      </button>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
+                      {kindIcon(f)}
+                      <div className="flex-1 min-w-0">
+                        {renaming === f.path ? (
+                          <input
+                            type="text"
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") confirmRename(f);
+                              if (e.key === "Escape") setRenaming(null);
+                            }}
+                            autoFocus
+                            className="w-full px-2 py-1 bg-white border border-tiffany-300 rounded text-xs text-tiffany-900 focus:outline-none focus:ring-1 focus:ring-tiffany-300"
+                          />
+                        ) : (
+                          <p
+                            className="text-xs text-tiffany-800 truncate"
+                            title={f.path}
+                          >
+                            {f.path}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-tiffany-400">
+                          {f.kind} · {formatSize(f.size)}
+                        </p>
+                      </div>
 
-      {/* Preview panel */}
-      {preview && (
-        <div className="border border-tiffany-200 rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-3 py-2 bg-tiffany-50 border-b border-tiffany-200">
-            <span className="text-xs font-medium text-tiffany-700 truncate">
-              {preview.path}
-            </span>
-            <button
-              onClick={() => setPreview(null)}
-              className="p-1 text-tiffany-500 hover:bg-tiffany-100 rounded transition-colors"
-              title="Close"
-            >
-              {CloseIcon}
-            </button>
-          </div>
-          <div className="p-2 flex justify-center bg-tiffany-50/40">
-            {preview.kind === "image" ? (
-              <img
-                src={workspacePreviewUrl(projectId, preview.path)}
-                alt={preview.name}
-                className="max-h-72 max-w-full object-contain"
-              />
-            ) : (
-              <video
-                src={workspacePreviewUrl(projectId, preview.path)}
-                controls
-                className="max-h-72 max-w-full"
-              />
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Editor panel */}
-      {editing && (
-        <div className="border border-tiffany-200 rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-3 py-2 bg-tiffany-50 border-b border-tiffany-200">
-            <span className="text-xs font-medium text-tiffany-700 truncate">
-              Editing {editing.path}
-            </span>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={handleSave}
-                className="px-2 py-1 text-[10px] font-medium text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
-              >
-                Save
-              </button>
-              <button
-                onClick={() => setEditing(null)}
-                className="p-1 text-tiffany-500 hover:bg-tiffany-100 rounded transition-colors"
-                title="Close"
-              >
-                {CloseIcon}
-              </button>
+                      {renaming === f.path ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            confirmRename(f);
+                          }}
+                          className="px-2 py-1 text-[10px] font-medium text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                        >
+                          Save
+                        </button>
+                      ) : (
+                        <>
+                          {f.kind === "text" && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEdit(f);
+                              }}
+                              className="p-1.5 text-tiffany-500 hover:bg-tiffany-100 rounded transition-colors"
+                              title="Edit"
+                            >
+                              {PencilIcon}
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRename(f);
+                            }}
+                            className="p-1.5 text-tiffany-500 hover:bg-tiffany-100 rounded transition-colors"
+                            title="Rename"
+                          >
+                            {PencilIcon}
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(f);
+                            }}
+                            className="p-1.5 text-red-400 hover:bg-red-50 rounded transition-colors"
+                            title="Delete"
+                          >
+                            {TrashIcon}
+                          </button>
+                        </>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
-          <textarea
-            value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
-            rows={10}
-            className="w-full px-3 py-2 bg-white text-tiffany-900 text-xs font-mono focus:outline-none resize-y"
-          />
+
+          {/* Editor panel */}
+          {editing && (
+            <div className="border border-tiffany-200 rounded-xl overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2 bg-tiffany-50 border-b border-tiffany-200">
+                <span className="text-xs font-medium text-tiffany-700 truncate">
+                  Editing {editing.path}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={handleSave}
+                    className="px-2 py-1 text-[10px] font-medium text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setEditing(null)}
+                    className="p-1 text-tiffany-500 hover:bg-tiffany-100 rounded transition-colors"
+                    title="Close"
+                  >
+                    {CloseIcon}
+                  </button>
+                </div>
+              </div>
+              <textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                rows={10}
+                className="w-full px-3 py-2 bg-white text-tiffany-900 text-xs font-mono focus:outline-none resize-y"
+              />
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Right column: preview pane */}
+        <div className="w-72 shrink-0">
+          <div className="border border-tiffany-200 rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 bg-tiffany-50 border-b border-tiffany-200">
+              <span className="text-xs font-medium text-tiffany-700 truncate">
+                {preview ? preview.path : "Preview"}
+              </span>
+              {preview && (
+                <button
+                  onClick={() => {
+                    setPreview(null);
+                    setPreviewContent(null);
+                  }}
+                  className="p-1 text-tiffany-500 hover:bg-tiffany-100 rounded transition-colors"
+                  title="Close"
+                >
+                  {CloseIcon}
+                </button>
+              )}
+            </div>
+            <div className="p-2 flex justify-center bg-tiffany-50/40">
+              {!preview ? (
+                <p className="text-xs text-tiffany-400 italic text-center py-10">
+                  Select a file to preview
+                </p>
+              ) : preview.kind === "image" ? (
+                <img
+                  src={workspacePreviewUrl(projectId, preview.path)}
+                  alt={preview.name}
+                  className="max-h-72 max-w-full object-contain"
+                />
+              ) : preview.kind === "video" ? (
+                <video
+                  src={workspacePreviewUrl(projectId, preview.path)}
+                  controls
+                  className="max-h-72 max-w-full"
+                />
+              ) : preview.kind === "text" ? (
+                <pre className="w-full max-h-72 overflow-auto p-2 bg-white rounded text-[11px] text-tiffany-800 whitespace-pre-wrap break-words">
+                  {previewContent ?? ""}
+                </pre>
+              ) : (
+                <p className="text-xs text-tiffany-400 italic text-center py-10">
+                  No preview available
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Delete confirmation modal */}
       {confirmDelete && (
