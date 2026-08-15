@@ -3,10 +3,26 @@ import {
   useCharacterStore,
   type Character,
 } from "../../stores/characterStore";
-import { useGenerationStore } from "../../stores/generationStore";
+import {
+  useGenerationStore,
+  type ProjectImage,
+} from "../../stores/generationStore";
 import CropTool from "./CropTool";
 
 const API_BASE = `http://localhost:${(window as any).PORT}`;
+
+/** Fetch an image URL and return it as a data URL (avoids canvas tainting). */
+async function urlToDataUrl(url: string): Promise<string> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to load image (${res.status})`);
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Failed to read image"));
+    reader.readAsDataURL(blob);
+  });
+}
 
 interface Props {
   projectId: string;
@@ -67,6 +83,7 @@ export default function CharactersTab({ projectId }: Props) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
 
   useEffect(() => {
     characterStore.fetchCharacters(projectId);
@@ -201,6 +218,17 @@ export default function CharactersTab({ projectId }: Props) {
     }
   };
 
+  const selectProjectImage = async (img: ProjectImage) => {
+    setShowImageModal(false);
+    setError(null);
+    try {
+      const dataUrl = await urlToDataUrl(img.url);
+      setPendingImage(dataUrl);
+    } catch (e) {
+      setError(String(e));
+    }
+  };
+
   // ========== SVG Icons ==========
 
   const CharacterIcon = (
@@ -268,6 +296,39 @@ export default function CharactersTab({ projectId }: Props) {
     </svg>
   );
 
+  const ImagesIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <polyline points="21 15 16 10 5 21" />
+    </svg>
+  );
+
+  const CloseIcon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-2">
@@ -299,6 +360,13 @@ export default function CharactersTab({ projectId }: Props) {
             >
               {UploadIcon}
               Upload Image
+            </button>
+            <button
+              onClick={() => setShowImageModal(true)}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-tiffany-200 bg-white text-tiffany-600 hover:border-tiffany-300 transition-colors"
+            >
+              {ImagesIcon}
+              Select Project Image
             </button>
           </div>
         </div>
@@ -404,6 +472,56 @@ export default function CharactersTab({ projectId }: Props) {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Select project image modal */}
+      {showImageModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-2xl shadow-card p-5 w-[480px] max-w-full max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-tiffany-900">
+                Select Project Image
+              </h3>
+              <button
+                onClick={() => setShowImageModal(false)}
+                className="w-6 h-6 rounded-full text-tiffany-500 hover:bg-tiffany-100 hover:text-tiffany-700 flex items-center justify-center transition-colors"
+                title="Close"
+              >
+                {CloseIcon}
+              </button>
+            </div>
+
+            {gen.projectImagesLoading ? (
+              <p className="text-xs text-tiffany-400 italic text-center py-8">
+                Loading images...
+              </p>
+            ) : gen.projectImages.length === 0 ? (
+              <p className="text-xs text-tiffany-400 italic text-center py-8 border border-dashed border-tiffany-200 rounded-xl">
+                No project images yet. Upload or generate one first.
+              </p>
+            ) : (
+              <div className="grid grid-cols-3 gap-2 overflow-y-auto pr-1">
+                {gen.projectImages.map((img) => (
+                  <button
+                    key={`${img.source}-${img.filename}`}
+                    onClick={() => selectProjectImage(img)}
+                    className="relative rounded-lg border border-tiffany-200 hover:border-tiffany-400 overflow-hidden transition-colors"
+                    title={img.filename}
+                  >
+                    <img
+                      src={img.url}
+                      alt={img.filename}
+                      className="aspect-square object-cover w-full"
+                    />
+                    <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1 py-0.5 text-[10px] text-tiffany-700 truncate text-center">
+                      {img.filename}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

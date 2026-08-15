@@ -2,7 +2,7 @@ interface Props {
   projectId: string;
 }
 
-export default function SceneVisualTab({ projectId }: Props) {
+export default function SceneVisualTab(_props: Props) {
   // ========== SVG Icons ==========
 
   const SceneIcon = (
