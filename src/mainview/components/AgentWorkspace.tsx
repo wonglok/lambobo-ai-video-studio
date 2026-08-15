@@ -18,6 +18,7 @@ function formatSize(bytes: number): string {
 export default function AgentWorkspace({ projectId }: Props) {
   const ws = useWorkspaceStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
   const [preview, setPreview] = useState<WorkspaceFile | null>(null);
   const [previewContent, setPreviewContent] = useState<string | null>(null);
@@ -31,6 +32,15 @@ export default function AgentWorkspace({ projectId }: Props) {
     ws.fetchFiles(projectId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
+
+  useEffect(() => {
+    if (!preview || !listRef.current) return;
+    const index = ws.files.findIndex((f) => f.path === preview.path);
+    if (index < 0) return;
+    const items = listRef.current.querySelectorAll("li");
+    if (items[index]) items[index].scrollIntoView({ block: "nearest" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preview]);
 
   // ========== Handlers ==========
 
@@ -54,6 +64,23 @@ export default function AgentWorkspace({ projectId }: Props) {
     } else {
       setPreviewContent(null);
     }
+  };
+
+  const handleListKeyDown = (e: React.KeyboardEvent<HTMLUListElement>) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    const target = e.target as HTMLElement;
+    if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+    if (ws.files.length === 0) return;
+
+    e.preventDefault();
+    const currentIndex = preview
+      ? ws.files.findIndex((f) => f.path === preview.path)
+      : -1;
+    let nextIndex = e.key === "ArrowDown" ? currentIndex + 1 : currentIndex - 1;
+    if (nextIndex < 0) nextIndex = 0;
+    if (nextIndex >= ws.files.length) nextIndex = ws.files.length - 1;
+
+    if (nextIndex !== currentIndex) handleSelect(ws.files[nextIndex]);
   };
 
   const handleEdit = async (f: WorkspaceFile) => {
@@ -335,7 +362,12 @@ export default function AgentWorkspace({ projectId }: Props) {
                   No files yet. Upload a file or let the agent save a memory.
                 </p>
               ) : (
-                <ul className="divide-y divide-tiffany-100">
+                <ul
+                  ref={listRef}
+                  tabIndex={0}
+                  onKeyDown={handleListKeyDown}
+                  className="divide-y divide-tiffany-100 outline-none focus:ring-2 focus:ring-inset focus:ring-tiffany-300"
+                >
                   {ws.files.map((f) => (
                     <li
                       key={f.path}
