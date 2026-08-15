@@ -36,6 +36,7 @@ const JSON_DIR = join(APP_DATA_DIR, "json");
 const PYTHON_DIR = join(APP_DATA_DIR, "python-src");
 const TEMP_DIR = join(APP_DATA_DIR, "temp");
 const PROJECTS_FILE = join(JSON_DIR, "projects.json");
+const STORIES_FILE = join(JSON_DIR, "stories.json");
 
 const MLXGEN_MODEL = "AbstractFramework/qwen-image-edit-2511-4bit";
 const MLX_VLM_MODEL = "mlx-community/gemma-4-e2b-it-4bit";
@@ -59,6 +60,21 @@ export interface Project {
   id: string;
   name: string;
   description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StoryCharacter {
+  filename: string;
+  source: "upload" | "generated";
+}
+
+export interface Story {
+  id: string;
+  projectId: string;
+  title: string;
+  character: StoryCharacter | null;
+  scenes: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -131,6 +147,24 @@ function readProjects(): Project[] {
 function writeProjects(projects: Project[]) {
   ensureDir(JSON_DIR);
   writeFileSync(PROJECTS_FILE, JSON.stringify(projects, null, 2), "utf-8");
+}
+
+function readStories(): Story[] {
+  ensureDir(JSON_DIR);
+  if (!existsSync(STORIES_FILE)) {
+    writeFileSync(STORIES_FILE, "[]", "utf-8");
+    return [];
+  }
+  try {
+    return JSON.parse(readFileSync(STORIES_FILE, "utf-8"));
+  } catch {
+    return [];
+  }
+}
+
+function writeStories(stories: Story[]) {
+  ensureDir(JSON_DIR);
+  writeFileSync(STORIES_FILE, JSON.stringify(stories, null, 2), "utf-8");
 }
 
 function makeId(): string {
@@ -1696,6 +1730,88 @@ export async function renderMediaRoutes({
 
     const [removed] = projects.splice(index, 1);
     writeProjects(projects);
+    res.json(removed);
+  });
+
+  // ===== Story CRUD =====
+
+  app.get("/api/stories", (req, res) => {
+    const projectId = String(req.query.projectId ?? "");
+    if (!isValidProjectId(projectId)) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    const stories = readStories().filter((s) => s.projectId === projectId);
+    res.json(stories);
+  });
+
+  app.post("/api/stories", (req, res) => {
+    const { projectId, title } = req.body || {};
+    if (!projectId || !isValidProjectId(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    if (!title || !String(title).trim()) {
+      res.status(400).json({ error: "Title is required" });
+      return;
+    }
+
+    const stories = readStories();
+    const now = new Date().toISOString();
+    const story: Story = {
+      id: makeId(),
+      projectId: String(projectId),
+      title: String(title).trim(),
+      character: null,
+      scenes: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+    stories.push(story);
+    writeStories(stories);
+    res.status(201).json(story);
+  });
+
+  app.put("/api/stories/:id", (req, res) => {
+    const stories = readStories();
+    const index = stories.findIndex((s) => s.id === req.params.id);
+    if (index === -1) {
+      res.status(404).json({ error: "Story not found" });
+      return;
+    }
+
+    const { title, character, scenes } = req.body || {};
+    if (title !== undefined) stories[index].title = String(title).trim();
+    if (character !== undefined) {
+      const c = character as Partial<StoryCharacter> | null;
+      if (c && typeof c.filename === "string" && c.filename.trim()) {
+        stories[index].character = {
+          filename: c.filename.split(/[/\\]/).pop() || "",
+          source: c.source === "generated" ? "generated" : "upload",
+        };
+      } else {
+        stories[index].character = null;
+      }
+    }
+    if (scenes !== undefined) {
+      stories[index].scenes = Array.isArray(scenes)
+        ? scenes.map((s) => String(s)).slice(0, 200)
+        : [];
+    }
+    stories[index].updatedAt = new Date().toISOString();
+    writeStories(stories);
+    res.json(stories[index]);
+  });
+
+  app.delete("/api/stories/:id", (req, res) => {
+    const stories = readStories();
+    const index = stories.findIndex((s) => s.id === req.params.id);
+    if (index === -1) {
+      res.status(404).json({ error: "Story not found" });
+      return;
+    }
+    const [removed] = stories.splice(index, 1);
+    writeStories(stories);
     res.json(removed);
   });
 

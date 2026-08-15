@@ -6,6 +6,7 @@ import ExtendVideoTab from "./EditorTabs/ExtendVideoTab";
 import GenerateImageTab from "./EditorTabs/GenerateImageTab";
 import GenerateVideoTab from "./EditorTabs/GenerateVideoTab";
 import AgentTab from "./EditorTabs/AgentTab";
+import StoryWizardTab from "./EditorTabs/StoryWizardTab";
 
 export default function ProjectEditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -120,6 +121,22 @@ export default function ProjectEditorPage() {
     </svg>
   );
 
+  const StoryIcon = (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </svg>
+  );
+
   // ========== Loading / Not Found ==========
 
   if (!project) {
@@ -226,6 +243,17 @@ export default function ProjectEditorPage() {
               {AgentIcon}
               Agent
             </button>
+            <button
+              onClick={() => store.setActiveTab("story")}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+                store.activeTab === "story"
+                  ? "bg-tiffany-100 text-tiffany-800"
+                  : "text-tiffany-600 hover:bg-tiffany-50 hover:text-tiffany-700"
+              }`}
+            >
+              {StoryIcon}
+              Story Wizard
+            </button>
           </div>
 
           {/* ========== IMAGE GENERATION PANEL ========== */}
@@ -239,6 +267,9 @@ export default function ProjectEditorPage() {
 
           {/* ========== AGENT PANEL ========== */}
           {store.activeTab === "agent" && <AgentTab projectId={id!} />}
+
+          {/* ========== STORY WIZARD PANEL ========== */}
+          {store.activeTab === "story" && <StoryWizardTab projectId={id!} />}
         </div>
       </div>
     </div>
