@@ -13,6 +13,8 @@ export default function SceneVisualTab({ projectId }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
+  const anyGenerating = sceneStore.items.some((i) => i.generating);
+
   // ========== SVG Icons ==========
 
   const SceneIcon = (
@@ -92,6 +94,12 @@ export default function SceneVisualTab({ projectId }: Props) {
     </svg>
   );
 
+  const StopIcon = (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+    </svg>
+  );
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-2">
@@ -100,6 +108,17 @@ export default function SceneVisualTab({ projectId }: Props) {
           Scene Visual
         </h2>
       </div>
+
+      {/* Halt generation */}
+      {anyGenerating && (
+        <button
+          onClick={() => sceneStore.haltAll()}
+          className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 text-sm font-semibold rounded-xl border border-red-200 transition-colors"
+        >
+          {StopIcon}
+          Stop Generation
+        </button>
+      )}
 
       {/* Add scene */}
       <button

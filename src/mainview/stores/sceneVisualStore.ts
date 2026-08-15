@@ -19,6 +19,7 @@ interface SceneVisualStore {
   removeItem: (id: string) => void;
   setPrompt: (id: string, prompt: string) => void;
   generateItem: (projectId: string, id: string) => Promise<void>;
+  haltAll: () => void;
 }
 
 function makeId(): string {
@@ -180,5 +181,14 @@ export const useSceneVisualStore = create<SceneVisualStore>((set, get) => ({
         ),
       }));
     }
+  },
+
+  haltAll: () => {
+    set((s) => ({
+      items: s.items.map((i) =>
+        i.generating ? { ...i, generating: false } : i,
+      ),
+    }));
+    fetch(`${API_BASE}/api/render/cancel`, { method: "POST" }).catch(() => {});
   },
 }));
