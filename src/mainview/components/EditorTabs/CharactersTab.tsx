@@ -8,6 +8,7 @@ import {
   type ProjectImage,
 } from "../../stores/generationStore";
 import CropTool from "./CropTool";
+import CharacterSheet from "./CharacterSheet";
 
 const API_BASE = `http://localhost:${(window as any).PORT}`;
 
@@ -114,6 +115,15 @@ export default function CharactersTab({ projectId }: Props) {
     if (!img) return null;
     return img.url.startsWith("http") ? img.url : `${API_BASE}${img.url}`;
   };
+
+  const sheetItems = characterStore.characters
+    .map((c) => {
+      const url = charUrl(c.filename);
+      return url ? { id: c.id, name: c.name, url } : null;
+    })
+    .filter(
+      (x): x is { id: string; name: string; url: string } => x !== null,
+    );
 
   const uploadImage = async (dataUrl: string): Promise<string | null> => {
     const res = await fetch(`${API_BASE}/api/upload/image`, {
@@ -522,6 +532,17 @@ export default function CharactersTab({ projectId }: Props) {
           })}
         </div>
       )}
+
+      {/* Character sheet (canvas 2d grid) */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-tiffany-500">{ImagesIcon}</span>
+          <h3 className="text-sm font-semibold text-tiffany-900">
+            Character Sheet
+          </h3>
+        </div>
+        <CharacterSheet items={sheetItems} />
+      </div>
 
       {/* Select project image modal */}
       {showImageModal && (
