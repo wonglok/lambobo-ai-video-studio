@@ -44,6 +44,7 @@ const CHARACTERS_FILE = join(JSON_DIR, "characters.json");
 const MLXGEN_MODEL = "AbstractFramework/qwen-image-edit-2511-4bit";
 const Z_IMAGE_MODEL = "AbstractFramework/z-image-turbo-4bit";
 const MLX_VLM_MODEL = "mlx-community/gemma-4-e2b-it-4bit";
+const H3_MODEL = "appautomaton/minimax-h3-base-8bit-mlx";
 
 const VIDEO_STAGE_FLAGS: Record<string, string> = {
   distilled: "--distilled",
@@ -1309,6 +1310,73 @@ export async function renderMediaRoutes({
       const stderrText = await streamToSSE(
         proc.stderr as ReadableStream<Uint8Array>,
         "Download",
+        send,
+      );
+      await stdoutPromise;
+
+      const exitCode = await proc.exited;
+      if (exitCode === 0) {
+        send("complete", { success: true });
+      } else {
+        send("error", {
+          error: stderrText || `Process exited with code ${exitCode}`,
+          exitCode,
+        });
+      }
+    } catch (e) {
+      send("error", { error: String(e) });
+    } finally {
+      activeProc = null;
+      res.end();
+    }
+  });
+
+  // ========== H3: Download Model ==========
+
+  app.post("/api/h3/download-model", async (_req, res) => {
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: string, data: object) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    // The `hf download` command must run from inside the mlx-h3 checkout so
+    // its weights land in <mlx-h3>/weights.
+    const featureFolder = join(PYTHON_DIR, "mlx-h3");
+    if (!existsSync(featureFolder)) {
+      mkdirSync(featureFolder, { recursive: true });
+    }
+
+    try {
+      send("progress", {
+        status: "starting",
+        label: `Downloading model ${H3_MODEL}...`,
+      });
+
+      const proc = spawn(
+        ["hf", "download", H3_MODEL, "--local-dir", "weights"],
+        {
+          cwd: featureFolder,
+          stdout: "pipe",
+          stderr: "pipe",
+        },
+      );
+
+      activeProc = proc;
+
+      const stdoutPromise = streamToSSE(
+        proc.stdout as ReadableStream<Uint8Array>,
+        "H3 Download",
+        send,
+      );
+      const stderrText = await streamToSSE(
+        proc.stderr as ReadableStream<Uint8Array>,
+        "H3 Download",
         send,
       );
       await stdoutPromise;

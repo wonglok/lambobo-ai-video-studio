@@ -14,7 +14,8 @@ export type GenerationTab =
   | "characters"
   | "extract"
   | "sceneVisual"
-  | "textToImage";
+  | "textToImage"
+  | "referencesToVideo";
 export type AspectRatio = "1:1" | "16:9" | "9:16" | "4:3" | "3:4";
 export type Resolution = "320p" | "480p" | "640p" | "720p" | "1080p";
 export type VideoMode = "distilled" | "one-stage" | "two-stage";
