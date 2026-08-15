@@ -243,7 +243,11 @@ export default function ExtractImageTab({ projectId }: Props) {
               max={duration || 0}
               step={0.05}
               value={time}
-              onChange={(e) => setTime(Number(e.target.value))}
+              onChange={(e) => {
+                const t = Number(e.target.value);
+                setTime(t);
+                if (videoRef.current) videoRef.current.currentTime = t;
+              }}
               disabled={!duration}
               className="w-full accent-tiffany-500"
             />

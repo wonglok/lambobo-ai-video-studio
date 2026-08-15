@@ -1,81 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { FFmpeg } from "@ffmpeg/ffmpeg";
-import { toBlobURL } from "@ffmpeg/util";
 import { useCharacterStore } from "../../stores/characterStore";
 import { useGenerationStore } from "../../stores/generationStore";
 import CropTool from "./CropTool";
 
 const API_BASE = `http://localhost:${(window as any).PORT}`;
-const FFMPEG_CORE_BASE = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm";
 
 interface Props {
   projectId: string;
-}
-
-/** Read an SSE response, invoking `onEvent(event, data)` for each event. */
-async function readSSE(
-  res: Response,
-  onEvent: (event: string, data: any) => void,
-): Promise<void> {
-  const reader = res.body?.getReader();
-  if (!reader) return;
-  const decoder = new TextDecoder();
-  let buffer = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-    let eventType = "message";
-    for (const line of lines) {
-      if (line.startsWith("event: ")) {
-        eventType = line.slice(7).trim();
-      } else if (line.startsWith("data: ")) {
-        try {
-          onEvent(eventType, JSON.parse(line.slice(6)));
-        } catch {
-          // skip malformed lines
-        }
-        eventType = "message";
-      }
-    }
-  }
-}
-
-/** Extract the first frame of a video as a PNG data URL using ffmpeg.wasm. */
-async function extractFirstFrame(videoUrl: string): Promise<string> {
-  const ffmpeg = new FFmpeg();
-  try {
-    await ffmpeg.load({
-      coreURL: await toBlobURL(
-        `${FFMPEG_CORE_BASE}/ffmpeg-core.js`,
-        "text/javascript",
-      ),
-      wasmURL: await toBlobURL(
-        `${FFMPEG_CORE_BASE}/ffmpeg-core.wasm`,
-        "application/wasm",
-      ),
-    });
-
-    const res = await fetch(videoUrl);
-    if (!res.ok) throw new Error("Failed to fetch generated video");
-    const buf = new Uint8Array(await res.arrayBuffer());
-    await ffmpeg.writeFile("input.mp4", buf);
-    await ffmpeg.exec(["-i", "input.mp4", "-frames:v", "1", "output.png"]);
-    const data = await ffmpeg.readFile("output.png");
-
-    const bytes = new Uint8Array(data as Uint8Array);
-    const blob = new Blob([bytes], { type: "image/png" });
-    return await new Promise<string>((resolve, reject) => {
-      const fr = new FileReader();
-      fr.onload = () => resolve(fr.result as string);
-      fr.onerror = () => reject(new Error("Failed to read extracted frame"));
-      fr.readAsDataURL(blob);
-    });
-  } finally {
-    ffmpeg.terminate();
-  }
 }
 
 function CharacterCard({ imageUrl, name }: { imageUrl: string; name: string }) {
@@ -125,10 +56,8 @@ export default function CharactersTab({ projectId }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState("");
-  const [prompt, setPrompt] = useState("");
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
@@ -168,52 +97,11 @@ export default function CharactersTab({ projectId }: Props) {
       await characterStore.createCharacter(projectId, name.trim(), filename);
       await gen.fetchProjectImages(projectId);
       setName("");
-      setPrompt("");
       setPendingImage(null);
     } catch (e) {
       setError(String(e));
     } finally {
       setUploading(false);
-    }
-  };
-
-  const handleGenerate = async () => {
-    const trimmedName = name.trim();
-    const trimmedPrompt = prompt.trim();
-    if (!trimmedName || !trimmedPrompt) return;
-    setGenerating(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_BASE}/api/render/text-to-video`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: trimmedPrompt,
-          projectId,
-          width: 480,
-          height: 480,
-          frames: 9,
-          frameRate: 24,
-        }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-
-      let videoPath: string | null = null;
-      let genError: string | null = null;
-      await readSSE(res, (event, data) => {
-        if (event === "complete") videoPath = data.path as string;
-        else if (event === "error") genError = data.error || "Generation failed";
-      });
-      if (genError) throw new Error(genError);
-      if (!videoPath) throw new Error("No video generated");
-
-      const videoUrl = `${API_BASE}/api/files?path=${encodeURIComponent(videoPath)}`;
-      const frameDataUrl = await extractFirstFrame(videoUrl);
-      await finishCharacter(frameDataUrl);
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setGenerating(false);
     }
   };
 
@@ -270,20 +158,6 @@ export default function CharactersTab({ projectId }: Props) {
     </svg>
   );
 
-  const SparkleIcon = (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinejoin="round"
-    >
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-    </svg>
-  );
-
   const TrashIcon = (
     <svg
       width="12"
@@ -316,13 +190,6 @@ export default function CharactersTab({ projectId }: Props) {
           placeholder="Character name"
           className="px-3 py-2 bg-white border border-tiffany-200 rounded-lg text-sm text-tiffany-900 placeholder-tiffany-400 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30"
         />
-        <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Or generate from prompt (creates a 9-frame video, then extracts a frame)"
-          rows={2}
-          className="px-3 py-2 bg-white border border-tiffany-200 rounded-lg text-sm text-tiffany-900 placeholder-tiffany-400 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 resize-none"
-        />
         <div className="flex items-center gap-2">
           <input
             ref={fileInputRef}
@@ -338,21 +205,8 @@ export default function CharactersTab({ projectId }: Props) {
             {UploadIcon}
             Upload Image
           </button>
-          <button
-            onClick={handleGenerate}
-            disabled={generating || uploading || !name.trim() || !prompt.trim()}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-tiffany-500 hover:bg-tiffany-600 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white transition-colors"
-          >
-            {SparkleIcon}
-            Generate
-          </button>
         </div>
 
-        {generating && (
-          <p className="text-xs text-tiffany-600 italic">
-            Generating character... (this may take a while)
-          </p>
-        )}
         {uploading && (
           <p className="text-xs text-tiffany-600 italic">Saving character...</p>
         )}
@@ -375,7 +229,7 @@ export default function CharactersTab({ projectId }: Props) {
         </p>
       ) : characterStore.characters.length === 0 ? (
         <p className="text-xs text-tiffany-400 italic text-center py-8 border border-dashed border-tiffany-200 rounded-xl">
-          No characters yet. Upload or generate one.
+          No characters yet. Upload one.
         </p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
