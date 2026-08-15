@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useSceneVisualStore } from "../../stores/sceneVisualStore";
 
 interface Props {
@@ -14,6 +14,26 @@ export default function SceneVisualTab({ projectId }: Props) {
   }, [projectId]);
 
   const anyGenerating = sceneStore.items.some((i) => i.generating);
+
+  const uploadFileInputRef = useRef<HTMLInputElement>(null);
+  const uploadTargetRef = useRef<string | null>(null);
+
+  const handleUploadFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const targetId = uploadTargetRef.current;
+    e.target.value = "";
+    if (!file || !targetId) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      sceneStore.uploadItemImage(
+        projectId,
+        targetId,
+        reader.result as string,
+        file.name,
+      );
+    };
+    reader.readAsDataURL(file);
+  };
 
   // ========== SVG Icons ==========
 
@@ -100,6 +120,23 @@ export default function SceneVisualTab({ projectId }: Props) {
     </svg>
   );
 
+  const UploadIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
+    </svg>
+  );
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-2">
@@ -128,6 +165,14 @@ export default function SceneVisualTab({ projectId }: Props) {
         {PlusIcon}
         Add Scene
       </button>
+
+      <input
+        ref={uploadFileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleUploadFileChange}
+        className="hidden"
+      />
 
       {/* Scene items */}
       {sceneStore.items.length === 0 ? (
@@ -164,20 +209,32 @@ export default function SceneVisualTab({ projectId }: Props) {
                 className="w-full px-3 py-2 bg-white border border-tiffany-200 rounded-lg text-tiffany-900 text-sm placeholder-tiffany-400 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
               />
 
-              {item.generating ? (
+              {item.generating || item.uploading ? (
                 <div className="flex items-center gap-2 px-3 py-2 bg-tiffany-50 border border-tiffany-200 rounded-lg text-xs text-tiffany-700">
                   {SpinnerIcon}
-                  Generating...
+                  {item.generating ? "Generating..." : "Uploading..."}
                 </div>
               ) : (
-                <button
-                  onClick={() => sceneStore.generateItem(projectId, item.id)}
-                  disabled={!item.prompt.trim()}
-                  className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium rounded-lg bg-tiffany-500 hover:bg-tiffany-600 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white transition-colors"
-                >
-                  {SparkleIcon}
-                  Generate
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => sceneStore.generateItem(projectId, item.id)}
+                    disabled={!item.prompt.trim()}
+                    className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium rounded-lg bg-tiffany-500 hover:bg-tiffany-600 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white transition-colors"
+                  >
+                    {SparkleIcon}
+                    Generate
+                  </button>
+                  <button
+                    onClick={() => {
+                      uploadTargetRef.current = item.id;
+                      uploadFileInputRef.current?.click();
+                    }}
+                    className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium rounded-lg border border-tiffany-200 bg-white text-tiffany-600 hover:border-tiffany-300 transition-colors"
+                  >
+                    {UploadIcon}
+                    Upload Image
+                  </button>
+                </div>
               )}
 
               {item.error && (

@@ -6,6 +6,7 @@ export interface SceneVisualItem {
   id: string;
   prompt: string;
   generating: boolean;
+  uploading: boolean;
   result: string | null;
   error: string | null;
   logs: string[];
@@ -19,6 +20,12 @@ interface SceneVisualStore {
   removeItem: (id: string) => void;
   setPrompt: (id: string, prompt: string) => void;
   generateItem: (projectId: string, id: string) => Promise<void>;
+  uploadItemImage: (
+    projectId: string,
+    id: string,
+    base64: string,
+    filename: string,
+  ) => Promise<void>;
   haltAll: () => void;
 }
 
@@ -82,6 +89,7 @@ export const useSceneVisualStore = create<SceneVisualStore>((set, get) => ({
           id: makeId(),
           prompt: "",
           generating: false,
+          uploading: false,
           result: null,
           error: null,
           logs: [],
@@ -178,6 +186,55 @@ export const useSceneVisualStore = create<SceneVisualStore>((set, get) => ({
       set((s) => ({
         items: s.items.map((i) =>
           i.id === id ? { ...i, generating: false, error: String(e) } : i,
+        ),
+      }));
+    }
+  },
+
+  uploadItemImage: async (projectId, id, base64, filename) => {
+    set((s) => ({
+      items: s.items.map((i) =>
+        i.id === id ? { ...i, uploading: true, error: null } : i,
+      ),
+    }));
+
+    try {
+      const res = await fetch(`${API_BASE}/api/upload/image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: base64,
+          filename: filename || `scene-${Date.now()}.png`,
+          projectId,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        set((s) => ({
+          items: s.items.map((i) =>
+            i.id === id ? { ...i, uploading: false, error: err } : i,
+          ),
+        }));
+        return;
+      }
+
+      const data = await res.json();
+      set((s) => ({
+        items: s.items.map((i) =>
+          i.id === id
+            ? {
+                ...i,
+                uploading: false,
+                result: `http://localhost:${(window as any).PORT}/api/files?path=${encodeURIComponent(data.path)}`,
+              }
+            : i,
+        ),
+      }));
+    } catch (e) {
+      set((s) => ({
+        items: s.items.map((i) =>
+          i.id === id ? { ...i, uploading: false, error: String(e) } : i,
         ),
       }));
     }
