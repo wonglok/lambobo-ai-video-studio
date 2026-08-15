@@ -71,6 +71,15 @@ export function ChatUI({ projectId }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
+  useEffect(() => {
+    if (!previewImage) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPreviewImage(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [previewImage]);
+
   const handleSend = () => {
     const value = inputRef.current?.value ?? "";
     const hasText = value.trim().length > 0;
