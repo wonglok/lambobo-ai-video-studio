@@ -847,6 +847,7 @@ export async function renderMediaRoutes({
       height = 480,
       frames = 121,
       frameRate = 24,
+      mode = "distilled",
     } = req.body || {};
 
     if (!prompt) {
@@ -916,7 +917,7 @@ export async function renderMediaRoutes({
           "dgrauet/ltx-2.3-mlx-q4",
           "--prompt",
           prompt,
-          "--distilled",
+          stageFlagFor(mode),
           "--low-ram",
           "--frames",
           String(videoFrames),

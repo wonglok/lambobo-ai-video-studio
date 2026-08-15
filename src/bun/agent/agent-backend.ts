@@ -136,7 +136,7 @@ function buildSystemPrompt(): string {
     "- The duration must never exceed 20 seconds.",
     "- Propose the duration to the user and let them accept it or give a different duration (still capped at 20 seconds).",
     "",
-    "### Step 4 — Mode (image-to-video only)",
+    "### Step 4 — Mode",
     "- Ask the user which generation mode they want and explain the tradeoff:",
     "  - `distilled` (default): fastest, lower quality.",
     "  - `one-stage`: balanced speed and quality.",
@@ -144,11 +144,11 @@ function buildSystemPrompt(): string {
     "- If the user has no preference, use `distilled`.",
     "",
     "### Step 5 — Summary and confirmation",
-    "- Prepare a short summary containing the image (if any), the final prompt, the duration, and the mode (if image-to-video), and ask the user to confirm.",
+    "- Prepare a short summary containing the image (if any), the final prompt, the duration, and the mode, and ask the user to confirm.",
     "- Do NOT start generation yet. Wait for the user to say yes.",
     "- After the user confirms:",
     "  - If an image was chosen, call `image_to_video_generation` with the image, prompt, duration, and mode.",
-    "  - Otherwise, call `text_to_video_generation` with the prompt and duration.",
+    "  - Otherwise, call `text_to_video_generation` with the prompt, duration, and mode.",
   ].join("\n");
 }
 
