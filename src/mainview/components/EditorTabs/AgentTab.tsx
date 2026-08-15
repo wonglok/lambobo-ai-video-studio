@@ -245,7 +245,7 @@ export default function AgentTab({ projectId }: Props) {
             <label className="block text-xs font-medium text-tiffany-700 mb-1.5">
               Model
             </label>
-            <div className=" gap-2">
+            <div className=" gap-2 mb-2">
               <select
                 value={store.agent.model}
                 onChange={(e) => store.setAgentModel(e.target.value)}
@@ -259,6 +259,15 @@ export default function AgentTab({ projectId }: Props) {
                   </option>
                 ))}
               </select>
+            </div>
+            <div className=" gap-2">
+              <input
+                value={store.agent.model}
+                onChange={(e) => store.setAgentModel(e.target.value)}
+                disabled={store.agent.serverRunning || store.agent.starting}
+                title="enter a model name"
+                className="shrink-0 w-[350px]  px-2 py-2 bg-tiffany-50 border border-tiffany-200 rounded-lg text-tiffany-900 text-sm focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all disabled:opacity-50 cursor-pointer"
+              ></input>
             </div>
           </div>
         </div>

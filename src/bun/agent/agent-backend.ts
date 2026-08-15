@@ -470,7 +470,7 @@ export async function agentBackend({
             tools: toolDefinitions(TOOLS),
             tool_choice: "auto",
             temperature: 0.7,
-            reasoning_effort: "high",
+            reasoning_effort: "max",
             stream: true,
           },
           { signal: req.signal },
@@ -485,7 +485,9 @@ export async function agentBackend({
         for await (const chunk of stream) {
           const choice = chunk.choices?.[0];
           const delta = choice?.delta;
-          if (!delta) continue;
+          if (!delta) {
+            continue;
+          }
 
           // Reasoning / thinking tokens (reasoning models emit these in a
           // separate field from the final answer).

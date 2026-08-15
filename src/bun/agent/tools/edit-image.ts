@@ -16,17 +16,21 @@ import {
 import sharp from "sharp";
 import type { AgentTool } from "./types";
 
-/** Maximum allowed dimension (px) for both input and output images. */
-const MAX_DIM = 1024;
+/** Default output resolution (px) when the tool is called without one. */
+const DEFAULT_RESOLUTION = 512;
 
-/** Resize an image to at most MAX_DIM on the longest edge, keeping aspect ratio. */
+/** Allowed resolution values (px). */
+const ALLOWED_RESOLUTIONS = [512, 1024];
+
+/** Resize an image to at most `maxDim` on the longest edge, keeping aspect ratio. */
 async function resizeToMax(
   input: Buffer,
+  maxDim: number,
 ): Promise<{ buffer: Buffer; width: number; height: number }> {
   const resized = await sharp(input)
     .resize({
-      width: MAX_DIM,
-      height: MAX_DIM,
+      width: maxDim,
+      height: maxDim,
       fit: "inside",
       withoutEnlargement: true,
     })
@@ -35,8 +39,8 @@ async function resizeToMax(
   const meta = await sharp(resized).metadata();
   return {
     buffer: resized,
-    width: meta.width ?? MAX_DIM,
-    height: meta.height ?? MAX_DIM,
+    width: meta.width ?? maxDim,
+    height: meta.height ?? maxDim,
   };
 }
 
@@ -86,6 +90,11 @@ const tool: AgentTool = {
         type: "string",
         description: "Path of the image in the workspace to edit",
       },
+      resolution: {
+        type: "number",
+        enum: [512, 1024],
+        description: "Output resolution in pixels (512 or 1024, default 512)",
+      },
     },
     required: ["prompt", "image"],
   },
@@ -97,6 +106,12 @@ const tool: AgentTool = {
 
     const image = typeof args.image === "string" ? args.image.trim() : "";
     if (!image) return "edit_image requires an image from the workspace.";
+
+    const resolution =
+      typeof args.resolution === "number" &&
+      ALLOWED_RESOLUTIONS.includes(args.resolution)
+        ? args.resolution
+        : DEFAULT_RESOLUTION;
 
     const abs = resolveWorkspacePath(ctx.projectId, image);
     if (!abs || !existsSync(abs)) {
@@ -123,12 +138,12 @@ const tool: AgentTool = {
 
     if (!ctx.backendPort) return "Image backend not available.";
 
-    // Resize the source image to at most 1024px (keeping aspect ratio) and
-    // re-encode as PNG, then stage it into the project's agent-upload dir so
-    // the mlxgen endpoint can resolve it by bare filename.
+    // Resize the source image to at most the chosen resolution (keeping aspect
+    // ratio) and re-encode as PNG, then stage it into the project's
+    // agent-upload dir so the mlxgen endpoint can resolve it by bare filename.
     let resized: { buffer: Buffer; width: number; height: number };
     try {
-      resized = await resizeToMax(readFileSync(realAbs));
+      resized = await resizeToMax(readFileSync(realAbs), resolution);
     } catch (e) {
       return `Failed to process image: ${String(e)}`;
     }
