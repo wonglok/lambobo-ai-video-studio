@@ -7,6 +7,7 @@ import GenerateImageTab from "./EditorTabs/GenerateImageTab";
 import GenerateVideoTab from "./EditorTabs/GenerateVideoTab";
 import AgentTab from "./EditorTabs/AgentTab";
 import CharactersTab from "./EditorTabs/CharactersTab";
+import ExtractImageTab from "./EditorTabs/ExtractImageTab";
 
 export default function ProjectEditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -137,6 +138,22 @@ export default function ProjectEditorPage() {
     </svg>
   );
 
+  const ExtractIcon = (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+      <circle cx="12" cy="13" r="4" />
+    </svg>
+  );
+
   // ========== Loading / Not Found ==========
 
   if (!project) {
@@ -254,6 +271,17 @@ export default function ProjectEditorPage() {
               {CharacterIcon}
               Characters
             </button>
+            <button
+              onClick={() => store.setActiveTab("extract")}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+                store.activeTab === "extract"
+                  ? "bg-tiffany-100 text-tiffany-800"
+                  : "text-tiffany-600 hover:bg-tiffany-50 hover:text-tiffany-700"
+              }`}
+            >
+              {ExtractIcon}
+              Extract Image
+            </button>
           </div>
 
           {/* ========== IMAGE GENERATION PANEL ========== */}
@@ -271,6 +299,11 @@ export default function ProjectEditorPage() {
           {/* ========== CHARACTERS PANEL ========== */}
           {store.activeTab === "characters" && (
             <CharactersTab projectId={id!} />
+          )}
+
+          {/* ========== EXTRACT IMAGE PANEL ========== */}
+          {store.activeTab === "extract" && (
+            <ExtractImageTab projectId={id!} />
           )}
         </div>
       </div>
