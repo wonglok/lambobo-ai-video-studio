@@ -5,7 +5,7 @@ import {
   writeFileSync,
   realpathSync,
 } from "node:fs";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import {
   isValidProjectId,
   resolveWorkspacePath,
@@ -50,19 +50,24 @@ async function readSSE(
 }
 
 const tool: AgentTool = {
-  name: "image_to_video_generation",
-  description: "Generate a video from a prompt and an image in the workspace.",
+  name: "edit_image",
+  description:
+    "Edit an image in the workspace using a text prompt (e.g. change the background, style, or expression).",
   parameters: {
     type: "object",
     properties: {
-      prompt: { type: "string", description: "The video prompt" },
+      prompt: { type: "string", description: "The edit instruction" },
       image: {
         type: "string",
-        description: "Path of the image in the workspace to animate",
+        description: "Path of the image in the workspace to edit",
       },
-      duration: {
+      width: {
         type: "number",
-        description: "Video duration in seconds (default 5)",
+        description: "Output width in pixels (optional)",
+      },
+      height: {
+        type: "number",
+        description: "Output height in pixels (optional)",
       },
     },
     required: ["prompt", "image"],
@@ -71,11 +76,10 @@ const tool: AgentTool = {
     if (!isValidProjectId(ctx.projectId)) return "Invalid project ID.";
 
     const prompt = typeof args.prompt === "string" ? args.prompt.trim() : "";
-    if (!prompt) return "image_to_video_generation requires a prompt.";
+    if (!prompt) return "edit_image requires a prompt.";
 
     const image = typeof args.image === "string" ? args.image.trim() : "";
-    if (!image)
-      return "image_to_video_generation requires an image from the workspace.";
+    if (!image) return "edit_image requires an image from the workspace.";
 
     const abs = resolveWorkspacePath(ctx.projectId, image);
     if (!abs || !existsSync(abs)) {
@@ -90,20 +94,20 @@ const tool: AgentTool = {
     } catch {
       return `Image not found: ${image}`;
     }
+    // Confirm the resolved (symlink-followed) path is still inside the
+    // project's workspace before reading it.
+    const realBase = realpathSync(workspaceDir(ctx.projectId));
+    if (realAbs !== realBase && !realAbs.startsWith(realBase + sep)) {
+      return `Image outside workspace: ${image}`;
+    }
     if (classifyFile(realAbs) !== "image") {
       return `Not an image: ${image}`;
     }
 
-    if (!ctx.backendPort) return "Video backend not available.";
+    if (!ctx.backendPort) return "Image backend not available.";
 
-    const duration =
-      typeof args.duration === "number" && args.duration > 0
-        ? args.duration
-        : 5;
-    const frames = Math.round(duration * 24 + 1);
-
-    // Copy the image into the project's agent-upload dir so the video endpoint
-    // can resolve it by bare filename.
+    // Copy the image into the project's agent-upload dir so the mlxgen
+    // endpoint can resolve it by bare filename.
     const uploadProjectDir = join(AGENT_UPLOAD_DIR, ctx.projectId);
     if (!existsSync(uploadProjectDir)) {
       mkdirSync(uploadProjectDir, { recursive: true });
@@ -115,30 +119,33 @@ const tool: AgentTool = {
     )}`;
     writeFileSync(join(uploadProjectDir, imageName), readFileSync(realAbs));
 
-    ctx.emit?.("notice", { text: `Generating video from "${image}"...` });
+    ctx.emit?.("notice", { text: `Editing image "${image}"...` });
 
     try {
+      const body: Record<string, unknown> = {
+        prompt,
+        imagePath: imageName,
+        projectId: ctx.projectId,
+      };
+      if (typeof args.width === "number" && args.width > 0) {
+        body.width = args.width;
+      }
+      if (typeof args.height === "number" && args.height > 0) {
+        body.height = args.height;
+      }
+
       const res = await fetch(
-        `http://localhost:${ctx.backendPort}/api/render/image-to-video`,
+        `http://localhost:${ctx.backendPort}/api/mlxgen/generate`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            prompt,
-            imagePath: imageName,
-            projectId: ctx.projectId,
-            outputDir: workspaceDir(ctx.projectId),
-            width: 448,
-            height: 448,
-            frames,
-            frameRate: 24,
-          }),
+          body: JSON.stringify(body),
           signal: ctx.signal,
         },
       );
 
       if (!res.ok) {
-        return `Video generation failed: ${await res.text()}`;
+        return `Image edit failed: ${await res.text()}`;
       }
 
       let resultPath: string | null = null;
@@ -155,26 +162,32 @@ const tool: AgentTool = {
             resultFilename = data.filename as string;
             break;
           case "error":
-            error = data.error || "Video generation failed";
+            error = data.error || "Image edit failed";
             break;
         }
       });
 
       if (error) return error;
-      if (!resultPath) return "Video generation did not produce a result.";
+      if (!resultPath) return "Image edit did not produce a result.";
 
-      const relPath =
+      // Copy the edited image into the workspace so it is previewable and
+      // usable in subsequent steps.
+      const outName =
         resultFilename ||
         (resultPath as string).split("/").pop() ||
-        "video.mp4";
+        "edited.png";
+      const outDir = workspaceDir(ctx.projectId);
+      if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
+      writeFileSync(join(outDir, outName), readFileSync(resultPath));
+
       const url = `/api/agent/file/preview?projectId=${encodeURIComponent(
         ctx.projectId,
-      )}&path=${encodeURIComponent(relPath)}`;
-      ctx.emit?.("video", { url });
+      )}&path=${encodeURIComponent(outName)}`;
+      ctx.emit?.("image", { url, path: outName });
 
-      return `Generated video from "${image}": ${resultPath}`;
+      return `Edited image saved to "${outName}".`;
     } catch (e) {
-      return `Video generation error: ${String(e)}`;
+      return `Image edit error: ${String(e)}`;
     }
   },
 };

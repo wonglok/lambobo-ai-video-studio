@@ -30,6 +30,7 @@ export function getAgentServerPort(): number | null {
 const APP_DATA_DIR = join(homedir(), "media-studio");
 const OUTPUT_DIR = join(APP_DATA_DIR, "output");
 const UPLOAD_DIR = join(APP_DATA_DIR, "upload");
+const AGENT_UPLOAD_DIR = join(APP_DATA_DIR, "agent-upload");
 const AGENTS_DIR = join(APP_DATA_DIR, "agents");
 const JSON_DIR = join(APP_DATA_DIR, "json");
 const PYTHON_DIR = join(APP_DATA_DIR, "python-src");
@@ -145,10 +146,11 @@ function openInFinder(dirPath: string) {
 let _allowedRealDirs: string[] | null = null;
 function getAllowedRealDirs(): string[] {
   if (_allowedRealDirs) return _allowedRealDirs;
-  [OUTPUT_DIR, UPLOAD_DIR].forEach((d) => ensureDir(d));
+  [OUTPUT_DIR, UPLOAD_DIR, AGENT_UPLOAD_DIR].forEach((d) => ensureDir(d));
   _allowedRealDirs = [
     realpathSync(OUTPUT_DIR) + sep,
     realpathSync(UPLOAD_DIR) + sep,
+    realpathSync(AGENT_UPLOAD_DIR) + sep,
   ];
   return _allowedRealDirs;
 }
@@ -166,8 +168,8 @@ function resolveSafePath(candidate: string, projectId: string): string | null {
     return null;
   }
 
-  // Try upload dir first, then output dir (for previously generated images)
-  for (const dir of [UPLOAD_DIR, OUTPUT_DIR]) {
+  // Try the agent-upload dir first, then upload and output dirs.
+  for (const dir of [AGENT_UPLOAD_DIR, UPLOAD_DIR, OUTPUT_DIR]) {
     const candidatePath = join(dir, projectId, base);
     if (existsSync(candidatePath)) {
       const resolved = realpathSync(candidatePath);
