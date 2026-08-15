@@ -94,6 +94,18 @@ export default function CharactersTab({ projectId }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
+  // Close any open modal with the Escape key
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setShowImageModal(false);
+      setPreviewCharacter(null);
+      setConfirmDeleteId(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const editing =
     characterStore.characters.find((c) => c.id === editingId) ?? null;
 
