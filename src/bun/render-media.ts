@@ -73,7 +73,7 @@ export interface Story {
   id: string;
   projectId: string;
   title: string;
-  character: StoryCharacter | null;
+  characters: StoryCharacter[];
   scenes: string[];
   createdAt: string;
   updatedAt: string;
@@ -156,10 +156,32 @@ function readStories(): Story[] {
     return [];
   }
   try {
-    return JSON.parse(readFileSync(STORIES_FILE, "utf-8"));
+    const raw = JSON.parse(readFileSync(STORIES_FILE, "utf-8"));
+    return (Array.isArray(raw) ? raw : []).map(normalizeStory);
   } catch {
     return [];
   }
+}
+
+function normalizeStory(s: any): Story {
+  // Accept the legacy single-`character` shape and migrate it to `characters`.
+  const rawCharacters = Array.isArray(s.characters)
+    ? s.characters
+    : s.character
+      ? [s.character]
+      : [];
+  return {
+    id: String(s.id ?? ""),
+    projectId: String(s.projectId ?? ""),
+    title: String(s.title ?? ""),
+    characters: rawCharacters.map((c: any) => ({
+      filename: String(c?.filename ?? "").split(/[/\\]/).pop() || "",
+      source: c?.source === "generated" ? "generated" : "upload",
+    })),
+    scenes: Array.isArray(s.scenes) ? s.scenes.map(String) : [],
+    createdAt: String(s.createdAt ?? ""),
+    updatedAt: String(s.updatedAt ?? ""),
+  };
 }
 
 function writeStories(stories: Story[]) {
@@ -1762,7 +1784,7 @@ export async function renderMediaRoutes({
       id: makeId(),
       projectId: String(projectId),
       title: String(title).trim(),
-      character: null,
+      characters: [],
       scenes: [],
       createdAt: now,
       updatedAt: now,
@@ -1780,18 +1802,20 @@ export async function renderMediaRoutes({
       return;
     }
 
-    const { title, character, scenes } = req.body || {};
+    const { title, characters, scenes } = req.body || {};
     if (title !== undefined) stories[index].title = String(title).trim();
-    if (character !== undefined) {
-      const c = character as Partial<StoryCharacter> | null;
-      if (c && typeof c.filename === "string" && c.filename.trim()) {
-        stories[index].character = {
-          filename: c.filename.split(/[/\\]/).pop() || "",
-          source: c.source === "generated" ? "generated" : "upload",
-        };
-      } else {
-        stories[index].character = null;
-      }
+    if (characters !== undefined) {
+      stories[index].characters = Array.isArray(characters)
+        ? characters
+            .map(
+              (c: any): StoryCharacter => ({
+                filename:
+                  String(c?.filename ?? "").split(/[/\\]/).pop() ?? "",
+                source: c?.source === "generated" ? "generated" : "upload",
+              }),
+            )
+            .filter((c) => c.filename)
+        : [];
     }
     if (scenes !== undefined) {
       stories[index].scenes = Array.isArray(scenes)

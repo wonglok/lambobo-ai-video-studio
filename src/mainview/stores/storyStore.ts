@@ -9,7 +9,7 @@ export interface Story {
   id: string;
   projectId: string;
   title: string;
-  character: StoryCharacter | null;
+  characters: StoryCharacter[];
   scenes: string[];
   createdAt: string;
   updatedAt: string;
@@ -24,12 +24,29 @@ interface StoryStore {
   createStory: (projectId: string, title: string) => Promise<Story | null>;
   updateStory: (
     id: string,
-    data: Partial<Pick<Story, "title" | "character" | "scenes">>,
+    data: Partial<Pick<Story, "title" | "characters" | "scenes">>,
   ) => Promise<Story | null>;
   deleteStory: (id: string) => Promise<boolean>;
 }
 
 const API_BASE = `http://localhost:${(window as any).PORT}`;
+
+/** Normalize a story from the backend, tolerating the legacy single-character shape. */
+function normalizeStory(s: any): Story {
+  return {
+    id: String(s?.id ?? ""),
+    projectId: String(s?.projectId ?? ""),
+    title: String(s?.title ?? ""),
+    characters: Array.isArray(s?.characters)
+      ? s.characters
+      : s?.character
+        ? [s.character]
+        : [],
+    scenes: Array.isArray(s?.scenes) ? s.scenes : [],
+    createdAt: String(s?.createdAt ?? ""),
+    updatedAt: String(s?.updatedAt ?? ""),
+  };
+}
 
 export const useStoryStore = create<StoryStore>((set, get) => ({
   stories: [],
@@ -43,7 +60,7 @@ export const useStoryStore = create<StoryStore>((set, get) => ({
         `${API_BASE}/api/stories?projectId=${encodeURIComponent(projectId)}`,
       );
       if (!res.ok) throw new Error(await res.text());
-      const stories = await res.json();
+      const stories = (await res.json()).map(normalizeStory);
       set({ stories, loading: false });
     } catch (e) {
       set({ error: String(e), loading: false });
@@ -59,7 +76,7 @@ export const useStoryStore = create<StoryStore>((set, get) => ({
         body: JSON.stringify({ projectId, title }),
       });
       if (!res.ok) throw new Error(await res.text());
-      const story = await res.json();
+      const story = normalizeStory(await res.json());
       set({ stories: [...get().stories, story] });
       return story;
     } catch (e) {
@@ -77,7 +94,7 @@ export const useStoryStore = create<StoryStore>((set, get) => ({
         body: JSON.stringify(data),
       });
       if (!res.ok) throw new Error(await res.text());
-      const updated = await res.json();
+      const updated = normalizeStory(await res.json());
       set({ stories: get().stories.map((s) => (s.id === id ? updated : s)) });
       return updated;
     } catch (e) {

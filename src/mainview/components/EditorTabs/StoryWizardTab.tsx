@@ -112,18 +112,28 @@ export default function StoryWizardTab({ projectId }: Props) {
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
+      const current = storiesStore.stories.find((s) => s.id === currentStoryId);
+      const characters = current?.characters ?? [];
       await storiesStore.updateStory(currentStoryId, {
-        character: { filename: data.filename, source: "upload" },
+        characters: [...characters, { filename: data.filename, source: "upload" }],
       });
       await gen.fetchProjectImages(projectId);
       setPendingImage(null);
       setShowPicker(false);
-      setStep(1);
     } catch (e) {
       setError(String(e));
     } finally {
       setUploading(false);
     }
+  };
+
+  const removeCharacter = async (filename: string) => {
+    if (!currentStory) return;
+    await storiesStore.updateStory(currentStory.id, {
+      characters: currentStory.characters.filter(
+        (c) => c.filename !== filename,
+      ),
+    });
   };
 
   // ========== SVG Icons ==========
@@ -241,6 +251,22 @@ export default function StoryWizardTab({ projectId }: Props) {
     </svg>
   );
 
+  const CloseIcon = (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+
   // ========== Step 1: Story list ==========
 
   if (step === 1) {
@@ -306,17 +332,40 @@ export default function StoryWizardTab({ projectId }: Props) {
                 key={s.id}
                 className="flex items-center gap-3 px-4 py-3 hover:bg-tiffany-50/60 transition-colors"
               >
-                {charUrl(s.character) ? (
-                  <img
-                    src={charUrl(s.character)!}
-                    alt={s.title}
-                    className="w-10 h-10 rounded-lg object-cover border border-tiffany-200"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-lg bg-tiffany-100 flex items-center justify-center text-tiffany-400">
-                    {CharacterIcon}
-                  </div>
-                )}
+                <div className="flex -space-x-2">
+                  {s.characters.length > 0 ? (
+                    <>
+                      {s.characters.slice(0, 3).map((c) => {
+                        const url = charUrl(c);
+                        return url ? (
+                          <img
+                            key={c.filename}
+                            src={url}
+                            alt={c.filename}
+                            title={c.filename}
+                            className="w-10 h-10 rounded-lg object-cover border-2 border-white"
+                          />
+                        ) : (
+                          <div
+                            key={c.filename}
+                            className="w-10 h-10 rounded-lg bg-tiffany-100 border-2 border-white flex items-center justify-center text-tiffany-400"
+                          >
+                            {CharacterIcon}
+                          </div>
+                        );
+                      })}
+                      {s.characters.length > 3 && (
+                        <span className="self-center ml-1 text-[10px] text-tiffany-500">
+                          +{s.characters.length - 3}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <div className="w-10 h-10 rounded-lg bg-tiffany-100 flex items-center justify-center text-tiffany-400">
+                      {CharacterIcon}
+                    </div>
+                  )}
+                </div>
 
                 <div className="flex-1 min-w-0">
                   {renamingId === s.id ? (
@@ -435,20 +484,37 @@ export default function StoryWizardTab({ projectId }: Props) {
         </h2>
       </div>
 
-      {currentStory?.character && (
-        <div className="flex items-center gap-3">
-          <img
-            src={charUrl(currentStory.character) ?? ""}
-            alt="character"
-            className="w-16 h-16 rounded-xl object-cover border border-tiffany-200 bg-tiffany-100"
-          />
-          <div>
-            <p className="text-xs font-medium text-tiffany-700">
-              Current character
-            </p>
-            <p className="text-[11px] text-tiffany-400 truncate">
-              {currentStory.character.filename}
-            </p>
+      {currentStory && currentStory.characters.length > 0 && (
+        <div>
+          <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+            Characters ({currentStory.characters.length})
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {currentStory.characters.map((c) => (
+              <div
+                key={c.filename}
+                className="relative rounded-lg border border-tiffany-200 overflow-hidden"
+              >
+                {charUrl(c) ? (
+                  <img
+                    src={charUrl(c)!}
+                    alt={c.filename}
+                    className="w-16 h-16 object-cover"
+                  />
+                ) : (
+                  <div className="w-16 h-16 bg-tiffany-100 flex items-center justify-center text-tiffany-400">
+                    {CharacterIcon}
+                  </div>
+                )}
+                <button
+                  onClick={() => removeCharacter(c.filename)}
+                  className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-red-500 transition-colors"
+                  title="Remove character"
+                >
+                  {CloseIcon}
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       )}
