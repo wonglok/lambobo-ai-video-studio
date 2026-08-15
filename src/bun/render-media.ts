@@ -1767,6 +1767,33 @@ export async function renderMediaRoutes({
     res.status(201).json(character);
   });
 
+  app.put("/api/characters/:id", (req, res) => {
+    const projectId = String(req.query.projectId ?? "");
+    if (!isValidProjectId(projectId)) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    const characters = readCharacters();
+    const index = characters.findIndex(
+      (c) => c.id === req.params.id && c.projectId === projectId,
+    );
+    if (index === -1) {
+      res.status(404).json({ error: "Character not found" });
+      return;
+    }
+    const { name, filename, source } = req.body || {};
+    if (name !== undefined && String(name).trim()) {
+      characters[index].name = String(name).trim();
+    }
+    if (filename !== undefined && String(filename).trim()) {
+      characters[index].filename = String(filename).split(/[/\\]/).pop() || "";
+      characters[index].source =
+        source === "generated" ? "generated" : "upload";
+    }
+    writeCharacters(characters);
+    res.json(characters[index]);
+  });
+
   app.delete("/api/characters/:id", (req, res) => {
     const projectId = String(req.query.projectId ?? "");
     if (!isValidProjectId(projectId)) {

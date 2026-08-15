@@ -21,6 +21,11 @@ interface CharacterStore {
     filename: string,
     source?: "upload" | "generated",
   ) => Promise<Character | null>;
+  updateCharacter: (
+    id: string,
+    projectId: string,
+    data: Partial<Pick<Character, "name" | "filename" | "source">>,
+  ) => Promise<Character | null>;
   deleteCharacter: (id: string, projectId: string) => Promise<boolean>;
 }
 
@@ -57,6 +62,29 @@ export const useCharacterStore = create<CharacterStore>((set, get) => ({
       const character = await res.json();
       set({ characters: [...get().characters, character] });
       return character;
+    } catch (e) {
+      set({ error: String(e) });
+      return null;
+    }
+  },
+
+  updateCharacter: async (id, projectId, data) => {
+    set({ error: null });
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/characters/${id}?projectId=${encodeURIComponent(projectId)}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        },
+      );
+      if (!res.ok) throw new Error(await res.text());
+      const updated = await res.json();
+      set({
+        characters: get().characters.map((c) => (c.id === id ? updated : c)),
+      });
+      return updated;
     } catch (e) {
       set({ error: String(e) });
       return null;

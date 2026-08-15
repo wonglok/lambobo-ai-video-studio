@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { useCharacterStore } from "../../stores/characterStore";
+import {
+  useCharacterStore,
+  type Character,
+} from "../../stores/characterStore";
 import { useGenerationStore } from "../../stores/generationStore";
 import CropTool from "./CropTool";
 
@@ -54,9 +57,13 @@ export default function CharactersTab({ projectId }: Props) {
   const gen = useGenerationStore();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState("");
   const [pendingImage, setPendingImage] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editImage, setEditImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -66,6 +73,9 @@ export default function CharactersTab({ projectId }: Props) {
     gen.fetchProjectImages(projectId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
+
+  const editing =
+    characterStore.characters.find((c) => c.id === editingId) ?? null;
 
   const charUrl = (filename: string): string | null => {
     const img = gen.projectImages.find((i) => i.filename === filename);
@@ -105,6 +115,70 @@ export default function CharactersTab({ projectId }: Props) {
     }
   };
 
+  const startEdit = (c: Character) => {
+    setEditingId(c.id);
+    setEditName(c.name);
+    setEditImage(null);
+    setPendingImage(null);
+    setError(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditImage(null);
+    setError(null);
+  };
+
+  const saveEdit = async () => {
+    if (!editingId) return;
+    await characterStore.updateCharacter(editingId, projectId, {
+      name: editName.trim(),
+    });
+    setEditingId(null);
+    setEditImage(null);
+  };
+
+  const handleEditFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setEditImage(reader.result as string);
+      setError(null);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handleCropApply = async (dataUrl: string) => {
+    if (editImage) {
+      setUploading(true);
+      setError(null);
+      try {
+        const filename = await uploadImage(dataUrl);
+        if (!filename) throw new Error("Upload failed");
+        if (editingId) {
+          await characterStore.updateCharacter(editingId, projectId, {
+            filename,
+          });
+        }
+        await gen.fetchProjectImages(projectId);
+        setEditImage(null);
+      } catch (e) {
+        setError(String(e));
+      } finally {
+        setUploading(false);
+      }
+    } else {
+      await finishCharacter(dataUrl);
+    }
+  };
+
+  const handleCropCancel = () => {
+    setPendingImage(null);
+    setEditImage(null);
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -121,6 +195,10 @@ export default function CharactersTab({ projectId }: Props) {
     if (!confirmDeleteId) return;
     await characterStore.deleteCharacter(confirmDeleteId, projectId);
     setConfirmDeleteId(null);
+    if (editingId === confirmDeleteId) {
+      setEditingId(null);
+      setEditImage(null);
+    }
   };
 
   // ========== SVG Icons ==========
@@ -158,6 +236,22 @@ export default function CharactersTab({ projectId }: Props) {
     </svg>
   );
 
+  const PencilIcon = (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+    </svg>
+  );
+
   const TrashIcon = (
     <svg
       width="12"
@@ -181,44 +275,91 @@ export default function CharactersTab({ projectId }: Props) {
         <h2 className="text-base font-semibold text-tiffany-900">Characters</h2>
       </div>
 
-      {/* Create character */}
-      <div className="border border-tiffany-200 rounded-xl p-4 flex flex-col gap-3 bg-tiffany-50/40">
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Character name"
-          className="px-3 py-2 bg-white border border-tiffany-200 rounded-lg text-sm text-tiffany-900 placeholder-tiffany-400 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30"
-        />
-        <div className="flex items-center gap-2">
+      {/* Create / Edit panel */}
+      {!editing ? (
+        <div className="border border-tiffany-200 rounded-xl p-4 flex flex-col gap-3 bg-tiffany-50/40">
           <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            className="hidden"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Character name"
+            className="px-3 py-2 bg-white border border-tiffany-200 rounded-lg text-sm text-tiffany-900 placeholder-tiffany-400 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30"
           />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-tiffany-200 bg-white text-tiffany-600 hover:border-tiffany-300 transition-colors"
-          >
-            {UploadIcon}
-            Upload Image
-          </button>
+          <div className="flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-tiffany-200 bg-white text-tiffany-600 hover:border-tiffany-300 transition-colors"
+            >
+              {UploadIcon}
+              Upload Image
+            </button>
+          </div>
         </div>
+      ) : (
+        <div className="border border-tiffany-200 rounded-xl p-4 flex flex-col gap-3 bg-tiffany-50/40">
+          <input
+            type="text"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            placeholder="Character name"
+            className="px-3 py-2 bg-white border border-tiffany-200 rounded-lg text-sm text-tiffany-900 placeholder-tiffany-400 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30"
+          />
+          {editing && charUrl(editing.filename) && (
+            <img
+              src={charUrl(editing.filename)!}
+              alt={editing.name}
+              className="w-16 h-16 rounded-lg object-cover border border-tiffany-200"
+            />
+          )}
+          <div className="flex items-center gap-2">
+            <input
+              ref={editFileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleEditFileChange}
+              className="hidden"
+            />
+            <button
+              onClick={() => editFileInputRef.current?.click()}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-tiffany-200 bg-white text-tiffany-600 hover:border-tiffany-300 transition-colors"
+            >
+              {UploadIcon}
+              Replace Image
+            </button>
+            <button
+              onClick={saveEdit}
+              className="px-3 py-2 text-xs font-medium rounded-lg bg-tiffany-500 hover:bg-tiffany-600 text-white transition-colors"
+            >
+              Save
+            </button>
+            <button
+              onClick={cancelEdit}
+              className="px-3 py-2 text-xs font-medium rounded-lg border border-tiffany-200 text-tiffany-600 hover:bg-tiffany-50 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
-        {uploading && (
-          <p className="text-xs text-tiffany-600 italic">Saving character...</p>
-        )}
-        {error && <p className="text-xs text-red-600">{error}</p>}
-      </div>
+      {uploading && (
+        <p className="text-xs text-tiffany-600 italic">Saving character...</p>
+      )}
+      {error && <p className="text-xs text-red-600">{error}</p>}
 
-      {/* Crop tool */}
-      {pendingImage && (
+      {/* Crop tool (create or edit) */}
+      {(pendingImage || editImage) && (
         <CropTool
-          image={pendingImage}
-          onCancel={() => setPendingImage(null)}
-          onApply={finishCharacter}
+          image={pendingImage ?? editImage!}
+          onCancel={handleCropCancel}
+          onApply={handleCropApply}
         />
       )}
 
@@ -244,13 +385,22 @@ export default function CharactersTab({ projectId }: Props) {
                     {CharacterIcon}
                   </div>
                 )}
-                <button
-                  onClick={() => setConfirmDeleteId(c.id)}
-                  className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                  title="Delete character"
-                >
-                  {TrashIcon}
-                </button>
+                <div className="absolute top-1 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => startEdit(c)}
+                    className="w-6 h-6 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-tiffany-500 transition-colors"
+                    title="Edit character"
+                  >
+                    {PencilIcon}
+                  </button>
+                  <button
+                    onClick={() => setConfirmDeleteId(c.id)}
+                    className="w-6 h-6 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-red-500 transition-colors"
+                    title="Delete character"
+                  >
+                    {TrashIcon}
+                  </button>
+                </div>
               </div>
             );
           })}
