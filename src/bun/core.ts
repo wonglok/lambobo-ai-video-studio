@@ -677,6 +677,67 @@ async function installPythonDependencies(): Promise<boolean> {
     }
   }
 
+  {
+    const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
+    if (!existsSync(pythonAppSrcDir)) {
+      mkdirSync(pythonAppSrcDir, { recursive: true });
+    }
+
+    const featureFolder = join(pythonAppSrcDir, "mlx-h3");
+
+    if (!existsSync(featureFolder)) {
+      let cloneCMD = await runCommand(
+        "git",
+        [`clone`, `https://github.com/appautomaton/mlx-h3.git`, "mlx-h3"],
+        { cwd: pythonAppSrcDir },
+      );
+
+      console.log(cloneCMD.success, cloneCMD.output);
+    }
+
+    const uvPath = await getUvPath();
+
+    const uvSyncResult = await runCommand(
+      uvPath,
+      [
+        //
+        "sync",
+        // "--all-extras",
+      ],
+      {
+        cwd: featureFolder,
+      },
+    );
+    if (!uvSyncResult.success) {
+      console.error("Failed to install uv in mlx h3:", uvSyncResult.error);
+      return false;
+    }
+
+    {
+      const uvSyncResult = await runCommand(
+        uvPath,
+        [
+          //
+          "tool",
+          "install",
+          "--prerelease",
+          "allow",
+          "mlx-h3",
+        ],
+        {
+          cwd: featureFolder,
+        },
+      );
+      if (!uvSyncResult.success) {
+        console.error(
+          "Failed to install uv mlx-h3 global:",
+          uvSyncResult.error,
+        );
+        return false;
+      }
+    }
+  }
+
   //
 
   // {
