@@ -40,6 +40,19 @@ const PROJECTS_FILE = join(JSON_DIR, "projects.json");
 const MLXGEN_MODEL = "AbstractFramework/qwen-image-edit-2511-4bit";
 const MLX_VLM_MODEL = "mlx-community/gemma-4-e2b-it-4bit";
 
+const VIDEO_STAGE_FLAGS: Record<string, string> = {
+  distilled: "--distilled",
+  "one-stage": "--one-stage",
+  "two-stage": "--two-stage",
+};
+
+/** Resolve the CLI stage flag for a video generation mode (defaults to distilled). */
+function stageFlagFor(mode: unknown): string {
+  return typeof mode === "string"
+    ? (VIDEO_STAGE_FLAGS[mode] ?? "--distilled")
+    : "--distilled";
+}
+
 // ========== Project Types ==========
 
 export interface Project {
@@ -678,6 +691,7 @@ export async function renderMediaRoutes({
       height = 480,
       frames = 121,
       frameRate = 24,
+      mode = "distilled",
     } = req.body || {};
 
     if (!prompt) {
@@ -761,7 +775,7 @@ export async function renderMediaRoutes({
           "dgrauet/ltx-2.3-mlx-q4",
           "--prompt",
           prompt,
-          "--distilled",
+          stageFlagFor(mode),
           "--low-ram",
           "--frames",
           String(videoFrames),

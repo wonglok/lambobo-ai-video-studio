@@ -64,6 +64,12 @@ const tool: AgentTool = {
         type: "number",
         description: "Video duration in seconds (default 5)",
       },
+      mode: {
+        type: "string",
+        enum: ["distilled", "one-stage", "two-stage"],
+        description:
+          "Generation mode: distilled (default), one-stage, or two-stage",
+      },
     },
     required: ["prompt", "image"],
   },
@@ -118,21 +124,29 @@ const tool: AgentTool = {
     ctx.emit?.("notice", { text: `Generating video from "${image}"...` });
 
     try {
+      const body: Record<string, unknown> = {
+        prompt,
+        imagePath: imageName,
+        projectId: ctx.projectId,
+        outputDir: workspaceDir(ctx.projectId),
+        width: 640,
+        height: 448,
+        frames,
+        frameRate: 24,
+      };
+      if (
+        typeof args.mode === "string" &&
+        ["distilled", "one-stage", "two-stage"].includes(args.mode)
+      ) {
+        body.mode = args.mode;
+      }
+
       const res = await fetch(
         `http://localhost:${ctx.backendPort}/api/render/image-to-video`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            prompt,
-            imagePath: imageName,
-            projectId: ctx.projectId,
-            outputDir: workspaceDir(ctx.projectId),
-            width: 448,
-            height: 448,
-            frames,
-            frameRate: 24,
-          }),
+          body: JSON.stringify(body),
           signal: ctx.signal,
         },
       );
