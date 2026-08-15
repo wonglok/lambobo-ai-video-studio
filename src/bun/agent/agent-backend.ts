@@ -79,7 +79,7 @@ function toOpenAIMessages(messages: ChatMessage[]): any[] {
 function buildSystemPrompt(): string {
   const toolList = TOOLS.map((t) => `- ${t.name}: ${t.description}`).join("\n");
   return [
-    "You are a helpful assistant that uses tools to help the user achieve their goal.",
+    "You are a video-making assistant that uses tools to help the user create a video from an image in their workspace.",
     "",
     "Available tools:",
     toolList,
@@ -87,6 +87,29 @@ function buildSystemPrompt(): string {
     "Rules:",
     "- Call a tool only when you actually need its result. Once you have enough information, answer the user directly WITHOUT calling any tool.",
     "- Do not call the same tool twice with the same arguments.",
+    "",
+    "## How to make a video",
+    "",
+    "To generate a video you need exactly three things from the user: the source IMAGE, the motion PROMPT, and the DURATION. Guide the user through each step in order, one step at a time.",
+    "",
+    "### Step 1 — Image",
+    "- Call `list_files` to see what is in the agent workspace.",
+    "- List every image file (files whose `kind` is \"image\") to the user as a numbered list so they can pick one.",
+    "- You may call `show_image` to preview an image before the user decides.",
+    "- If there are no images, tell the user and ask them to upload one first.",
+    "",
+    "### Step 2 — Prompt",
+    "- Plan the prompt together with the user. Ask what they want the video to show: the subject, the action or motion, camera movement, style, lighting, and mood.",
+    "- Discuss and refine the prompt with them until it clearly describes the desired animation. Confirm the wording before moving on.",
+    "",
+    "### Step 3 — Duration",
+    "- Estimate a sensible duration in seconds based on the complexity of the prompt (typically 3–8 seconds) and propose it to the user.",
+    "- Let the user accept your estimate or give a different duration.",
+    "",
+    "### Step 4 — Summary and confirmation",
+    "- Prepare a short summary containing the chosen image, the final prompt, and the duration, and ask the user to confirm.",
+    "- Do NOT start generation yet. Wait for the user to say yes.",
+    "- Only after the user confirms, call `image_to_video_generation` with the chosen image, prompt, and duration.",
   ].join("\n");
 }
 
@@ -263,6 +286,84 @@ export async function agentBackend({
     res.json({ ok: true });
   });
 
+  // ===== Chat threads persistence =====
+
+  app.get("/api/agent/threads", (req, res) => {
+    const projectId = String(req.query.projectId ?? "");
+    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(projectId)) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    const file = join(workspaceDir(projectId), "chat", "threads.json");
+    if (!existsSync(file)) {
+      res.json({ threads: [] });
+      return;
+    }
+    try {
+      res.json({ threads: JSON.parse(readFileSync(file, "utf-8")) });
+    } catch {
+      res.json({ threads: [] });
+    }
+  });
+
+  app.post("/api/agent/threads", (req, res) => {
+    const { projectId, threads } = req.body || {};
+    if (!projectId || !/^[a-zA-Z0-9_-]{1,64}$/.test(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    const dir = join(workspaceDir(String(projectId)), "chat");
+    ensureDir(dir);
+    writeFileSync(
+      join(dir, "threads.json"),
+      JSON.stringify(threads ?? [], null, 2),
+      "utf-8",
+    );
+    res.json({ ok: true });
+  });
+
+  app.get("/api/agent/thread/chat", (req, res) => {
+    const projectId = String(req.query.projectId ?? "");
+    const threadId = String(req.query.threadId ?? "");
+    if (
+      !/^[a-zA-Z0-9_-]{1,64}$/.test(projectId) ||
+      !/^[a-zA-Z0-9_-]{1,64}$/.test(threadId)
+    ) {
+      res.status(400).json({ error: "Invalid ID" });
+      return;
+    }
+    const file = join(workspaceDir(projectId), "chat", threadId, "chat.json");
+    if (!existsSync(file)) {
+      res.json({ messages: [] });
+      return;
+    }
+    try {
+      res.json({ messages: JSON.parse(readFileSync(file, "utf-8")) });
+    } catch {
+      res.json({ messages: [] });
+    }
+  });
+
+  app.post("/api/agent/thread/chat", (req, res) => {
+    const { projectId, threadId, messages } = req.body || {};
+    if (!projectId || !/^[a-zA-Z0-9_-]{1,64}$/.test(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    if (!threadId || !/^[a-zA-Z0-9_-]{1,64}$/.test(String(threadId))) {
+      res.status(400).json({ error: "Invalid thread ID" });
+      return;
+    }
+    const dir = join(workspaceDir(String(projectId)), "chat", String(threadId));
+    ensureDir(dir);
+    writeFileSync(
+      join(dir, "chat.json"),
+      JSON.stringify(messages ?? [], null, 2),
+      "utf-8",
+    );
+    res.json({ ok: true });
+  });
+
   app.post("/api/agent/chat", async (req, res) => {
     res.writeHead(200, {
       "Content-Type": "text/event-stream",
@@ -364,6 +465,14 @@ export async function agentBackend({
           const choice = chunk.choices?.[0];
           const delta = choice?.delta;
           if (!delta) continue;
+
+          // Reasoning / thinking tokens (reasoning models emit these in a
+          // separate field from the final answer).
+          const reasoning =
+            (delta as any).reasoning ?? (delta as any).reasoning_content;
+          if (reasoning) {
+            send("thinking", { text: reasoning });
+          }
 
           if (delta.content) {
             content += delta.content;

@@ -65,6 +65,11 @@ export function ChatUI({ projectId }: Props) {
     }
   }, [messages, chat.sending]);
 
+  useEffect(() => {
+    chat.loadThreads(projectId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
+
   const handleSend = () => {
     const value = inputRef.current?.value ?? "";
     const hasText = value.trim().length > 0;
@@ -403,6 +408,17 @@ export function ChatUI({ projectId }: Props) {
                       );
                     })}
                   </div>
+                )}
+
+                {m.thinking && (
+                  <details className="text-[11px] text-tiffany-500/80">
+                    <summary className="cursor-pointer select-none">
+                      Thinking
+                    </summary>
+                    <p className="mt-1 whitespace-pre-wrap italic">
+                      {m.thinking}
+                    </p>
+                  </details>
                 )}
 
                 {m.notices && m.notices.length > 0 && (

@@ -7,7 +7,6 @@ import updateFileTool from "./update-file";
 import removeFileTool from "./remove-file";
 import renameFileTool from "./rename-file";
 import grepFilesTool from "./grep-files";
-import searchFilesTool from "./search-files";
 import showImageTool from "./show-image";
 import imageToVideoGenerationTool from "./image-to-video-generation";
 import textToVideoGenerationTool from "./text-to-video-generation";
@@ -24,7 +23,6 @@ export const TOOLS: AgentTool[] = [
   removeFileTool,
   renameFileTool,
   grepFilesTool,
-  searchFilesTool,
   showImageTool,
   imageToVideoGenerationTool,
   textToVideoGenerationTool,

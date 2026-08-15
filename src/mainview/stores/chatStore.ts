@@ -17,6 +17,7 @@ export interface ChatMessage {
   images?: string[];
   videos?: string[];
   notices?: string[];
+  thinking?: string;
   trace?: any[];
   steps: AgentStep[];
 }
@@ -37,7 +38,7 @@ function nextMsgId(): string {
 let sessionCounter = 0;
 function nextSessionId(): string {
   sessionCounter += 1;
-  return `sess-${sessionCounter}`;
+  return `sess-${Date.now().toString(36)}-${sessionCounter}`;
 }
 
 function newSession(): ChatSession {
@@ -92,13 +93,56 @@ async function readSSEStream(
 
 // ========== Store ==========
 
+async function persistThreads(
+  projectId: string,
+  sessions: ChatSession[],
+): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/api/agent/threads`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectId,
+        threads: sessions.map((s) => ({
+          id: s.id,
+          title: s.title,
+          createdAt: s.createdAt,
+        })),
+      }),
+    });
+  } catch {
+    // ignore persistence failures
+  }
+}
+
+async function persistThreadChat(
+  projectId: string,
+  session: ChatSession,
+): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/api/agent/thread/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectId,
+        threadId: session.id,
+        messages: session.messages,
+      }),
+    });
+  } catch {
+    // ignore persistence failures
+  }
+}
+
 interface ChatStore {
   sessions: ChatSession[];
   activeSessionId: string | null;
+  projectId: string | null;
   sending: boolean;
   error: string | null;
   pendingImage: string | null;
   setPendingImage: (dataUrl: string | null) => void;
+  loadThreads: (projectId: string) => Promise<void>;
   createSession: () => void;
   selectSession: (id: string) => void;
   deleteSession: (id: string) => void;
@@ -120,11 +164,55 @@ const firstSession = newSession();
 export const useChatStore = create<ChatStore>((set, get) => ({
   sessions: [firstSession],
   activeSessionId: firstSession.id,
+  projectId: null,
   sending: false,
   error: null,
   pendingImage: null,
 
   setPendingImage: (dataUrl) => set({ pendingImage: dataUrl }),
+
+  loadThreads: async (projectId) => {
+    set({ projectId });
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/agent/threads?projectId=${encodeURIComponent(projectId)}`,
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      const metas = (data.threads || []) as {
+        id: string;
+        title: string;
+        createdAt: number;
+      }[];
+
+      const sessions: ChatSession[] = [];
+      for (const meta of metas) {
+        const chatRes = await fetch(
+          `${API_BASE}/api/agent/thread/chat?projectId=${encodeURIComponent(
+            projectId,
+          )}&threadId=${encodeURIComponent(meta.id)}`,
+        );
+        let messages: ChatMessage[] = [];
+        if (chatRes.ok) {
+          const chatData = await chatRes.json();
+          messages = (chatData.messages || []) as ChatMessage[];
+        }
+        sessions.push({
+          id: meta.id,
+          title: meta.title,
+          messages,
+          createdAt: meta.createdAt,
+        });
+      }
+
+      if (sessions.length === 0) {
+        sessions.push(newSession());
+      }
+      set({ sessions, activeSessionId: sessions[0].id, sending: false });
+    } catch {
+      // keep current in-memory sessions
+    }
+  },
 
   createSession: () => {
     const session = newSession();
@@ -133,11 +221,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       activeSessionId: session.id,
       error: null,
     }));
+    const st = get();
+    if (st.projectId) persistThreads(st.projectId, st.sessions);
   },
 
   selectSession: (id) => set({ activeSessionId: id, error: null }),
 
-  deleteSession: (id) =>
+  deleteSession: (id) => {
     set((s) => {
       let sessions = s.sessions.filter((x) => x.id !== id);
       let activeSessionId = s.activeSessionId;
@@ -151,9 +241,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         }
       }
       return { sessions, activeSessionId };
-    }),
+    });
+    const st = get();
+    if (st.projectId) persistThreads(st.projectId, st.sessions);
+  },
 
-  resetActiveSession: () =>
+  resetActiveSession: () => {
     set((s) => ({
       sessions: s.sessions.map((sess) =>
         sess.id === s.activeSessionId
@@ -161,7 +254,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           : sess,
       ),
       error: null,
-    })),
+    }));
+    const st = get();
+    if (st.projectId) {
+      persistThreads(st.projectId, st.sessions);
+      const session = st.sessions.find((x) => x.id === st.activeSessionId);
+      if (session) persistThreadChat(st.projectId, session);
+    }
+  },
 
   sendMessage: async (content, port, model, projectId, image) => {
     const text = content.trim();
@@ -293,6 +393,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
               notices: [...(m.notices ?? []), data.text as string],
             }));
             break;
+          case "thinking":
+            updateAssistant((m) => ({
+              ...m,
+              thinking: (m.thinking ?? "") + (data.text as string),
+            }));
+            break;
           case "video": {
             const url = data.url as string;
             const fullUrl = url.startsWith("http") ? url : `${API_BASE}${url}`;
@@ -322,6 +428,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     } finally {
       chatAbortController = null;
       set({ sending: false });
+      const st = get();
+      if (st.projectId) {
+        const session = st.sessions.find((x) => x.id === sessionId);
+        if (session) persistThreadChat(st.projectId, session);
+        persistThreads(st.projectId, st.sessions);
+      }
     }
   },
 
