@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useReferencesToVideoStore } from "../../stores/referencesToVideoStore";
+import MlxVlmServerPanel from "./MlxVlmServerPanel";
 
 export default function ReferencesToVideoTab() {
   const store = useReferencesToVideoStore();
@@ -121,6 +122,8 @@ export default function ReferencesToVideoTab() {
           </div>
         )}
       </div>
+
+      <MlxVlmServerPanel />
     </div>
   );
 }
