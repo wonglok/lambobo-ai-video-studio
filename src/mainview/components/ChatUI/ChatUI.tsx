@@ -572,7 +572,12 @@ export function ChatUI({ projectId }: Props) {
             />
             {chat.sending ? (
               <button
-                onClick={() => chat.stop()}
+                onClick={() => {
+                  chat.stop();
+                  fetch(`${API_BASE}/api/render/cancel`, {
+                    method: "POST",
+                  }).catch(() => {});
+                }}
                 className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
               >
                 {StopIcon}

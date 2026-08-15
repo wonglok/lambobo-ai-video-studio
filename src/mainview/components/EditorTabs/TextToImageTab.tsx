@@ -10,6 +10,7 @@ export default function TextToImageTab({ projectId }: Props) {
 
   useEffect(() => {
     store.checkTextToImageStatus();
+    store.fetchProjectImages(projectId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -17,6 +18,10 @@ export default function TextToImageTab({ projectId }: Props) {
     store.textToImage.generating ||
     store.textToImage.installing ||
     store.textToImage.downloading;
+
+  const generatedImages = store.projectImages.filter(
+    (img) => img.source === "generated",
+  );
 
   const renderStatus = (
     value: boolean | null,
@@ -347,6 +352,45 @@ export default function TextToImageTab({ projectId }: Props) {
           </div>
         </div>
       )}
+
+      {/* ===== Generated Images Grid ===== */}
+      <div>
+        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+          Generated Images
+        </label>
+        {store.projectImagesLoading ? (
+          <p className="text-xs text-tiffany-400 italic py-4 text-center">
+            Loading images...
+          </p>
+        ) : generatedImages.length === 0 ? (
+          <p className="text-xs text-tiffany-400 italic py-4 text-center border border-dashed border-tiffany-200 rounded-xl">
+            No generated images yet.
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-2 p-1">
+            {generatedImages.map((img) => {
+              const fullUrl = img.url.startsWith("http")
+                ? img.url
+                : `http://localhost:${(window as any).PORT}${img.url}`;
+              return (
+                <div
+                  key={`${img.source}-${img.filename}`}
+                  className="relative rounded-lg border border-tiffany-200 overflow-hidden"
+                >
+                  <img
+                    src={fullUrl}
+                    alt={img.filename}
+                    className="aspect-square object-cover object-center w-full"
+                  />
+                  <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-tiffany-700 truncate text-center">
+                    {img.filename}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
