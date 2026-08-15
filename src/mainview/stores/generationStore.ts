@@ -48,6 +48,7 @@ interface VideoState {
   duration: number;
   aspectRatio: AspectRatio;
   resolution: Resolution;
+  mode: VideoMode;
   generating: boolean;
   result: string | null;
   error: string | null;
@@ -115,6 +116,7 @@ interface GenerationStore {
   setVideoDuration: (v: number) => void;
   setVideoAspectRatio: (v: AspectRatio) => void;
   setVideoResolution: (v: Resolution) => void;
+  setVideoMode: (v: VideoMode) => void;
   clearVideoResult: () => void;
   generateVideo: (projectId: string, imagePath?: string) => Promise<void>;
   cancelGenerate: () => void;
@@ -417,6 +419,7 @@ const initialVideo: VideoState = {
   duration: 5,
   aspectRatio: "1:1",
   resolution: "480p",
+  mode: "distilled",
   generating: false,
   result: null,
   error: null,
@@ -574,6 +577,8 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     set((s) => ({ video: { ...s.video, aspectRatio } })),
   setVideoResolution: (resolution) =>
     set((s) => ({ video: { ...s.video, resolution } })),
+  setVideoMode: (mode) =>
+    set((s) => ({ video: { ...s.video, mode } })),
   clearVideoResult: () =>
     set((s) => ({
       video: { ...s.video, result: null, error: null, logs: [] },
@@ -649,6 +654,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
           height,
           frames: video.duration * 24 + 1,
           frameRate: 24,
+          mode: video.mode,
         }),
         signal,
       });
@@ -931,6 +937,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
             height,
             frames: video.duration * 24 + 1,
             frameRate: 24,
+            mode: video.mode,
           }),
           signal,
         });

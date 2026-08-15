@@ -547,6 +547,35 @@ export default function GenerateVideoTab({ projectId }: Props) {
         </div>
       </div>
 
+      {/* Quality selector */}
+      <div>
+        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+          Quality
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              { label: "Low (distilled)", value: "distilled" },
+              { label: "Standard (one-stage)", value: "one-stage" },
+              { label: "High (two-stage)", value: "two-stage" },
+            ] as const
+          ).map((q) => (
+            <button
+              key={q.value}
+              onClick={() => store.setVideoMode(q.value)}
+              disabled={store.video.generating}
+              className={`px-4 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                store.video.mode === q.value
+                  ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
+                  : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+              } disabled:opacity-50`}
+            >
+              {q.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <button
         onClick={handleOpenVideoFolder}
         className="flex items-center justify-center gap-2 w-full px-4 py-2.5 mb-3 bg-tiffany-50 hover:bg-tiffany-100 text-tiffany-700 text-sm font-medium rounded-xl border border-tiffany-200 transition-colors"
