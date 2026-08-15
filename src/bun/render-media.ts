@@ -1841,7 +1841,9 @@ export async function renderMediaRoutes({
         size: buffer.length,
       });
     } catch (e) {
-      res.status(500).json({ error: "Failed to save frame", details: String(e) });
+      res
+        .status(500)
+        .json({ error: "Failed to save frame", details: String(e) });
     }
   });
 
