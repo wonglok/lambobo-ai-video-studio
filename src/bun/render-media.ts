@@ -1298,7 +1298,7 @@ export async function renderMediaRoutes({
         "--output",
         outputPath,
         "--steps",
-        String(20),
+        String(25),
       ];
 
       // Optional output size (kept in the same aspect ratio by the client).
