@@ -706,6 +706,13 @@ export async function renderMediaRoutes({
       res.status(400).json({ error: "Invalid project ID" });
       return;
     }
+    if (
+      typeof mode !== "string" ||
+      !Object.keys(VIDEO_STAGE_FLAGS).includes(mode)
+    ) {
+      res.status(400).json({ error: "Invalid mode" });
+      return;
+    }
 
     // Resolve image path — only allow project-relative paths (no absolute paths)
     const resolvedImage = resolveSafePath(imagePath, projectId);
@@ -856,6 +863,13 @@ export async function renderMediaRoutes({
     }
     if (!projectId || !isValidProjectId(String(projectId))) {
       res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    if (
+      typeof mode !== "string" ||
+      !Object.keys(VIDEO_STAGE_FLAGS).includes(mode)
+    ) {
+      res.status(400).json({ error: "Invalid mode" });
       return;
     }
 
