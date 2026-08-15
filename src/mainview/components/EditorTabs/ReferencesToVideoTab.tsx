@@ -1,7 +1,13 @@
+import { useEffect } from "react";
 import { useReferencesToVideoStore } from "../../stores/referencesToVideoStore";
 
 export default function ReferencesToVideoTab() {
   const store = useReferencesToVideoStore();
+
+  useEffect(() => {
+    store.checkStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const BookIcon = (
     <svg
@@ -34,6 +40,21 @@ export default function ReferencesToVideoTab() {
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <polyline points="7 10 12 15 17 10" />
       <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+
+  const CheckIcon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="20 6 9 17 4 12" />
     </svg>
   );
 
@@ -73,20 +94,24 @@ export default function ReferencesToVideoTab() {
 
         <button
           onClick={() => store.downloadModel()}
-          disabled={store.downloading}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl bg-tiffany-500 hover:bg-tiffany-600 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white transition-colors"
+          disabled={store.downloading || store.downloaded}
+          className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl bg-tiffany-500 hover:bg-tiffany-600 disabled:bg-tiffany-100 disabled:text-tiffany-500 text-white transition-colors"
         >
-          {store.downloading ? SpinnerIcon : DownloadIcon}
-          {store.downloading ? "Downloading..." : "Download Model"}
+          {store.downloading ? (
+            SpinnerIcon
+          ) : store.downloaded ? (
+            CheckIcon
+          ) : (
+            DownloadIcon
+          )}
+          {store.downloading
+            ? "Downloading..."
+            : store.downloaded
+              ? "Model Downloaded"
+              : "Download Model"}
         </button>
 
         {store.error && <p className="text-xs text-red-600">{store.error}</p>}
-
-        {store.downloaded && (
-          <p className="text-xs text-tiffany-600">
-            Model downloaded successfully.
-          </p>
-        )}
 
         {store.logs.length > 0 && (
           <div className="p-2 bg-tiffany-50 border border-tiffany-200 rounded-lg max-h-40 overflow-y-auto">

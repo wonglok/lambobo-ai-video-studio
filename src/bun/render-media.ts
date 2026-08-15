@@ -358,6 +358,22 @@ function isModelDownloaded(model: string = MLXGEN_MODEL): boolean {
   }
 }
 
+/** Directory the H3 model weights are downloaded into (mlx-h3/weights). */
+function h3WeightsDir(): string {
+  return join(PYTHON_DIR, "mlx-h3", "weights");
+}
+
+/** True when the H3 model has been downloaded into <mlx-h3>/weights. */
+function isH3ModelDownloaded(): boolean {
+  const dir = h3WeightsDir();
+  if (!existsSync(dir)) return false;
+  try {
+    return readdirSync(dir).length > 0;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Strip ANSI escape sequences (colors, cursor control, etc.) from a string.
  * Tools like `uv` emit these when streaming to a TTY; forwarding them to the
@@ -1332,6 +1348,10 @@ export async function renderMediaRoutes({
   });
 
   // ========== H3: Download Model ==========
+
+  app.get("/api/h3/status", (_req, res) => {
+    res.json({ downloaded: isH3ModelDownloaded() });
+  });
 
   app.post("/api/h3/download-model", async (_req, res) => {
     res.writeHead(200, {

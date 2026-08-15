@@ -7,6 +7,7 @@ interface ReferencesToVideoStore {
   downloaded: boolean;
   error: string | null;
   logs: string[];
+  checkStatus: () => Promise<void>;
   downloadModel: () => Promise<void>;
 }
 
@@ -54,6 +55,17 @@ export const useReferencesToVideoStore = create<ReferencesToVideoStore>(
     downloaded: false,
     error: null,
     logs: [],
+
+    checkStatus: async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/h3/status`);
+        if (!res.ok) return;
+        const data = await res.json();
+        set({ downloaded: Boolean(data.downloaded) });
+      } catch {
+        // Leave status unchanged if the check fails.
+      }
+    },
 
     downloadModel: async () => {
       if (get().downloading) return;
