@@ -541,7 +541,7 @@ export default function CharactersTab({ projectId }: Props) {
             Character Sheet
           </h3>
         </div>
-        <CharacterSheet items={sheetItems} />
+        <CharacterSheet items={sheetItems} projectId={projectId} />
       </div>
 
       {/* Select project image modal */}
