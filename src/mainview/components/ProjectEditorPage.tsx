@@ -259,7 +259,7 @@ export default function ProjectEditorPage() {
               }`}
             >
               {VideoIcon}
-              Generate Video
+              Generate Avatar ideo
             </button>
             <button
               onClick={() => store.setActiveTab("extend")}
@@ -358,9 +358,7 @@ export default function ProjectEditorPage() {
           )}
 
           {/* ========== EXTRACT IMAGE PANEL ========== */}
-          {store.activeTab === "extract" && (
-            <ExtractImageTab projectId={id!} />
-          )}
+          {store.activeTab === "extract" && <ExtractImageTab projectId={id!} />}
 
           {/* ========== SCENE VISUAL PANEL ========== */}
           {store.activeTab === "sceneVisual" && (
