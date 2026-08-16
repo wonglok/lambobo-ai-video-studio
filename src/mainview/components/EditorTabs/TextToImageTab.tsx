@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useGenerationStore } from "../../stores/generationStore";
 
 interface Props {
@@ -7,12 +7,26 @@ interface Props {
 
 export default function TextToImageTab({ projectId }: Props) {
   const store = useGenerationStore();
+  const [preview, setPreview] = useState<{
+    url: string;
+    filename: string;
+  } | null>(null);
 
   useEffect(() => {
     store.checkTextToImageStatus();
     store.fetchProjectImages(projectId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Close the preview modal on Escape.
+  useEffect(() => {
+    if (!preview) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPreview(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [preview]);
 
   const busy =
     store.textToImage.generating ||
@@ -162,6 +176,22 @@ export default function TextToImageTab({ projectId }: Props) {
       <circle cx="12" cy="12" r="10" />
       <line x1="12" y1="8" x2="12" y2="12" />
       <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+  );
+
+  const CloseIcon = (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   );
 
@@ -373,9 +403,12 @@ export default function TextToImageTab({ projectId }: Props) {
                 ? img.url
                 : `http://localhost:${(window as any).PORT}${img.url}`;
               return (
-                <div
+                <button
                   key={`${img.source}-${img.filename}`}
-                  className="relative rounded-lg border border-tiffany-200 overflow-hidden"
+                  onClick={() =>
+                    setPreview({ url: fullUrl, filename: img.filename })
+                  }
+                  className="relative rounded-lg border border-tiffany-200 hover:border-tiffany-400 overflow-hidden transition-all cursor-zoom-in group"
                 >
                   <img
                     src={fullUrl}
@@ -385,12 +418,41 @@ export default function TextToImageTab({ projectId }: Props) {
                   <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-tiffany-700 truncate text-center">
                     {img.filename}
                   </span>
-                </div>
+                </button>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* ===== Preview Modal ===== */}
+      {preview && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6"
+          onClick={() => setPreview(null)}
+        >
+          <div
+            className="relative max-w-[90vw] max-h-[90vh] flex flex-col items-center gap-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={preview.url}
+              alt={preview.filename}
+              className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl"
+            />
+            <span className="text-xs text-white/70 truncate max-w-full">
+              {preview.filename}
+            </span>
+            <button
+              onClick={() => setPreview(null)}
+              className="absolute -top-3 -right-3 flex items-center justify-center w-9 h-9 bg-white text-tiffany-700 rounded-full shadow-lg hover:bg-tiffany-100 transition-colors"
+              title="Close (Esc)"
+            >
+              {CloseIcon}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
