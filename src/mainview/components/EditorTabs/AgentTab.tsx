@@ -1,7 +1,7 @@
 import { useGenerationStore } from "../../stores/generationStore";
 import { ChatUI } from "../ChatUI/ChatUI";
 import AgentWorkspace from "../AgentWorkspace";
-import MlxVlmServerPanel from "./MlxVlmServerPanel";
+// import MlxVlmServerPanel from "./MlxVlmServerPanel";
 
 interface Props {
   projectId: string;
