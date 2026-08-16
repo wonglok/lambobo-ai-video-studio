@@ -2,6 +2,9 @@ import { create } from "zustand";
 
 const API_BASE = `http://localhost:${(window as any).PORT}`;
 
+// Abort controller for the in-flight generation request, so it can be cancelled.
+let generateAbortController: AbortController | null = null;
+
 interface ReferencesToVideoStore {
   // Model download
   downloading: boolean;
@@ -47,6 +50,7 @@ interface ReferencesToVideoStore {
     projectId: string,
   ) => Promise<string | null>;
   generate: (projectId: string) => Promise<void>;
+  cancelGenerate: () => void;
 }
 
 async function readSSEStream(
@@ -213,6 +217,10 @@ export const useReferencesToVideoStore = create<ReferencesToVideoStore>(
       // Frame count derived from duration at 24fps (+1 keyframe).
       const frames = Math.max(1, Math.round(24 * seconds + 1));
 
+      // Fresh AbortController so this run can be cancelled independently.
+      generateAbortController = new AbortController();
+      const signal = generateAbortController.signal;
+
       set({ generating: true, genError: null, genLogs: [], result: null });
 
       try {
@@ -230,6 +238,7 @@ export const useReferencesToVideoStore = create<ReferencesToVideoStore>(
             frames,
             seed,
           }),
+          signal,
         });
 
         if (!res.ok) {
@@ -257,9 +266,29 @@ export const useReferencesToVideoStore = create<ReferencesToVideoStore>(
               break;
           }
         });
-      } catch (e) {
-        set({ generating: false, genError: String(e) });
+      } catch (e: any) {
+        // If the request was aborted, just stop silently (cancel already reset state).
+        if (e?.name !== "AbortError") {
+          set({ generating: false, genError: String(e) });
+        } else {
+          set({ generating: false });
+        }
+      } finally {
+        generateAbortController = null;
       }
+    },
+
+    cancelGenerate: () => {
+      if (generateAbortController) {
+        generateAbortController.abort();
+        generateAbortController = null;
+      }
+      // Immediately reset generating state so the UI returns to ready.
+      set({ generating: false });
+      // Also kill the backend spawn process.
+      fetch(`${API_BASE}/api/render/cancel`, { method: "POST" }).catch(
+        () => {},
+      );
     },
   }),
 );

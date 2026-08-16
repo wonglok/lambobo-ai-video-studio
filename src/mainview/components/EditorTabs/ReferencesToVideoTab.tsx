@@ -430,6 +430,15 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
               Generating...
             </span>
           </div>
+          <button
+            onClick={() => store.cancelGenerate()}
+            className="flex items-center justify-center gap-1.5 px-5 py-3 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="4" y="4" width="16" height="16" rx="2" />
+            </svg>
+            Stop
+          </button>
         </div>
       ) : (
         <button
