@@ -97,6 +97,7 @@ interface TextToImageState {
   prompt: string;
   aspectRatio: AspectRatio;
   resolution: Resolution;
+  steps: number;
   installing: boolean;
   installingLogs: string[];
   installingError: string | null;
@@ -174,6 +175,7 @@ interface GenerationStore {
   setTextToImagePrompt: (v: string) => void;
   setTextToImageAspectRatio: (v: AspectRatio) => void;
   setTextToImageResolution: (v: Resolution) => void;
+  setTextToImageSteps: (v: number) => void;
   clearTextToImageResult: () => void;
   checkTextToImageStatus: () => Promise<void>;
   installTextToImage: () => Promise<void>;
@@ -497,6 +499,7 @@ const initialTextToImage: TextToImageState = {
   prompt: "",
   aspectRatio: "1:1",
   resolution: "480p",
+  steps: 4,
   installing: false,
   installingLogs: [],
   installingError: null,
@@ -1589,6 +1592,9 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
   setTextToImageResolution: (resolution) =>
     set((s) => ({ textToImage: { ...s.textToImage, resolution } })),
 
+  setTextToImageSteps: (steps) =>
+    set((s) => ({ textToImage: { ...s.textToImage, steps } })),
+
   clearTextToImageResult: () =>
     set((s) => ({
       textToImage: { ...s.textToImage, result: null, error: null, logs: [] },
@@ -1781,6 +1787,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
           projectId,
           width,
           height,
+          steps: textToImage.steps,
         }),
       });
 

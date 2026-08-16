@@ -346,6 +346,29 @@ export default function TextToImageTab({ projectId }: Props) {
         </div>
       </div>
 
+      {/* ===== Steps ===== */}
+      <div>
+        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+          Steps
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {[4, 5, 6, 8, 9, 10].map((s) => (
+            <button
+              key={s}
+              onClick={() => store.setTextToImageSteps(s)}
+              disabled={busy}
+              className={`px-4 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                store.textToImage.steps === s
+                  ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
+                  : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+              } disabled:opacity-50`}
+            >
+              {s} steps
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* ===== Generate ===== */}
       {store.textToImage.generating ? (
         <div className="flex items-center gap-2 px-4 py-3 bg-tiffany-50 border border-tiffany-200 rounded-xl">

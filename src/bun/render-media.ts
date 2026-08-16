@@ -1563,7 +1563,10 @@ export async function renderMediaRoutes({
 
       const args: string[] = [uvPath, "run", "mlx-h3"];
       for (const ref of resolvedRefs) {
-        args.push(ref.kind === "image" ? "--ref-image" : "--ref-video", ref.path);
+        args.push(
+          ref.kind === "image" ? "--ref-image" : "--ref-video",
+          ref.path,
+        );
       }
       args.push(
         "--steps",
@@ -1827,7 +1830,7 @@ export async function renderMediaRoutes({
       });
 
       // z-image-turbo is a few-step distillation model; default to 4 steps.
-      const resolvedSteps = Number(steps) > 0 ? Number(steps) : 4;
+      const resolvedSteps = Number(steps) > 0 ? Number(steps) : 6;
 
       const args: string[] = [
         mlxgen,
