@@ -11,6 +11,7 @@ import ExtractImageTab from "./EditorTabs/ExtractImageTab";
 import SceneVisualTab from "./EditorTabs/SceneVisualTab";
 import TextToImageTab from "./EditorTabs/TextToImageTab";
 import ReferencesToVideoTab from "./EditorTabs/ReferencesToVideoTab";
+import LlmServerTab from "./EditorTabs/LlmServerTab";
 
 export default function ProjectEditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -39,6 +40,18 @@ export default function ProjectEditorPage() {
       store.fetchProjectVideos(id);
     }
   }, [id]);
+
+  // Poll the LLM server status so the tab label light stays accurate
+  // regardless of which tab is active.
+  useEffect(() => {
+    store.checkAgentStatus();
+    store.checkServerOnline();
+    const interval = setInterval(() => {
+      store.checkServerOnline();
+    }, 3000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ========== SVG Icons ==========
 
@@ -205,6 +218,36 @@ export default function ProjectEditorPage() {
     </svg>
   );
 
+  const ServerIcon = (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
+      <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
+      <line x1="6" y1="6" x2="6.01" y2="6" />
+      <line x1="6" y1="18" x2="6.01" y2="18" />
+    </svg>
+  );
+
+  const ServerStatusLight = () => (
+    <span
+      className={`w-2.5 h-2.5 rounded-full ${
+        store.agent.serverOnline === true
+          ? "bg-emerald-500 shadow-[0_0_6px_2px_rgba(16,185,129,0.5)]"
+          : store.agent.serverOnline === false
+            ? "bg-red-500 shadow-[0_0_6px_2px_rgba(239,68,68,0.5)]"
+            : "bg-tiffany-300"
+      }`}
+    />
+  );
+
   // ========== Loading / Not Found ==========
 
   if (!project) {
@@ -366,6 +409,18 @@ export default function ProjectEditorPage() {
               {ReferencesToVideoIcon}
               References to Video
             </button>
+            <button
+              onClick={() => store.setActiveTab("llmServer")}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+                store.activeTab === "llmServer"
+                  ? "bg-tiffany-100 text-tiffany-800"
+                  : "text-tiffany-600 hover:bg-tiffany-50 hover:text-tiffany-700"
+              }`}
+            >
+              {ServerIcon}
+              LLM Server
+              <ServerStatusLight />
+            </button>
           </div>
 
           {/* ========== IMAGE GENERATION PANEL ========== */}
@@ -400,6 +455,9 @@ export default function ProjectEditorPage() {
 
           {/* ========== REFERENCES TO VIDEO PANEL ========== */}
           {store.activeTab === "referencesToVideo" && <ReferencesToVideoTab />}
+
+          {/* ========== LLM SERVER PANEL ========== */}
+          {store.activeTab === "llmServer" && <LlmServerTab />}
         </div>
       </div>
     </div>

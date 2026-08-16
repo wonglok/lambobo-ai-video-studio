@@ -98,13 +98,11 @@ export default function ReferencesToVideoTab() {
           disabled={store.downloading || store.downloaded}
           className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl bg-tiffany-500 hover:bg-tiffany-600 disabled:bg-tiffany-100 disabled:text-tiffany-500 text-white transition-colors"
         >
-          {store.downloading ? (
-            SpinnerIcon
-          ) : store.downloaded ? (
-            CheckIcon
-          ) : (
-            DownloadIcon
-          )}
+          {store.downloading
+            ? SpinnerIcon
+            : store.downloaded
+              ? CheckIcon
+              : DownloadIcon}
           {store.downloading
             ? "Downloading..."
             : store.downloaded
@@ -122,8 +120,6 @@ export default function ReferencesToVideoTab() {
           </div>
         )}
       </div>
-
-      <MlxVlmServerPanel />
     </div>
   );
 }
