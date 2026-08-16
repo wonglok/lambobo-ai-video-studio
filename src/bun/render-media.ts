@@ -509,47 +509,6 @@ export async function renderMediaRoutes({
     }
   });
 
-  app.post("/api/upload/audio", async (req, res) => {
-    const { audio, filename, projectId } = req.body || {};
-
-    if (!audio) {
-      res.status(400).json({ error: "Audio data is required (base64)" });
-      return;
-    }
-    if (!projectId || !isValidProjectId(String(projectId))) {
-      res.status(400).json({ error: "Invalid project ID" });
-      return;
-    }
-
-    try {
-      // Decode base64 (strip any data URL prefix if present)
-      const base64 = String(audio).replace(/^data:[^;]+;base64,/, "");
-      const buffer = Buffer.from(base64, "base64");
-
-      const projectUploadDir = join(UPLOAD_DIR, String(projectId));
-      ensureDir(projectUploadDir);
-
-      const safeName = (filename || `audio-${Date.now()}.mp3`).replace(
-        /[^a-zA-Z0-9._-]/g,
-        "_",
-      );
-      const filePath = join(projectUploadDir, safeName);
-
-      writeFileSync(filePath, buffer);
-
-      res.json({
-        success: true,
-        path: filePath,
-        filename: safeName,
-        size: buffer.length,
-      });
-    } catch (e) {
-      res
-        .status(500)
-        .json({ error: "Failed to save audio", details: String(e) });
-    }
-  });
-
   // List project images (from uploads and generated outputs)
   app.get("/api/projects/:id/images", (req, res) => {
     const { id } = req.params;
@@ -1465,7 +1424,6 @@ export async function renderMediaRoutes({
     const {
       prompt,
       refImages,
-      refAudio,
       projectId,
       steps = 20,
       width = 640,
@@ -1506,17 +1464,6 @@ export async function renderMediaRoutes({
         return;
       }
       resolvedImages.push(resolved);
-    }
-
-    let resolvedAudio: string | null = null;
-    if (refAudio && typeof refAudio === "string" && refAudio.trim()) {
-      resolvedAudio = resolveSafePath(refAudio.trim(), String(projectId));
-      if (!resolvedAudio) {
-        res.status(400).json({
-          error: `Reference audio not found in this project: ${refAudio}`,
-        });
-        return;
-      }
     }
 
     // SSE headers
@@ -1572,9 +1519,6 @@ export async function renderMediaRoutes({
       const args: string[] = [uvPath, "run", "mlx-h3"];
       for (const img of resolvedImages) {
         args.push("--ref-image", img);
-      }
-      if (resolvedAudio) {
-        args.push("--ref-audio", resolvedAudio);
       }
       args.push(
         "--steps",

@@ -23,7 +23,6 @@ interface ReferencesToVideoStore {
   // Reference media (bare filenames uploaded to this project)
   refImage1: string | null;
   refImage2: string | null;
-  refAudio: string | null;
 
   // Generation state
   generating: boolean;
@@ -42,13 +41,7 @@ interface ReferencesToVideoStore {
   setSeed: (v: number) => void;
   setRefImage1: (v: string | null) => void;
   setRefImage2: (v: string | null) => void;
-  setRefAudio: (v: string | null) => void;
 
-  uploadAudio: (
-    base64: string,
-    filename: string,
-    projectId: string,
-  ) => Promise<string | null>;
   generate: (projectId: string) => Promise<void>;
   cancelGenerate: () => void;
 }
@@ -100,8 +93,7 @@ export const useReferencesToVideoStore = create<ReferencesToVideoStore>(
     logs: [],
 
     // Generation parameters
-    prompt:
-      "[image1] is dancing at [image2] with [audio1] as background music",
+    prompt: "[image1] is dancing at [image2]",
     steps: 20,
     width: 640,
     height: 448,
@@ -111,7 +103,6 @@ export const useReferencesToVideoStore = create<ReferencesToVideoStore>(
     // Reference media
     refImage1: null,
     refImage2: null,
-    refAudio: null,
 
     // Generation state
     generating: false,
@@ -175,39 +166,11 @@ export const useReferencesToVideoStore = create<ReferencesToVideoStore>(
     setSeed: (v) => set({ seed: v }),
     setRefImage1: (v) => set({ refImage1: v }),
     setRefImage2: (v) => set({ refImage2: v }),
-    setRefAudio: (v) => set({ refAudio: v }),
-
-    uploadAudio: async (base64, filename, projectId) => {
-      try {
-        const res = await fetch(`${API_BASE}/api/upload/audio`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            audio: base64,
-            filename: filename || `audio-${Date.now()}.mp3`,
-            projectId,
-          }),
-        });
-
-        if (!res.ok) {
-          const err = await res.text();
-          set({ genError: err });
-          return null;
-        }
-
-        const data = await res.json();
-        set({ refAudio: data.filename as string });
-        return data.filename as string;
-      } catch (e) {
-        set({ genError: String(e) });
-        return null;
-      }
-    },
 
     generate: async (projectId) => {
       if (get().generating) return;
 
-      const { prompt, steps, width, height, seconds, seed, refImage1, refImage2, refAudio } =
+      const { prompt, steps, width, height, seconds, seed, refImage1, refImage2 } =
         get();
 
       const refImages = [refImage1, refImage2].filter(
@@ -230,7 +193,6 @@ export const useReferencesToVideoStore = create<ReferencesToVideoStore>(
           body: JSON.stringify({
             prompt: prompt.trim(),
             refImages,
-            refAudio: refAudio ?? null,
             projectId,
             steps,
             width,

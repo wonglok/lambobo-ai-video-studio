@@ -12,7 +12,6 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
 
   const [activeSlot, setActiveSlot] = useState<1 | 2>(1);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const audioInputRef = useRef<HTMLInputElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,19 +40,6 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
       if (path) {
         genStore.fetchProjectImages(projectId);
       }
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
-  };
-
-  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64 = reader.result as string;
-      await store.uploadAudio(base64, file.name, projectId);
     };
     reader.readAsDataURL(file);
     e.target.value = "";
@@ -139,23 +125,6 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
       <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
       <circle cx="8.5" cy="8.5" r="1.5" />
       <polyline points="21 15 16 10 5 21" />
-    </svg>
-  );
-
-  const AudioIcon = (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
     </svg>
   );
 
@@ -264,7 +233,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
         <textarea
           value={store.prompt}
           onChange={(e) => store.setPrompt(e.target.value)}
-          placeholder="Describe the scene using [image1], [image2] and [audio1] placeholders..."
+          placeholder="Describe the scene using [image1] and [image2] placeholders..."
           rows={3}
           disabled={store.generating}
           className="w-full px-4 py-3 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
@@ -273,16 +242,12 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
           Use{" "}
           <code className="text-[11px] bg-tiffany-100 px-1 rounded">
             [image1]
-          </code>
-          ,{" "}
-          <code className="text-[11px] bg-tiffany-100 px-1 rounded">
-            [image2]
           </code>{" "}
           and{" "}
           <code className="text-[11px] bg-tiffany-100 px-1 rounded">
-            [audio1]
+            [image2]
           </code>{" "}
-          to reference the selected media.
+          to reference the selected images.
         </p>
       </div>
 
@@ -352,29 +317,6 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
               );
             })}
           </div>
-        )}
-      </div>
-
-      {/* Reference audio */}
-      <div>
-        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-          Reference Audio
-        </label>
-        <div className="flex items-center gap-2">
-          <input
-            ref={audioInputRef}
-            type="file"
-            accept="audio/*,video/*"
-            onChange={handleAudioUpload}
-            disabled={store.generating}
-            className="flex-1 text-sm text-tiffany-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-tiffany-100 file:text-tiffany-700 hover:file:bg-tiffany-200 file:cursor-pointer file:transition-colors disabled:opacity-50"
-          />
-        </div>
-        {store.refAudio && (
-          <p className="flex items-center gap-1.5 text-xs text-tiffany-600 mt-1.5">
-            <span className="text-tiffany-500">{AudioIcon}</span>
-            {store.refAudio}
-          </p>
         )}
       </div>
 
