@@ -37,7 +37,7 @@ export default function AgentTab({ projectId }: Props) {
         <h2 className="text-base font-semibold text-tiffany-900">Agent</h2>
       </div>
 
-      <MlxVlmServerPanel />
+      {/* <MlxVlmServerPanel /> */}
 
       {store.agent.serverRunning && store.agent.serverOnline ? (
         <div className="">
@@ -49,7 +49,7 @@ export default function AgentTab({ projectId }: Props) {
         <div className="flex flex-col items-center justify-center gap-2 p-8 border border-dashed border-tiffany-200 rounded-xl">
           <span className="text-tiffany-400">{AgentIcon}</span>
           <p className="text-xs text-tiffany-400 italic">
-            Start the mlx-vlm server above to chat with the agent.
+            Start the LLM server tab above to chat with the agent.
           </p>
         </div>
       )}

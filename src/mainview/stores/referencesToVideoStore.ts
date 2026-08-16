@@ -3,12 +3,50 @@ import { create } from "zustand";
 const API_BASE = `http://localhost:${(window as any).PORT}`;
 
 interface ReferencesToVideoStore {
+  // Model download
   downloading: boolean;
   downloaded: boolean;
   error: string | null;
   logs: string[];
+
+  // Generation parameters
+  prompt: string;
+  steps: number;
+  width: number;
+  height: number;
+  seconds: number;
+  seed: number;
+
+  // Reference media (bare filenames uploaded to this project)
+  refImage1: string | null;
+  refImage2: string | null;
+  refAudio: string | null;
+
+  // Generation state
+  generating: boolean;
+  result: string | null;
+  genError: string | null;
+  genLogs: string[];
+
   checkStatus: () => Promise<void>;
   downloadModel: () => Promise<void>;
+
+  setPrompt: (v: string) => void;
+  setSteps: (v: number) => void;
+  setWidth: (v: number) => void;
+  setHeight: (v: number) => void;
+  setSeconds: (v: number) => void;
+  setSeed: (v: number) => void;
+  setRefImage1: (v: string | null) => void;
+  setRefImage2: (v: string | null) => void;
+  setRefAudio: (v: string | null) => void;
+
+  uploadAudio: (
+    base64: string,
+    filename: string,
+    projectId: string,
+  ) => Promise<string | null>;
+  generate: (projectId: string) => Promise<void>;
 }
 
 async function readSSEStream(
@@ -51,10 +89,31 @@ async function readSSEStream(
 
 export const useReferencesToVideoStore = create<ReferencesToVideoStore>(
   (set, get) => ({
+    // Model download
     downloading: false,
     downloaded: false,
     error: null,
     logs: [],
+
+    // Generation parameters
+    prompt:
+      "[image1] is dancing at [image2] with [audio1] as background music",
+    steps: 20,
+    width: 640,
+    height: 448,
+    seconds: 5,
+    seed: 42,
+
+    // Reference media
+    refImage1: null,
+    refImage2: null,
+    refAudio: null,
+
+    // Generation state
+    generating: false,
+    result: null,
+    genError: null,
+    genLogs: [],
 
     checkStatus: async () => {
       try {
@@ -101,6 +160,105 @@ export const useReferencesToVideoStore = create<ReferencesToVideoStore>(
         });
       } catch (e) {
         set({ downloading: false, error: String(e) });
+      }
+    },
+
+    setPrompt: (v) => set({ prompt: v }),
+    setSteps: (v) => set({ steps: v }),
+    setWidth: (v) => set({ width: v }),
+    setHeight: (v) => set({ height: v }),
+    setSeconds: (v) => set({ seconds: v }),
+    setSeed: (v) => set({ seed: v }),
+    setRefImage1: (v) => set({ refImage1: v }),
+    setRefImage2: (v) => set({ refImage2: v }),
+    setRefAudio: (v) => set({ refAudio: v }),
+
+    uploadAudio: async (base64, filename, projectId) => {
+      try {
+        const res = await fetch(`${API_BASE}/api/upload/audio`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            audio: base64,
+            filename: filename || `audio-${Date.now()}.mp3`,
+            projectId,
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.text();
+          set({ genError: err });
+          return null;
+        }
+
+        const data = await res.json();
+        set({ refAudio: data.filename as string });
+        return data.filename as string;
+      } catch (e) {
+        set({ genError: String(e) });
+        return null;
+      }
+    },
+
+    generate: async (projectId) => {
+      if (get().generating) return;
+
+      const { prompt, steps, width, height, seconds, seed, refImage1, refImage2, refAudio } =
+        get();
+
+      const refImages = [refImage1, refImage2].filter(
+        (n): n is string => typeof n === "string" && !!n.trim(),
+      );
+
+      // Frame count derived from duration at 24fps (+1 keyframe).
+      const frames = Math.max(1, Math.round(24 * seconds + 1));
+
+      set({ generating: true, genError: null, genLogs: [], result: null });
+
+      try {
+        const res = await fetch(`${API_BASE}/api/h3/generate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompt: prompt.trim(),
+            refImages,
+            refAudio: refAudio ?? null,
+            projectId,
+            steps,
+            width,
+            height,
+            frames,
+            seed,
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.text();
+          set({ generating: false, genError: err });
+          return;
+        }
+
+        await readSSEStream(res, (event, data) => {
+          switch (event) {
+            case "log":
+              set((s) => ({ genLogs: [...s.genLogs, data.text as string] }));
+              break;
+            case "complete":
+              set({
+                generating: false,
+                result: `http://localhost:${(window as any).PORT}/api/files?path=${encodeURIComponent(data.path)}`,
+              });
+              break;
+            case "error":
+              set({
+                generating: false,
+                genError: data.error || "Generation failed",
+              });
+              break;
+          }
+        });
+      } catch (e) {
+        set({ generating: false, genError: String(e) });
       }
     },
   }),

@@ -509,6 +509,47 @@ export async function renderMediaRoutes({
     }
   });
 
+  app.post("/api/upload/audio", async (req, res) => {
+    const { audio, filename, projectId } = req.body || {};
+
+    if (!audio) {
+      res.status(400).json({ error: "Audio data is required (base64)" });
+      return;
+    }
+    if (!projectId || !isValidProjectId(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+
+    try {
+      // Decode base64 (strip any data URL prefix if present)
+      const base64 = String(audio).replace(/^data:[^;]+;base64,/, "");
+      const buffer = Buffer.from(base64, "base64");
+
+      const projectUploadDir = join(UPLOAD_DIR, String(projectId));
+      ensureDir(projectUploadDir);
+
+      const safeName = (filename || `audio-${Date.now()}.mp3`).replace(
+        /[^a-zA-Z0-9._-]/g,
+        "_",
+      );
+      const filePath = join(projectUploadDir, safeName);
+
+      writeFileSync(filePath, buffer);
+
+      res.json({
+        success: true,
+        path: filePath,
+        filename: safeName,
+        size: buffer.length,
+      });
+    } catch (e) {
+      res
+        .status(500)
+        .json({ error: "Failed to save audio", details: String(e) });
+    }
+  });
+
   // List project images (from uploads and generated outputs)
   app.get("/api/projects/:id/images", (req, res) => {
     const { id } = req.params;
@@ -1404,6 +1445,183 @@ export async function renderMediaRoutes({
       const exitCode = await proc.exited;
       if (exitCode === 0) {
         send("complete", { success: true });
+      } else {
+        send("error", {
+          error: stderrText || `Process exited with code ${exitCode}`,
+          exitCode,
+        });
+      }
+    } catch (e) {
+      send("error", { error: String(e) });
+    } finally {
+      activeProc = null;
+      res.end();
+    }
+  });
+
+  // ========== H3: Generate (References-to-Video) ==========
+
+  app.post("/api/h3/generate", async (req, res) => {
+    const {
+      prompt,
+      refImages,
+      refAudio,
+      projectId,
+      steps = 20,
+      width = 640,
+      height = 448,
+      frames = 121,
+      seed = 42,
+    } = req.body || {};
+
+    if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+      res.status(400).json({ error: "Prompt is required" });
+      return;
+    }
+    if (!projectId || !isValidProjectId(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+
+    // Resolve reference image filenames (bare names previously uploaded to
+    // this project) to absolute paths inside the allowed roots.
+    const imageNames = Array.isArray(refImages)
+      ? refImages.filter((n): n is string => typeof n === "string" && !!n.trim())
+      : [];
+    if (imageNames.length === 0) {
+      res.status(400).json({
+        error:
+          "At least one reference image is required. Upload or select an image first.",
+      });
+      return;
+    }
+
+    const resolvedImages: string[] = [];
+    for (const name of imageNames) {
+      const resolved = resolveSafePath(name, String(projectId));
+      if (!resolved) {
+        res.status(400).json({
+          error: `Reference image not found in this project: ${name}`,
+        });
+        return;
+      }
+      resolvedImages.push(resolved);
+    }
+
+    let resolvedAudio: string | null = null;
+    if (refAudio && typeof refAudio === "string" && refAudio.trim()) {
+      resolvedAudio = resolveSafePath(refAudio.trim(), String(projectId));
+      if (!resolvedAudio) {
+        res.status(400).json({
+          error: `Reference audio not found in this project: ${refAudio}`,
+        });
+        return;
+      }
+    }
+
+    // SSE headers
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: string, data: object) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      const featureFolder = join(PYTHON_DIR, "mlx-h3");
+      if (!existsSync(featureFolder)) {
+        send("error", { error: "mlx-h3 not found. Run setup first." });
+        res.end();
+        return;
+      }
+
+      const uvPath = await getUvPath();
+      const projectOutputDir = resolveOutputDir(null, String(projectId));
+      if (!projectOutputDir) {
+        send("error", { error: "Invalid output directory." });
+        res.end();
+        return;
+      }
+
+      const outputFile = `references-${Date.now()}.mp4`;
+      const outputPath = join(projectOutputDir, outputFile);
+
+      const stepCount = Number(steps) || 20;
+      const videoWidth = Number(width) || 640;
+      const videoHeight = Number(height) || 448;
+      const frameCount = Number(frames) || 121;
+      const seedValue = Number(seed) || 42;
+
+      send("progress", {
+        status: "starting",
+        label: "Generating references-to-video...",
+        outputFile,
+        settings: {
+          steps: stepCount,
+          width: videoWidth,
+          height: videoHeight,
+          frames: frameCount,
+          seed: seedValue,
+        },
+      });
+
+      const args: string[] = [uvPath, "run", "mlx-h3"];
+      for (const img of resolvedImages) {
+        args.push("--ref-image", img);
+      }
+      if (resolvedAudio) {
+        args.push("--ref-audio", resolvedAudio);
+      }
+      args.push(
+        "--steps",
+        String(stepCount),
+        "--width",
+        String(videoWidth),
+        "--height",
+        String(videoHeight),
+        "--frames",
+        String(frameCount),
+        "--seed",
+        String(seedValue),
+        "--output",
+        outputPath,
+        prompt,
+      );
+
+      const proc = spawn(args, {
+        env: process.env,
+        cwd: featureFolder,
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+
+      activeProc = proc;
+
+      const stdoutPromise = streamToSSE(
+        proc.stdout as ReadableStream<Uint8Array>,
+        "H3 Generate",
+        send,
+      );
+      const stderrText = await streamToSSE(
+        proc.stderr as ReadableStream<Uint8Array>,
+        "H3 Generate",
+        send,
+      );
+      await stdoutPromise;
+
+      const exitCode = await proc.exited;
+      const success = exitCode === 0 && existsSync(outputPath);
+
+      if (success) {
+        send("complete", {
+          success: true,
+          path: outputPath,
+          filename: outputFile,
+        });
       } else {
         send("error", {
           error: stderrText || `Process exited with code ${exitCode}`,

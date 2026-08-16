@@ -454,7 +454,9 @@ export default function ProjectEditorPage() {
           )}
 
           {/* ========== REFERENCES TO VIDEO PANEL ========== */}
-          {store.activeTab === "referencesToVideo" && <ReferencesToVideoTab />}
+          {store.activeTab === "referencesToVideo" && (
+            <ReferencesToVideoTab projectId={id!} />
+          )}
 
           {/* ========== LLM SERVER PANEL ========== */}
           {store.activeTab === "llmServer" && <LlmServerTab />}
