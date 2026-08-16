@@ -5,6 +5,13 @@ const API_BASE = `http://localhost:${(window as any).PORT}`;
 // Abort controller for the in-flight generation request, so it can be cancelled.
 let generateAbortController: AbortController | null = null;
 
+export type ReferenceKind = "image" | "video";
+
+export interface ReferenceRef {
+  kind: ReferenceKind;
+  filename: string | null;
+}
+
 interface ReferencesToVideoStore {
   // Model download
   downloading: boolean;
@@ -20,9 +27,8 @@ interface ReferencesToVideoStore {
   seconds: number;
   seed: number;
 
-  // Reference media (bare filenames uploaded to this project)
-  refImage1: string | null;
-  refImage2: string | null;
+  // Reference media (ordered list of image/video references)
+  refs: ReferenceRef[];
 
   // Generation state
   generating: boolean;
@@ -39,8 +45,15 @@ interface ReferencesToVideoStore {
   setHeight: (v: number) => void;
   setSeconds: (v: number) => void;
   setSeed: (v: number) => void;
-  setRefImage1: (v: string | null) => void;
-  setRefImage2: (v: string | null) => void;
+
+  addRef: (kind: ReferenceKind) => void;
+  removeRef: (index: number) => void;
+  setRefFilename: (index: number, filename: string) => void;
+  uploadVideo: (
+    base64: string,
+    filename: string,
+    projectId: string,
+  ) => Promise<string | null>;
 
   generate: (projectId: string) => Promise<void>;
   cancelGenerate: () => void;
@@ -101,8 +114,10 @@ export const useReferencesToVideoStore = create<ReferencesToVideoStore>(
     seed: 42,
 
     // Reference media
-    refImage1: null,
-    refImage2: null,
+    refs: [
+      { kind: "image", filename: null },
+      { kind: "image", filename: null },
+    ],
 
     // Generation state
     generating: false,
@@ -164,18 +179,55 @@ export const useReferencesToVideoStore = create<ReferencesToVideoStore>(
     setHeight: (v) => set({ height: v }),
     setSeconds: (v) => set({ seconds: v }),
     setSeed: (v) => set({ seed: v }),
-    setRefImage1: (v) => set({ refImage1: v }),
-    setRefImage2: (v) => set({ refImage2: v }),
+
+    addRef: (kind) =>
+      set((s) => ({ refs: [...s.refs, { kind, filename: null }] })),
+
+    removeRef: (index) =>
+      set((s) => ({ refs: s.refs.filter((_, i) => i !== index) })),
+
+    setRefFilename: (index, filename) =>
+      set((s) => ({
+        refs: s.refs.map((r, i) => (i === index ? { ...r, filename } : r)),
+      })),
+
+    uploadVideo: async (base64, filename, projectId) => {
+      try {
+        const res = await fetch(`${API_BASE}/api/upload/video`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            video: base64,
+            filename: filename || `upload-${Date.now()}.mp4`,
+            projectId,
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.text();
+          set({ genError: err });
+          return null;
+        }
+
+        const data = await res.json();
+        return data.filename as string;
+      } catch (e) {
+        set({ genError: String(e) });
+        return null;
+      }
+    },
 
     generate: async (projectId) => {
       if (get().generating) return;
 
-      const { prompt, steps, width, height, seconds, seed, refImage1, refImage2 } =
-        get();
+      const { prompt, steps, width, height, seconds, seed, refs } = get();
 
-      const refImages = [refImage1, refImage2].filter(
-        (n): n is string => typeof n === "string" && !!n.trim(),
-      );
+      const resolvedRefs = refs
+        .filter(
+          (r): r is { kind: ReferenceKind; filename: string } =>
+            !!r.filename && !!r.filename.trim(),
+        )
+        .map((r) => ({ kind: r.kind, filename: r.filename.trim() }));
 
       // Frame count derived from duration at 24fps (+1 keyframe).
       const frames = Math.max(1, Math.round(24 * seconds + 1));
@@ -192,7 +244,7 @@ export const useReferencesToVideoStore = create<ReferencesToVideoStore>(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             prompt: prompt.trim(),
-            refImages,
+            refs: resolvedRefs,
             projectId,
             steps,
             width,

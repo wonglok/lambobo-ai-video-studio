@@ -6,17 +6,116 @@ interface Props {
   projectId: string;
 }
 
+// ========== Video thumbnail with inline play/pause + preview ==========
+
+const PlayIcon = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+    <polygon points="6 3 20 12 6 21 6 3" />
+  </svg>
+);
+
+const PauseIcon = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+    <rect x="5" y="4" width="5" height="16" rx="1" />
+    <rect x="14" y="4" width="5" height="16" rx="1" />
+  </svg>
+);
+
+const ExpandIcon = (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="15 3 21 3 21 9" />
+    <polyline points="9 21 3 21 3 15" />
+    <line x1="21" y1="3" x2="14" y2="10" />
+    <line x1="3" y1="21" x2="10" y2="14" />
+  </svg>
+);
+
+function VideoThumb({
+  src,
+  onSelect,
+  onPreview,
+}: {
+  src: string;
+  onSelect: () => void;
+  onPreview: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [playing, setPlaying] = useState(false);
+
+  const togglePlay = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) {
+      v.play();
+    } else {
+      v.pause();
+    }
+  };
+
+  const handlePreview = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onPreview();
+  };
+
+  return (
+    <div className="relative">
+      <video
+        ref={videoRef}
+        src={src}
+        muted
+        preload="metadata"
+        playsInline
+        onClick={onSelect}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => setPlaying(false)}
+        className="aspect-video object-cover w-full bg-black cursor-pointer"
+      />
+      <button
+        onClick={togglePlay}
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+        title={playing ? "Pause" : "Play"}
+      >
+        {playing ? PauseIcon : PlayIcon}
+      </button>
+      <button
+        onClick={handlePreview}
+        className="absolute top-1.5 right-1.5 flex items-center justify-center w-7 h-7 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+        title="Preview"
+      >
+        {ExpandIcon}
+      </button>
+    </div>
+  );
+}
+
 export default function ReferencesToVideoTab({ projectId }: Props) {
   const store = useReferencesToVideoStore();
   const genStore = useGenerationStore();
 
-  const [activeSlot, setActiveSlot] = useState<1 | 2>(1);
+  const [activeSlot, setActiveSlot] = useState(0);
+  const [previewVideo, setPreviewVideo] = useState<{
+    url: string;
+    filename: string;
+  } | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     store.checkStatus();
     genStore.fetchProjectImages(projectId);
+    genStore.fetchProjectVideos(projectId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
@@ -26,8 +125,31 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
     }
   }, [store.genLogs]);
 
+  // Close the video preview modal on Escape.
+  useEffect(() => {
+    if (!previewVideo) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPreviewVideo(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [previewVideo]);
+
+  const activeRef = store.refs[activeSlot] ?? null;
+
   const findImage = (filename: string | null) =>
     genStore.projectImages.find((img) => img.filename === filename) || null;
+
+  const findVideo = (filename: string | null) =>
+    genStore.projectVideos.find((v) => v.filename === filename) || null;
+
+  const labelFor = (index: number) => {
+    const ref = store.refs[index];
+    const count = store.refs
+      .slice(0, index + 1)
+      .filter((r) => r.kind === ref.kind).length;
+    return ref.kind === "image" ? `Image ${count}` : `Video ${count}`;
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -39,6 +161,22 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
       const path = await genStore.uploadImage(projectId, base64, file.name);
       if (path) {
         genStore.fetchProjectImages(projectId);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      const filename = await store.uploadVideo(base64, file.name, projectId);
+      if (filename) {
+        genStore.fetchProjectVideos(projectId);
       }
     };
     reader.readAsDataURL(file);
@@ -128,6 +266,54 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
     </svg>
   );
 
+  const VideoIcon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polygon points="23 7 16 12 23 17 23 7" />
+      <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+    </svg>
+  );
+
+  const PlusIcon = (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  );
+
+  const CloseIcon = (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+
   const SparkleIcon = (
     <svg
       width="16"
@@ -141,39 +327,71 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
     </svg>
   );
 
-  const renderSlot = (slot: 1 | 2) => {
-    const filename = slot === 1 ? store.refImage1 : store.refImage2;
-    const img = findImage(filename);
-    const isActive = activeSlot === slot;
+  const renderRefCard = (index: number) => {
+    const ref = store.refs[index];
+    const isActive = activeSlot === index;
+    const img = ref.kind === "image" ? findImage(ref.filename) : null;
+    const video = ref.kind === "video" ? findVideo(ref.filename) : null;
 
     return (
-      <button
-        onClick={() => setActiveSlot(slot)}
-        disabled={store.generating}
-        className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all text-left ${
+      <div
+        key={index}
+        className={`relative flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all text-left w-32 ${
           isActive
             ? "border-tiffany-500 ring-2 ring-tiffany-300/40"
             : "border-tiffany-200 hover:border-tiffany-300"
-        } disabled:opacity-50`}
+        }`}
       >
-        <span className="text-[10px] font-semibold text-tiffany-600 uppercase tracking-wider">
-          Image {slot}
-        </span>
-        {img ? (
-          <img
-            src={img.url}
-            alt={img.filename}
-            className="w-24 h-24 object-cover rounded-lg"
-          />
-        ) : (
-          <span className="w-24 h-24 rounded-lg bg-tiffany-50 border border-dashed border-tiffany-200 flex items-center justify-center text-tiffany-300">
-            {ImageIcon}
+        <div
+          onClick={() => setActiveSlot(index)}
+          className="flex flex-col items-center gap-1.5 w-full cursor-pointer"
+        >
+          <span className="text-[10px] font-semibold text-tiffany-600 uppercase tracking-wider">
+            {ref.kind === "image" ? "Image" : "Video"} {labelFor(index)}
           </span>
-        )}
-        <span className="text-[10px] text-tiffany-600 truncate max-w-[96px]">
-          {filename || "Not selected"}
-        </span>
-      </button>
+          {ref.kind === "image" ? (
+            img ? (
+              <img
+                src={img.url}
+                alt={img.filename}
+                className="w-24 h-24 object-cover rounded-lg"
+              />
+            ) : (
+              <span className="w-24 h-24 rounded-lg bg-tiffany-50 border border-dashed border-tiffany-200 flex items-center justify-center text-tiffany-300">
+                {ImageIcon}
+              </span>
+            )
+          ) : video ? (
+            <div className="w-24 rounded-lg overflow-hidden">
+              <VideoThumb
+                src={video.url}
+                onSelect={() => setActiveSlot(index)}
+                onPreview={() =>
+                  setPreviewVideo({ url: video.url, filename: video.filename })
+                }
+              />
+            </div>
+          ) : (
+            <span className="w-24 h-24 rounded-lg bg-tiffany-50 border border-dashed border-tiffany-200 flex items-center justify-center text-tiffany-300">
+              {VideoIcon}
+            </span>
+          )}
+          <span className="text-[10px] text-tiffany-600 truncate max-w-[100px]">
+            {ref.filename || "Not selected"}
+          </span>
+        </div>
+        <button
+          onClick={() => {
+            store.removeRef(index);
+            setActiveSlot((s) => Math.min(s, store.refs.length - 2));
+          }}
+          disabled={store.generating}
+          className="absolute top-1 right-1 flex items-center justify-center w-5 h-5 rounded-full bg-tiffany-100 text-tiffany-600 hover:bg-red-100 hover:text-red-600 transition-colors disabled:opacity-50"
+          title="Remove reference"
+        >
+          {CloseIcon}
+        </button>
+      </div>
     );
   };
 
@@ -233,7 +451,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
         <textarea
           value={store.prompt}
           onChange={(e) => store.setPrompt(e.target.value)}
-          placeholder="Describe the scene using [image1] and [image2] placeholders..."
+          placeholder="Describe the scene using [image1], [video1] placeholders..."
           rows={3}
           disabled={store.generating}
           className="w-full px-4 py-3 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
@@ -242,81 +460,167 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
           Use{" "}
           <code className="text-[11px] bg-tiffany-100 px-1 rounded">
             [image1]
-          </code>{" "}
-          and{" "}
+          </code>
+          ,{" "}
           <code className="text-[11px] bg-tiffany-100 px-1 rounded">
             [image2]
+          </code>
+          ,{" "}
+          <code className="text-[11px] bg-tiffany-100 px-1 rounded">
+            [video1]
           </code>{" "}
-          to reference the selected images.
+          … in order to reference the media below.
         </p>
       </div>
 
-      {/* Reference images */}
+      {/* References */}
       <div>
         <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-          Reference Images
+          References
         </label>
-        <div className="flex gap-2 mb-3">
-          {renderSlot(1)}
-          {renderSlot(2)}
+
+        <div className="flex flex-wrap gap-2 mb-3">
+          {store.refs.map((_, index) => renderRefCard(index))}
         </div>
 
-        <div className="flex items-center gap-2 mb-2">
-          <input
-            ref={imageInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
+        <div className="flex flex-wrap gap-2 mb-3">
+          <button
+            onClick={() => {
+              store.addRef("image");
+              setActiveSlot(store.refs.length);
+            }}
             disabled={store.generating}
-            className="flex-1 text-sm text-tiffany-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-tiffany-100 file:text-tiffany-700 hover:file:bg-tiffany-200 file:cursor-pointer file:transition-colors disabled:opacity-50"
-          />
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50"
+          >
+            {PlusIcon}
+            Add Image
+          </button>
+          <button
+            onClick={() => {
+              store.addRef("video");
+              setActiveSlot(store.refs.length);
+            }}
+            disabled={store.generating}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50"
+          >
+            {PlusIcon}
+            Add Video
+          </button>
         </div>
-        <p className="text-xs text-tiffany-600/50">
-          Select a slot above, then click an image below to assign it (or upload
-          a new one).
-        </p>
 
-        {genStore.projectImagesLoading ? (
-          <p className="text-xs text-tiffany-400 italic py-4 text-center">
-            Loading images...
-          </p>
-        ) : genStore.projectImages.length === 0 ? (
-          <p className="text-xs text-tiffany-400 italic py-4 text-center border border-dashed border-tiffany-200 rounded-xl">
-            No images yet. Upload one above.
-          </p>
-        ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-2 mt-2">
-            {genStore.projectImages.map((img) => {
-              const isSelected =
-                img.filename === store.refImage1 ||
-                img.filename === store.refImage2;
-
-              return (
-                <button
-                  key={`${img.source}-${img.filename}`}
-                  onClick={() => {
-                    if (activeSlot === 1) store.setRefImage1(img.filename);
-                    else store.setRefImage2(img.filename);
-                  }}
+        {activeRef ? (
+          activeRef.kind === "image" ? (
+            <>
+              <div className="flex items-center gap-2 mb-2">
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
                   disabled={store.generating}
-                  className={`relative rounded-lg border-2 transition-all ${
-                    isSelected
-                      ? "border-tiffany-500 ring-2 ring-tiffany-300/40"
-                      : "border-tiffany-200 hover:border-tiffany-300"
-                  } disabled:opacity-50`}
-                >
-                  <img
-                    src={img.url}
-                    alt={img.filename}
-                    className="aspect-square object-cover object-center"
-                  />
-                  <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-tiffany-700 truncate text-center">
-                    {img.filename}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+                  className="flex-1 text-sm text-tiffany-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-tiffany-100 file:text-tiffany-700 hover:file:bg-tiffany-200 file:cursor-pointer file:transition-colors disabled:opacity-50"
+                />
+              </div>
+              {genStore.projectImagesLoading ? (
+                <p className="text-xs text-tiffany-400 italic py-4 text-center">
+                  Loading images...
+                </p>
+              ) : genStore.projectImages.length === 0 ? (
+                <p className="text-xs text-tiffany-400 italic py-4 text-center border border-dashed border-tiffany-200 rounded-xl">
+                  No images yet. Upload one above.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
+                  {genStore.projectImages.map((img) => {
+                    const isSelected = img.filename === activeRef.filename;
+                    return (
+                      <button
+                        key={`${img.source}-${img.filename}`}
+                        onClick={() =>
+                          store.setRefFilename(activeSlot, img.filename)
+                        }
+                        disabled={store.generating}
+                        className={`relative rounded-lg border-2 transition-all ${
+                          isSelected
+                            ? "border-tiffany-500 ring-2 ring-tiffany-300/40"
+                            : "border-tiffany-200 hover:border-tiffany-300"
+                        } disabled:opacity-50`}
+                      >
+                        <img
+                          src={img.url}
+                          alt={img.filename}
+                          className="aspect-square object-cover object-center"
+                        />
+                        <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-tiffany-700 truncate text-center">
+                          {img.filename}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 mb-2">
+                <input
+                  ref={videoInputRef}
+                  type="file"
+                  accept="video/*"
+                  onChange={handleVideoUpload}
+                  disabled={store.generating}
+                  className="flex-1 text-sm text-tiffany-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-tiffany-100 file:text-tiffany-700 hover:file:bg-tiffany-200 file:cursor-pointer file:transition-colors disabled:opacity-50"
+                />
+              </div>
+              {genStore.projectVideosLoading ? (
+                <p className="text-xs text-tiffany-400 italic py-4 text-center">
+                  Loading videos...
+                </p>
+              ) : genStore.projectVideos.length === 0 ? (
+                <p className="text-xs text-tiffany-400 italic py-4 text-center border border-dashed border-tiffany-200 rounded-xl">
+                  No videos yet. Upload one above.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
+                  {genStore.projectVideos.map((video) => {
+                    const isSelected = video.filename === activeRef.filename;
+                    return (
+                      <div
+                        key={video.filename}
+                        className={`relative rounded-lg border-2 overflow-hidden transition-all ${
+                          isSelected
+                            ? "border-tiffany-500 ring-2 ring-tiffany-300/40"
+                            : "border-tiffany-200 hover:border-tiffany-300"
+                        }`}
+                      >
+                        <VideoThumb
+                          src={video.url}
+                          onSelect={() => {
+                            if (!store.generating) {
+                              store.setRefFilename(activeSlot, video.filename);
+                            }
+                          }}
+                          onPreview={() =>
+                            setPreviewVideo({
+                              url: video.url,
+                              filename: video.filename,
+                            })
+                          }
+                        />
+                        <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-tiffany-700 truncate text-center pointer-events-none">
+                          {video.filename}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )
+        ) : (
+          <p className="text-xs text-tiffany-400 italic py-4 text-center border border-dashed border-tiffany-200 rounded-xl">
+            Add a reference above to get started.
+          </p>
         )}
       </div>
 
@@ -386,7 +690,9 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
         <button
           onClick={() => store.generate(projectId)}
           disabled={
-            !store.prompt.trim() || !store.refImage1 || !store.downloaded
+            !store.prompt.trim() ||
+            store.refs.every((r) => !r.filename) ||
+            !store.downloaded
           }
           className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-600 hover:bg-tiffany-700 active:bg-tiffany-800 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
         >
@@ -430,6 +736,36 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
           </label>
           <div className="relative rounded-xl overflow-hidden border border-tiffany-200 shadow-card bg-black w-full max-w-[500px]">
             <video src={store.result} controls className="w-full h-auto" />
+          </div>
+        </div>
+      )}
+
+      {/* ===== Video Preview Modal ===== */}
+      {previewVideo && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6"
+          onClick={() => setPreviewVideo(null)}
+        >
+          <div
+            className="relative max-w-[90vw] max-h-[90vh] flex flex-col items-center gap-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <video
+              src={previewVideo.url}
+              controls
+              autoPlay
+              className="max-w-full max-h-[80vh] rounded-xl shadow-2xl bg-black"
+            />
+            <span className="text-xs text-white/70 truncate max-w-full">
+              {previewVideo.filename}
+            </span>
+            <button
+              onClick={() => setPreviewVideo(null)}
+              className="absolute -top-3 -right-3 flex items-center justify-center w-9 h-9 bg-white text-tiffany-700 rounded-full shadow-lg hover:bg-tiffany-100 transition-colors"
+              title="Close (Esc)"
+            >
+              {CloseIcon}
+            </button>
           </div>
         </div>
       )}

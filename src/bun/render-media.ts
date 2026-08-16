@@ -509,6 +509,47 @@ export async function renderMediaRoutes({
     }
   });
 
+  app.post("/api/upload/video", async (req, res) => {
+    const { video, filename, projectId } = req.body || {};
+
+    if (!video) {
+      res.status(400).json({ error: "Video data is required (base64)" });
+      return;
+    }
+    if (!projectId || !isValidProjectId(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+
+    try {
+      // Decode base64 (strip any data URL prefix if present)
+      const base64 = String(video).replace(/^data:[^;]+;base64,/, "");
+      const buffer = Buffer.from(base64, "base64");
+
+      const projectUploadDir = join(UPLOAD_DIR, String(projectId));
+      ensureDir(projectUploadDir);
+
+      const safeName = (filename || `upload-${Date.now()}.mp4`).replace(
+        /[^a-zA-Z0-9._-]/g,
+        "_",
+      );
+      const filePath = join(projectUploadDir, safeName);
+
+      writeFileSync(filePath, buffer);
+
+      res.json({
+        success: true,
+        path: filePath,
+        filename: safeName,
+        size: buffer.length,
+      });
+    } catch (e) {
+      res
+        .status(500)
+        .json({ error: "Failed to save video", details: String(e) });
+    }
+  });
+
   // List project images (from uploads and generated outputs)
   app.get("/api/projects/:id/images", (req, res) => {
     const { id } = req.params;
@@ -569,40 +610,39 @@ export async function renderMediaRoutes({
     const { id } = req.params;
     const videoExts = new Set([".mp4"]);
 
-    const projectDir = join(OUTPUT_DIR, id);
-    if (!existsSync(projectDir)) {
-      res.json([]);
-      return;
-    }
-
-    let entries: string[];
-    try {
-      entries = readdirSync(projectDir);
-    } catch {
-      res.json([]);
-      return;
-    }
-
     const raw: { filename: string; url: string; birthtime: number }[] = [];
 
-    for (const entry of entries) {
-      const ext = entry.slice(entry.lastIndexOf(".")).toLowerCase();
-      if (!videoExts.has(ext)) continue;
+    // Videos can live in both the output dir (generated) and the upload dir.
+    for (const dir of [OUTPUT_DIR, UPLOAD_DIR]) {
+      const projectDir = join(dir, id);
+      if (!existsSync(projectDir)) continue;
 
-      const fullPath = join(projectDir, entry);
-      let stats;
+      let entries: string[];
       try {
-        stats = statSync(fullPath);
-        if (!stats.isFile()) continue;
+        entries = readdirSync(projectDir);
       } catch {
         continue;
       }
 
-      raw.push({
-        filename: entry,
-        url: `/api/files?path=${encodeURIComponent(fullPath)}`,
-        birthtime: stats.birthtimeMs,
-      });
+      for (const entry of entries) {
+        const ext = entry.slice(entry.lastIndexOf(".")).toLowerCase();
+        if (!videoExts.has(ext)) continue;
+
+        const fullPath = join(projectDir, entry);
+        let stats;
+        try {
+          stats = statSync(fullPath);
+          if (!stats.isFile()) continue;
+        } catch {
+          continue;
+        }
+
+        raw.push({
+          filename: entry,
+          url: `/api/files?path=${encodeURIComponent(fullPath)}`,
+          birthtime: stats.birthtimeMs,
+        });
+      }
     }
 
     // Sort newest first by file creation date
@@ -1423,7 +1463,7 @@ export async function renderMediaRoutes({
   app.post("/api/h3/generate", async (req, res) => {
     const {
       prompt,
-      refImages,
+      refs,
       projectId,
       steps = 20,
       width = 640,
@@ -1441,31 +1481,34 @@ export async function renderMediaRoutes({
       return;
     }
 
-    // Resolve reference image filenames (bare names previously uploaded to
-    // this project) to absolute paths inside the allowed roots.
-    const imageNames = Array.isArray(refImages)
-      ? refImages.filter(
-          (n): n is string => typeof n === "string" && !!n.trim(),
+    // Resolve ordered reference media (images and videos) to safe paths.
+    const mediaRefs = Array.isArray(refs)
+      ? refs.filter(
+          (r): r is { kind: "image" | "video"; filename: string } =>
+            !!r &&
+            (r.kind === "image" || r.kind === "video") &&
+            typeof r.filename === "string" &&
+            !!r.filename.trim(),
         )
       : [];
-    if (imageNames.length === 0) {
+    if (mediaRefs.length === 0) {
       res.status(400).json({
         error:
-          "At least one reference image is required. Upload or select an image first.",
+          "At least one reference image or video is required. Upload or select one first.",
       });
       return;
     }
 
-    const resolvedImages: string[] = [];
-    for (const name of imageNames) {
-      const resolved = resolveSafePath(name, String(projectId));
+    const resolvedRefs: { kind: "image" | "video"; path: string }[] = [];
+    for (const ref of mediaRefs) {
+      const resolved = resolveSafePath(ref.filename.trim(), String(projectId));
       if (!resolved) {
         res.status(400).json({
-          error: `Reference image not found in this project: ${name}`,
+          error: `Reference ${ref.kind} not found in this project: ${ref.filename}`,
         });
         return;
       }
-      resolvedImages.push(resolved);
+      resolvedRefs.push({ kind: ref.kind, path: resolved });
     }
 
     // SSE headers
@@ -1519,8 +1562,8 @@ export async function renderMediaRoutes({
       });
 
       const args: string[] = [uvPath, "run", "mlx-h3"];
-      for (const img of resolvedImages) {
-        args.push("--ref-image", img);
+      for (const ref of resolvedRefs) {
+        args.push(ref.kind === "image" ? "--ref-image" : "--ref-video", ref.path);
       }
       args.push(
         "--steps",
