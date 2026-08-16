@@ -49,7 +49,14 @@ export default function AgentTab({ projectId }: Props) {
         <div className="flex flex-col items-center justify-center gap-2 p-8 border border-dashed border-tiffany-200 rounded-xl">
           <span className="text-tiffany-400">{AgentIcon}</span>
           <p className="text-xs text-tiffany-400 italic">
-            Start the LLM server tab above to chat with the agent.
+            Start the LLM server to chat with the agent.{" "}
+            <button
+              onClick={() => store.setActiveTab("llmServer")}
+              className="font-semibold text-tiffany-600 underline underline-offset-2 hover:text-tiffany-800 transition-colors"
+            >
+              Click here
+            </button>{" "}
+            to open the LLM Server tab.
           </p>
         </div>
       )}
