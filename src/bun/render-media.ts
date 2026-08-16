@@ -1444,7 +1444,9 @@ export async function renderMediaRoutes({
     // Resolve reference image filenames (bare names previously uploaded to
     // this project) to absolute paths inside the allowed roots.
     const imageNames = Array.isArray(refImages)
-      ? refImages.filter((n): n is string => typeof n === "string" && !!n.trim())
+      ? refImages.filter(
+          (n): n is string => typeof n === "string" && !!n.trim(),
+        )
       : [];
     if (imageNames.length === 0) {
       res.status(400).json({

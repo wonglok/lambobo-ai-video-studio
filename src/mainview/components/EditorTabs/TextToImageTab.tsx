@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useGenerationStore } from "../../stores/generationStore";
+import { useProjectStore } from "../../stores/projectStore";
 
 interface Props {
   projectId: string;
@@ -7,6 +8,7 @@ interface Props {
 
 export default function TextToImageTab({ projectId }: Props) {
   const store = useGenerationStore();
+  const { openFolder } = useProjectStore();
   const [preview, setPreview] = useState<{
     url: string;
     filename: string;
@@ -192,6 +194,21 @@ export default function TextToImageTab({ projectId }: Props) {
     >
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+
+  const FolderIcon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
     </svg>
   );
 
@@ -385,9 +402,18 @@ export default function TextToImageTab({ projectId }: Props) {
 
       {/* ===== Generated Images Grid ===== */}
       <div>
-        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-          Generated Images
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider">
+            Generated Images
+          </label>
+          <button
+            onClick={() => openFolder(projectId, "output")}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 hover:text-tiffany-800 transition-colors"
+          >
+            {FolderIcon}
+            Open Folder
+          </button>
+        </div>
         {store.projectImagesLoading ? (
           <p className="text-xs text-tiffany-400 italic py-4 text-center">
             Loading images...
