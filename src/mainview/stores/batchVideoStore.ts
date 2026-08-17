@@ -3,6 +3,7 @@ import type {
   AspectRatio,
   Resolution,
   VideoMode,
+  ProjectImage,
 } from "./generationStore";
 
 const API_BASE = `http://localhost:${(window as any).PORT}`;
@@ -52,6 +53,7 @@ interface BatchVideoStore {
     filename: string | undefined,
     projectId: string,
   ) => Promise<string | null>;
+  setRowImage: (id: string, image: ProjectImage) => void;
 
   setDuration: (v: number) => void;
   setAspectRatio: (v: AspectRatio) => void;
@@ -260,6 +262,22 @@ export const useBatchVideoStore = create<BatchVideoStore>((set, get) => ({
       return null;
     }
   },
+
+  setRowImage: (id, image) =>
+    set((s) => ({
+      rows: s.rows.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              imagePath: image.url,
+              imageUrl: image.url,
+              imageFilename: image.filename,
+              status: "idle",
+              error: null,
+            }
+          : r,
+      ),
+    })),
 
   setDuration: (duration) => set({ duration }),
   setAspectRatio: (aspectRatio) => set({ aspectRatio }),
