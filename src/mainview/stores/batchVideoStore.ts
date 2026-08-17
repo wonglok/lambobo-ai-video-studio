@@ -5,6 +5,7 @@ import type {
   VideoMode,
   ProjectImage,
 } from "./generationStore";
+import { loadFFmpeg } from "../lib/ffmpeg";
 
 const API_BASE = `http://localhost:${(window as any).PORT}`;
 
@@ -43,6 +44,12 @@ interface BatchVideoStore {
   cancelRequested: boolean;
   logs: string[];
 
+  // Stitching state
+  stitching: boolean;
+  stitchLogs: string[];
+  stitchResult: string | null;
+  stitchError: string | null;
+
   addRow: () => void;
   removeRow: (id: string) => void;
   updatePrompt: (id: string, prompt: string) => void;
@@ -64,6 +71,8 @@ interface BatchVideoStore {
   generateRow: (projectId: string, id: string) => Promise<void>;
   generateAll: (projectId: string) => Promise<void>;
   cancel: () => void;
+
+  stitchVideos: () => Promise<void>;
 
   reset: () => void;
 }
@@ -191,6 +200,11 @@ export const useBatchVideoStore = create<BatchVideoStore>((set, get) => ({
   progress: null,
   cancelRequested: false,
   logs: [],
+
+  stitching: false,
+  stitchLogs: [],
+  stitchResult: null,
+  stitchError: null,
 
   addRow: () => set((s) => ({ rows: [...s.rows, makeRow()] })),
 
@@ -447,6 +461,87 @@ export const useBatchVideoStore = create<BatchVideoStore>((set, get) => ({
     fetch(`${API_BASE}/api/render/cancel`, { method: "POST" }).catch(() => {});
   },
 
+  stitchVideos: async () => {
+    if (get().stitching) return;
+
+    const results = get()
+      .rows.filter((r) => r.result)
+      .map((r) => r.result as string);
+
+    if (results.length < 2) {
+      set({
+        stitchError: "Need at least 2 generated videos to stitch.",
+        stitchResult: null,
+      });
+      return;
+    }
+
+    set({
+      stitching: true,
+      stitchLogs: [],
+      stitchResult: null,
+      stitchError: null,
+    });
+
+    try {
+      const ffmpeg = await loadFFmpeg();
+
+      // Write each generated video into the in-memory FS in order.
+      const list: string[] = [];
+      for (let i = 0; i < results.length; i++) {
+        const blob = await fetch(results[i]).then((r) => {
+          if (!r.ok) throw new Error(`Failed to fetch video ${i + 1}`);
+          return r.blob();
+        });
+        const data = new Uint8Array(await blob.arrayBuffer());
+        const name = `in${i}.mp4`;
+        await ffmpeg.writeFile(name, data);
+        list.push(`file '${name}'`);
+        set((s) => ({
+          stitchLogs: [...s.stitchLogs, `Added video ${i + 1}/${results.length}`],
+        }));
+      }
+
+      await ffmpeg.writeFile("list.txt", list.join("\n"));
+      set((s) => ({
+        stitchLogs: [...s.stitchLogs, "Concatenating videos..."],
+      }));
+
+      const ret = await ffmpeg.exec([
+        "-f",
+        "concat",
+        "-safe",
+        "0",
+        "-i",
+        "list.txt",
+        "-c",
+        "copy",
+        "output.mp4",
+      ]);
+
+      if (ret !== 0) {
+        throw new Error(`ffmpeg exited with code ${ret}`);
+      }
+
+      const out = (await ffmpeg.readFile("output.mp4")) as Uint8Array;
+      const bytes = new Uint8Array(out);
+      const url = URL.createObjectURL(
+        new Blob([bytes.buffer], { type: "video/mp4" }),
+      );
+
+      set({
+        stitching: false,
+        stitchResult: url,
+        stitchLogs: [...get().stitchLogs, "Done"],
+      });
+    } catch (e) {
+      set({
+        stitching: false,
+        stitchError: String(e),
+      });
+    }
+  },
+
   reset: () =>
     set({
       rows: [makeRow()],
@@ -458,5 +553,9 @@ export const useBatchVideoStore = create<BatchVideoStore>((set, get) => ({
       progress: null,
       cancelRequested: false,
       logs: [],
+      stitching: false,
+      stitchLogs: [],
+      stitchResult: null,
+      stitchError: null,
     }),
 }));

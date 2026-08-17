@@ -149,6 +149,36 @@ export async function runSetup({}: {}): Promise<SetupState> {
     res.sendFile(imagePath);
   });
 
+  // Serve ffmpeg.wasm core files for client-side video stitching. These live
+  // in src/mainview/public/ffmpeg (copied to dist/ffmpeg by Vite, then into
+  // views/mainview/ffmpeg in the packaged build). Search a few candidate roots
+  // so the route works in both dev and packaged layouts.
+  const FFMPEG_CORE_FILES = ["ffmpeg-core.js", "ffmpeg-core.wasm"] as const;
+  app.get("/ffmpeg/:file", (req, res) => {
+    const file = req.params.file as string;
+    if (!FFMPEG_CORE_FILES.includes(file as (typeof FFMPEG_CORE_FILES)[number])) {
+      return res.status(404).end();
+    }
+
+    const base = dirname(import.meta.path);
+    const candidates = [
+      join(base, "..", "mainview", "public", "ffmpeg", file),
+      join(base, "..", "..", "mainview", "public", "ffmpeg", file),
+      join(base, "..", "..", "dist", "ffmpeg", file),
+      join(base, "..", "..", "views", "mainview", "ffmpeg", file),
+    ];
+
+    const found = candidates.find((p) => existsSync(p));
+    if (!found) return res.status(404).end();
+
+    if (file.endsWith(".wasm")) {
+      res.setHeader("Content-Type", "application/wasm");
+    } else {
+      res.setHeader("Content-Type", "text/javascript");
+    }
+    res.sendFile(found);
+  });
+
   app.get("/api/setup", async (req, res) => {
     // Set SSE headers
     res.writeHead(200, {

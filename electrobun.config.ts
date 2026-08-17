@@ -11,6 +11,7 @@ export default {
     copy: {
       "dist/index.html": "views/mainview/index.html",
       "dist/assets": "views/mainview/assets",
+      "dist/ffmpeg": "views/mainview/ffmpeg",
       "src/mainview/lambobo.png": "views/mainview/lambobo.png",
       "python-src": "python-src",
       "python-src/images/lambobo.png": "views/mainview/images/lambobo.png",

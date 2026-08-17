@@ -93,6 +93,28 @@ const FolderIcon = (
   </svg>
 );
 
+const FilmIcon = (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" />
+    <line x1="7" y1="2" x2="7" y2="22" />
+    <line x1="17" y1="2" x2="17" y2="22" />
+    <line x1="2" y1="12" x2="22" y2="12" />
+    <line x1="2" y1="7" x2="7" y2="7" />
+    <line x1="2" y1="17" x2="7" y2="17" />
+    <line x1="17" y1="17" x2="22" y2="17" />
+    <line x1="17" y1="7" x2="22" y2="7" />
+  </svg>
+);
+
 const CloseIcon = (
   <svg
     width="12"
@@ -190,6 +212,7 @@ export default function BatchVideoTab({ projectId }: Props) {
   const { openFolder } = useProjectStore();
 
   const logRef = useRef<HTMLDivElement | null>(null);
+  const stitchLogRef = useRef<HTMLDivElement | null>(null);
   const [pickRowId, setPickRowId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -197,6 +220,12 @@ export default function BatchVideoTab({ projectId }: Props) {
       logRef.current.scrollTop = logRef.current.scrollHeight;
     }
   }, [store.logs]);
+
+  useEffect(() => {
+    if (stitchLogRef.current) {
+      stitchLogRef.current.scrollTop = stitchLogRef.current.scrollHeight;
+    }
+  }, [store.stitchLogs]);
 
   // Close the picker modal on Escape.
   useEffect(() => {
@@ -240,6 +269,8 @@ export default function BatchVideoTab({ projectId }: Props) {
   const readyCount = store.rows.filter(
     (r) => r.prompt.trim() && r.imagePath,
   ).length;
+
+  const resultCount = store.rows.filter((r) => r.result).length;
 
   return (
     <div className="flex flex-col gap-5">
@@ -595,6 +626,74 @@ export default function BatchVideoTab({ projectId }: Props) {
           generated.
         </p>
       )}
+
+      {/* ===== Stitch Videos ===== */}
+      <div className="pt-3 border-t border-tiffany-100">
+        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+          Stitch Videos
+        </label>
+
+        {store.stitching ? (
+          <div className="flex items-center gap-2 w-full px-4 py-3 bg-tiffany-50 border border-tiffany-200 rounded-xl">
+            {SpinnerIcon}
+            <span className="text-sm font-medium text-tiffany-700">
+              Stitching...
+            </span>
+          </div>
+        ) : (
+          <button
+            onClick={() => store.stitchVideos()}
+            disabled={resultCount < 2}
+            className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-500 hover:bg-tiffany-600 active:bg-tiffany-700 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
+          >
+            {FilmIcon}
+            Stitch All Videos ({resultCount})
+          </button>
+        )}
+
+        {store.stitchError && (
+          <div className="mt-2 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+            {store.stitchError}
+          </div>
+        )}
+
+        {store.stitchLogs.length > 0 && (
+          <div
+            ref={stitchLogRef}
+            className="mt-2 p-4 bg-tiffany-50 border border-tiffany-200 rounded-xl max-h-40 overflow-y-auto"
+          >
+            <p className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+              Stitch Logs
+            </p>
+            <pre className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap">
+              {store.stitchLogs.join("\n")}
+            </pre>
+          </div>
+        )}
+
+        {store.stitchResult && (
+          <div className="mt-3">
+            <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+              Stitched Video
+            </label>
+            <div className="relative rounded-xl overflow-hidden border border-tiffany-200 shadow-card bg-black w-full max-w-[500px]">
+              <video
+                src={store.stitchResult}
+                controls
+                className="w-full h-auto"
+              />
+            </div>
+            <a
+              href={store.stitchResult}
+              download="stitched.mp4"
+              className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-tiffany-600 hover:text-tiffany-800 transition-colors"
+            >
+              {UploadIcon}
+              Download stitched.mp4
+            </a>
+          </div>
+        )}
+      </div>
 
       {/* ===== Project Images Picker Modal ===== */}
       {pickRowId && (
