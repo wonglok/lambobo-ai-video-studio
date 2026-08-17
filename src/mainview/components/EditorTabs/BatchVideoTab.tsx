@@ -215,6 +215,12 @@ export default function BatchVideoTab({ projectId }: Props) {
   const stitchLogRef = useRef<HTMLDivElement | null>(null);
   const [pickRowId, setPickRowId] = useState<string | null>(null);
 
+  // Restore persisted UI state (rows + settings) once on mount.
+  useEffect(() => {
+    store.hydrate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (logRef.current) {
       logRef.current.scrollTop = logRef.current.scrollHeight;
@@ -390,14 +396,25 @@ export default function BatchVideoTab({ projectId }: Props) {
           <label className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider">
             Batch Rows
           </label>
-          <button
-            onClick={store.addRow}
-            disabled={store.running}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50"
-          >
-            {PlusIcon}
-            Add Row
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={store.clear}
+              disabled={store.running || store.stitching}
+              title="Clear all rows and settings"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-red-500 hover:border-red-200 hover:bg-red-50 disabled:opacity-50"
+            >
+              {CloseIcon}
+              Clear
+            </button>
+            <button
+              onClick={store.addRow}
+              disabled={store.running}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50"
+            >
+              {PlusIcon}
+              Add Row
+            </button>
+          </div>
         </div>
 
         <div className="border border-tiffany-200 rounded-xl overflow-hidden">

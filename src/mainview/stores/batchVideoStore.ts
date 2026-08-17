@@ -6,6 +6,12 @@ import type {
   ProjectImage,
 } from "./generationStore";
 import { loadFFmpeg } from "../lib/ffmpeg";
+import {
+  clearBatchVideoState,
+  loadBatchVideoState,
+  saveBatchVideoState,
+  type PersistedBatchVideoState,
+} from "../lib/batchVideoStorage";
 
 const API_BASE = `http://localhost:${(window as any).PORT}`;
 
@@ -49,6 +55,11 @@ interface BatchVideoStore {
   stitchLogs: string[];
   stitchResult: string | null;
   stitchError: string | null;
+
+  // Persistence
+  hydrated: boolean;
+  hydrate: () => Promise<void>;
+  clear: () => void;
 
   addRow: () => void;
   removeRow: (id: string) => void;
@@ -188,6 +199,32 @@ function makeRow(): BatchVideoRow {
   };
 }
 
+function toPersistedState(
+  s: Pick<
+    BatchVideoStore,
+    "rows" | "duration" | "aspectRatio" | "resolution" | "mode"
+  >,
+): PersistedBatchVideoState {
+  return {
+    rows: s.rows.map((r) => ({
+      id: r.id,
+      prompt: r.prompt,
+      imagePath: r.imagePath,
+      imageUrl: r.imageUrl,
+      imageFilename: r.imageFilename,
+    })),
+    duration: s.duration,
+    aspectRatio: s.aspectRatio,
+    resolution: s.resolution,
+    mode: s.mode,
+  };
+}
+
+// Fire-and-forget save of the current editable UI state.
+function persistBatchState() {
+  void saveBatchVideoState(toPersistedState(useBatchVideoStore.getState()));
+}
+
 export const useBatchVideoStore = create<BatchVideoStore>((set, get) => ({
   rows: [makeRow()],
 
@@ -206,15 +243,59 @@ export const useBatchVideoStore = create<BatchVideoStore>((set, get) => ({
   stitchResult: null,
   stitchError: null,
 
-  addRow: () => set((s) => ({ rows: [...s.rows, makeRow()] })),
+  hydrated: false,
 
-  removeRow: (id) =>
-    set((s) => ({ rows: s.rows.filter((r) => r.id !== id) })),
+  hydrate: async () => {
+    if (get().hydrated) return;
+    set({ hydrated: true });
 
-  updatePrompt: (id, prompt) =>
+    const stored = await loadBatchVideoState();
+    if (!stored) return;
+
+    set((s) => {
+      const rows: BatchVideoRow[] = (stored.rows ?? []).map((r) => ({
+        id: r.id,
+        prompt: r.prompt,
+        imagePath: r.imagePath,
+        imageUrl: r.imageUrl,
+        imageFilename: r.imageFilename,
+        status: "idle",
+        result: null,
+        error: null,
+        logs: [],
+      }));
+
+      return {
+        rows: rows.length > 0 ? rows : [makeRow()],
+        duration: stored.duration ?? s.duration,
+        aspectRatio: stored.aspectRatio ?? s.aspectRatio,
+        resolution: stored.resolution ?? s.resolution,
+        mode: stored.mode ?? s.mode,
+      };
+    });
+  },
+
+  clear: () => {
+    get().reset();
+    void clearBatchVideoState();
+  },
+
+  addRow: () => {
+    set((s) => ({ rows: [...s.rows, makeRow()] }));
+    persistBatchState();
+  },
+
+  removeRow: (id) => {
+    set((s) => ({ rows: s.rows.filter((r) => r.id !== id) }));
+    persistBatchState();
+  },
+
+  updatePrompt: (id, prompt) => {
     set((s) => ({
       rows: s.rows.map((r) => (r.id === id ? { ...r, prompt } : r)),
-    })),
+    }));
+    persistBatchState();
+  },
 
   clearRowResult: (id) =>
     set((s) => ({
@@ -266,6 +347,7 @@ export const useBatchVideoStore = create<BatchVideoStore>((set, get) => ({
             : r,
         ),
       }));
+      persistBatchState();
       return data.path as string;
     } catch (e) {
       set((s) => ({
@@ -277,7 +359,7 @@ export const useBatchVideoStore = create<BatchVideoStore>((set, get) => ({
     }
   },
 
-  setRowImage: (id, image) =>
+  setRowImage: (id, image) => {
     set((s) => ({
       rows: s.rows.map((r) =>
         r.id === id
@@ -291,12 +373,26 @@ export const useBatchVideoStore = create<BatchVideoStore>((set, get) => ({
             }
           : r,
       ),
-    })),
+    }));
+    persistBatchState();
+  },
 
-  setDuration: (duration) => set({ duration }),
-  setAspectRatio: (aspectRatio) => set({ aspectRatio }),
-  setResolution: (resolution) => set({ resolution }),
-  setMode: (mode) => set({ mode }),
+  setDuration: (duration) => {
+    set({ duration });
+    persistBatchState();
+  },
+  setAspectRatio: (aspectRatio) => {
+    set({ aspectRatio });
+    persistBatchState();
+  },
+  setResolution: (resolution) => {
+    set({ resolution });
+    persistBatchState();
+  },
+  setMode: (mode) => {
+    set({ mode });
+    persistBatchState();
+  },
 
   generateRows: async (projectId, ids) => {
     if (get().running) return;
