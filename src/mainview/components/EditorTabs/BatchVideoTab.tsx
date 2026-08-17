@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useBatchVideoStore, type BatchRowStatus } from "../../stores/batchVideoStore";
 import { useGenerationStore } from "../../stores/generationStore";
 
@@ -153,6 +154,14 @@ function StatusBadge({ status }: { status: BatchRowStatus }) {
 export default function BatchVideoTab({ projectId }: Props) {
   const store = useBatchVideoStore();
   const genStore = useGenerationStore();
+
+  const logRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (logRef.current) {
+      logRef.current.scrollTop = logRef.current.scrollHeight;
+    }
+  }, [store.logs]);
 
   const handleImageSelect = async (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -473,6 +482,21 @@ export default function BatchVideoTab({ projectId }: Props) {
           <span className="text-xs font-semibold text-tiffany-700 tabular-nums">
             {store.progress.current}/{store.progress.total}
           </span>
+        </div>
+      )}
+
+      {/* Logs */}
+      {store.logs.length > 0 && (
+        <div
+          ref={logRef}
+          className="p-4 bg-tiffany-50 border border-tiffany-200 rounded-xl max-h-40 overflow-y-auto"
+        >
+          <p className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+            Progress Logs
+          </p>
+          <pre className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap">
+            {store.logs.join("\n")}
+          </pre>
         </div>
       )}
 

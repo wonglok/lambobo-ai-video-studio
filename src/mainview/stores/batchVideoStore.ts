@@ -40,6 +40,7 @@ interface BatchVideoStore {
   running: boolean;
   progress: { current: number; total: number } | null;
   cancelRequested: boolean;
+  logs: string[];
 
   addRow: () => void;
   removeRow: (id: string) => void;
@@ -187,6 +188,7 @@ export const useBatchVideoStore = create<BatchVideoStore>((set, get) => ({
   running: false,
   progress: null,
   cancelRequested: false,
+  logs: [],
 
   addRow: () => set((s) => ({ rows: [...s.rows, makeRow()] })),
 
@@ -285,6 +287,7 @@ export const useBatchVideoStore = create<BatchVideoStore>((set, get) => ({
       running: true,
       progress: { current: 0, total: targets.length },
       cancelRequested: false,
+      logs: [],
     });
 
     let cancelled = false;
@@ -305,6 +308,10 @@ export const useBatchVideoStore = create<BatchVideoStore>((set, get) => ({
             ? { ...r, status: "generating", error: null, logs: [] }
             : r,
         ),
+        logs: [
+          ...s.logs,
+          `[${i + 1}/${targets.length}] Generating: ${row.prompt.trim().slice(0, 80)}`,
+        ],
       }));
 
       try {
@@ -343,6 +350,7 @@ export const useBatchVideoStore = create<BatchVideoStore>((set, get) => ({
                     ? { ...r, logs: [...r.logs, data.text as string] }
                     : r,
                 ),
+                logs: [...s.logs, data.text as string],
               }));
               break;
             case "complete":
@@ -431,5 +439,6 @@ export const useBatchVideoStore = create<BatchVideoStore>((set, get) => ({
       running: false,
       progress: null,
       cancelRequested: false,
+      logs: [],
     }),
 }));
