@@ -531,7 +531,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
                 </p>
               ) : (
                 <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
-                  {genStore.projectImages.map((img) => {
+                  {genStore.projectImages.map((img) =>{ 
                     const isSelected = img.filename === activeRef.filename;
                     return (
                       <button
