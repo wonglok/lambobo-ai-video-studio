@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useBatchVideoStore, type BatchRowStatus } from "../../stores/batchVideoStore";
 import { useGenerationStore } from "../../stores/generationStore";
+import { useProjectStore } from "../../stores/projectStore";
 
 interface Props {
   projectId: string;
@@ -74,6 +75,21 @@ const ImageIcon = (
     <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
     <circle cx="8.5" cy="8.5" r="1.5" />
     <polyline points="21 15 16 10 5 21" />
+  </svg>
+);
+
+const FolderIcon = (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
   </svg>
 );
 
@@ -171,6 +187,7 @@ function StatusBadge({ status }: { status: BatchRowStatus }) {
 export default function BatchVideoTab({ projectId }: Props) {
   const store = useBatchVideoStore();
   const genStore = useGenerationStore();
+  const { openFolder } = useProjectStore();
 
   const logRef = useRef<HTMLDivElement | null>(null);
   const [pickRowId, setPickRowId] = useState<string | null>(null);
@@ -508,6 +525,15 @@ export default function BatchVideoTab({ projectId }: Props) {
           </p>
         )}
       </div>
+
+      {/* Open output folder */}
+      <button
+        onClick={() => openFolder(projectId, "output")}
+        className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-tiffany-50 hover:bg-tiffany-100 text-tiffany-700 text-sm font-medium rounded-xl border border-tiffany-200 transition-colors"
+      >
+        {FolderIcon}
+        Open Output Folder
+      </button>
 
       {/* Progress */}
       {store.progress && (
