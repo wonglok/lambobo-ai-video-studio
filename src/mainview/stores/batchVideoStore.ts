@@ -57,8 +57,9 @@ interface BatchVideoStore {
   stitchError: string | null;
 
   // Persistence
+  projectId: string | null;
   hydrated: boolean;
-  hydrate: () => Promise<void>;
+  hydrate: (projectId: string) => Promise<void>;
   clear: () => void;
 
   addRow: () => void;
@@ -222,7 +223,9 @@ function toPersistedState(
 
 // Fire-and-forget save of the current editable UI state.
 function persistBatchState() {
-  void saveBatchVideoState(toPersistedState(useBatchVideoStore.getState()));
+  const { projectId } = useBatchVideoStore.getState();
+  if (!projectId) return;
+  void saveBatchVideoState(projectId, toPersistedState(useBatchVideoStore.getState()));
 }
 
 export const useBatchVideoStore = create<BatchVideoStore>((set, get) => ({
@@ -243,13 +246,22 @@ export const useBatchVideoStore = create<BatchVideoStore>((set, get) => ({
   stitchResult: null,
   stitchError: null,
 
+  projectId: null,
   hydrated: false,
 
-  hydrate: async () => {
-    if (get().hydrated) return;
-    set({ hydrated: true });
+  hydrate: async (projectId) => {
+    // No-op if we've already hydrated for this project.
+    if (get().hydrated && get().projectId === projectId) return;
 
-    const stored = await loadBatchVideoState();
+    // Switching to a different project: reset to defaults so rows and
+    // settings from the previous project don't leak through.
+    const previous = get().projectId;
+    if (previous !== null && previous !== projectId) {
+      get().reset();
+    }
+    set({ hydrated: true, projectId });
+
+    const stored = await loadBatchVideoState(projectId);
     if (!stored) return;
 
     set((s) => {
@@ -276,8 +288,9 @@ export const useBatchVideoStore = create<BatchVideoStore>((set, get) => ({
   },
 
   clear: () => {
+    const { projectId } = get();
     get().reset();
-    void clearBatchVideoState();
+    if (projectId) void clearBatchVideoState(projectId);
   },
 
   addRow: () => {

@@ -215,11 +215,12 @@ export default function BatchVideoTab({ projectId }: Props) {
   const stitchLogRef = useRef<HTMLDivElement | null>(null);
   const [pickRowId, setPickRowId] = useState<string | null>(null);
 
-  // Restore persisted UI state (rows + settings) once on mount.
+  // Restore persisted UI state (rows + settings) for the active project,
+  // re-loading whenever the project changes.
   useEffect(() => {
-    store.hydrate();
+    store.hydrate(projectId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [projectId]);
 
   useEffect(() => {
     if (logRef.current) {
