@@ -1,6 +1,11 @@
 import { create } from "zustand";
 import Mustache from "mustache";
 import Papa from "papaparse";
+import {
+  loadTextToImageState,
+  saveTextToImageState,
+  type PersistedTextToImageState,
+} from "../lib/textToImageStorage";
 
 const API_BASE = `http://localhost:${(window as any).PORT}`;
 
@@ -197,6 +202,12 @@ interface GenerationStore {
   installTextToImage: () => Promise<void>;
   downloadTextToImageModel: (quality: ZImageQuality) => Promise<void>;
   generateTextToImage: (projectId: string) => Promise<void>;
+
+  // Text-to-image persistence
+  textToImageProjectId: string | null;
+  textToImageHydrated: boolean;
+  hydrateTextToImage: (projectId: string) => Promise<void>;
+  resetTextToImage: () => void;
 
   // Agent (mlx-vlm)
   agent: AgentState;
@@ -581,6 +592,28 @@ const initialAgent: AgentState = {
 };
 
 // ========== Store ==========
+
+function toPersistedTextToImageState(
+  t: TextToImageState,
+): PersistedTextToImageState {
+  return {
+    prompt: t.prompt,
+    aspectRatio: t.aspectRatio,
+    resolution: t.resolution,
+    quality: t.quality,
+    steps: t.steps,
+  };
+}
+
+// Fire-and-forget save of the current editable text-to-image UI state.
+function persistTextToImageState() {
+  const { textToImageProjectId } = useGenerationStore.getState();
+  if (!textToImageProjectId) return;
+  void saveTextToImageState(
+    textToImageProjectId,
+    toPersistedTextToImageState(useGenerationStore.getState().textToImage),
+  );
+}
 
 export const useGenerationStore = create<GenerationStore>((set, get) => ({
   activeTab: "image",
@@ -1633,25 +1666,69 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
 
   // ---- Text-to-image (mlx-gen z-image-turbo) ----
   textToImage: { ...initialTextToImage },
+  textToImageProjectId: null,
+  textToImageHydrated: false,
 
-  setTextToImagePrompt: (prompt) =>
-    set((s) => ({ textToImage: { ...s.textToImage, prompt, error: null } })),
+  hydrateTextToImage: async (projectId) => {
+    // No-op if we've already hydrated for this project.
+    if (get().textToImageHydrated && get().textToImageProjectId === projectId) {
+      return;
+    }
 
-  setTextToImageAspectRatio: (aspectRatio) =>
-    set((s) => ({ textToImage: { ...s.textToImage, aspectRatio } })),
+    // Switching projects: reset to defaults so the previous project's settings
+    // don't leak through, then load the stored state (if any) below.
+    const previous = get().textToImageProjectId;
+    if (previous !== null && previous !== projectId) {
+      get().resetTextToImage();
+    }
+    set({ textToImageHydrated: true, textToImageProjectId: projectId });
 
-  setTextToImageResolution: (resolution) =>
-    set((s) => ({ textToImage: { ...s.textToImage, resolution } })),
+    const stored = await loadTextToImageState(projectId);
+    if (!stored) return;
 
-  setTextToImageSteps: (steps) =>
-    set((s) => ({ textToImage: { ...s.textToImage, steps } })),
+    set((s) => ({
+      textToImage: {
+        ...s.textToImage,
+        prompt: stored.prompt ?? s.textToImage.prompt,
+        aspectRatio: stored.aspectRatio ?? s.textToImage.aspectRatio,
+        resolution: stored.resolution ?? s.textToImage.resolution,
+        quality: stored.quality ?? s.textToImage.quality,
+        steps: stored.steps ?? s.textToImage.steps,
+      },
+    }));
+  },
 
-  setTextToImageQuality: (quality) =>
-    set((s) => ({ textToImage: { ...s.textToImage, quality } })),
+  resetTextToImage: () => set({ textToImage: { ...initialTextToImage } }),
+
+  setTextToImagePrompt: (prompt) => {
+    set((s) => ({ textToImage: { ...s.textToImage, prompt, error: null } }));
+    persistTextToImageState();
+  },
+
+  setTextToImageAspectRatio: (aspectRatio) => {
+    set((s) => ({ textToImage: { ...s.textToImage, aspectRatio } }));
+    persistTextToImageState();
+  },
+
+  setTextToImageResolution: (resolution) => {
+    set((s) => ({ textToImage: { ...s.textToImage, resolution } }));
+    persistTextToImageState();
+  },
+
+  setTextToImageSteps: (steps) => {
+    set((s) => ({ textToImage: { ...s.textToImage, steps } }));
+    persistTextToImageState();
+  },
+
+  setTextToImageQuality: (quality) => {
+    set((s) => ({ textToImage: { ...s.textToImage, quality } }));
+    persistTextToImageState();
+  },
 
   applyTextToImagePreset: (preset) => {
     const p = TEXT_TO_IMAGE_PRESETS[preset];
     set((s) => ({ textToImage: { ...s.textToImage, ...p } }));
+    persistTextToImageState();
   },
 
   clearTextToImageResult: () =>
@@ -2238,6 +2315,8 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       extend: { ...initialExtend },
       imageEdit: { ...initialImageEdit },
       textToImage: { ...initialTextToImage },
+      textToImageProjectId: null,
+      textToImageHydrated: false,
       agent: { ...initialAgent },
       uploading: false,
       uploadError: null,

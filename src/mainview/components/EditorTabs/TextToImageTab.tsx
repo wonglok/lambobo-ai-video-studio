@@ -15,10 +15,11 @@ export default function TextToImageTab({ projectId }: Props) {
   } | null>(null);
 
   useEffect(() => {
+    store.hydrateTextToImage(projectId);
     store.checkTextToImageStatus();
     store.fetchProjectImages(projectId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [projectId]);
 
   // Close the preview modal on Escape.
   useEffect(() => {
