@@ -294,39 +294,39 @@ export default function AgentWorkspace({ projectId }: Props) {
 
   const kindIcon = (f: WorkspaceFile) => {
     if (f.kind === "image")
-      return <span className="text-tiffany-500">{ImageIcon}</span>;
+      return <span className="text-tiffany-400">{ImageIcon}</span>;
     if (f.kind === "video")
-      return <span className="text-tiffany-500">{VideoIcon}</span>;
+      return <span className="text-tiffany-400">{VideoIcon}</span>;
     if (f.kind === "text")
-      return <span className="text-tiffany-500">{FileIcon}</span>;
-    return <span className="text-tiffany-400">{FileIcon}</span>;
+      return <span className="text-tiffany-400">{FileIcon}</span>;
+    return <span className="text-ink-400">{FileIcon}</span>;
   };
 
   return (
     <div className="flex flex-col gap-3">
       {/* Header + upload */}
       <div className="flex items-center justify-between">
-        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider">
+        <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider">
           Agent Workspace
         </label>
         <div className="flex items-center gap-2">
           <button
             onClick={() => ws.fetchFiles(projectId)}
             title="Refresh"
-            className="flex items-center justify-center w-8 h-8 rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+            className="flex items-center justify-center w-8 h-8 rounded-lg border transition-all bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400"
           >
             {RefreshIcon}
           </button>
           <button
             onClick={() => ws.openWorkspace(projectId)}
             title="Open workspace folder"
-            className="flex items-center justify-center w-8 h-8 rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+            className="flex items-center justify-center w-8 h-8 rounded-lg border transition-all bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400"
           >
             {FolderIcon}
           </button>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400"
           >
             {UploadIcon}
             Upload File
@@ -342,7 +342,7 @@ export default function AgentWorkspace({ projectId }: Props) {
       </div>
 
       {ws.error && (
-        <div className="p-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-xs">
+        <div className="p-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs">
           {ws.error}
         </div>
       )}
@@ -351,14 +351,14 @@ export default function AgentWorkspace({ projectId }: Props) {
         {/* Left column: file list + editor */}
         <div className="flex-1 min-w-0 flex flex-col gap-3">
           {/* File list */}
-          <div className="border border-tiffany-200 rounded-xl overflow-hidden">
+          <div className="border border-ink-600 rounded-xl overflow-hidden">
             <div className="max-h-64 overflow-y-auto">
               {ws.loading ? (
-                <p className="text-xs text-tiffany-400 italic text-center py-6">
+                <p className="text-xs text-ink-400 italic text-center py-6">
                   Loading files...
                 </p>
               ) : ws.files.length === 0 ? (
-                <p className="text-xs text-tiffany-400 italic text-center py-6">
+                <p className="text-xs text-ink-400 italic text-center py-6">
                   No files yet. Upload a file or let the agent save a memory.
                 </p>
               ) : (
@@ -366,14 +366,14 @@ export default function AgentWorkspace({ projectId }: Props) {
                   ref={listRef}
                   tabIndex={0}
                   onKeyDown={handleListKeyDown}
-                  className="divide-y divide-tiffany-100 outline-none focus:ring-2 focus:ring-inset focus:ring-tiffany-300"
+                  className="divide-y divide-ink-700 outline-none focus:ring-2 focus:ring-inset focus:ring-tiffany-400"
                 >
                   {ws.files.map((f) => (
                     <li
                       key={f.path}
                       onClick={() => handleSelect(f)}
-                      className={`flex items-center gap-2 px-3 py-2 hover:bg-tiffany-50/60 transition-colors cursor-pointer ${
-                        preview?.path === f.path ? "bg-tiffany-100/60" : ""
+                      className={`flex items-center gap-2 px-3 py-2 hover:bg-ink-700/60 transition-colors cursor-pointer ${
+                        preview?.path === f.path ? "bg-ink-700/60" : ""
                       }`}
                     >
                       {kindIcon(f)}
@@ -389,17 +389,17 @@ export default function AgentWorkspace({ projectId }: Props) {
                               if (e.key === "Escape") setRenaming(null);
                             }}
                             autoFocus
-                            className="w-full px-2 py-1 bg-white border border-tiffany-300 rounded text-xs text-tiffany-900 focus:outline-none focus:ring-1 focus:ring-tiffany-300"
+                            className="w-full px-2 py-1 bg-ink-800 border border-ink-500 rounded text-xs text-ink-50 focus:outline-none focus:ring-1 focus:ring-tiffany-400"
                           />
                         ) : (
                           <p
-                            className="text-xs text-tiffany-800 truncate"
+                            className="text-xs text-ink-100 truncate"
                             title={f.path}
                           >
                             {f.path}
                           </p>
                         )}
-                        <p className="text-[10px] text-tiffany-400">
+                        <p className="text-[10px] text-ink-400">
                           {f.kind} · {formatSize(f.size)}
                         </p>
                       </div>
@@ -410,7 +410,7 @@ export default function AgentWorkspace({ projectId }: Props) {
                             e.stopPropagation();
                             confirmRename(f);
                           }}
-                          className="px-2 py-1 text-[10px] font-medium text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                          className="px-2 py-1 text-[10px] font-medium text-emerald-400 hover:bg-emerald-500/10 rounded transition-colors"
                         >
                           Save
                         </button>
@@ -422,7 +422,7 @@ export default function AgentWorkspace({ projectId }: Props) {
                                 e.stopPropagation();
                                 handleEdit(f);
                               }}
-                              className="p-1.5 text-tiffany-500 hover:bg-tiffany-100 rounded transition-colors"
+                              className="p-1.5 text-tiffany-400 hover:bg-ink-600 rounded transition-colors"
                               title="Edit"
                             >
                               {PencilIcon}
@@ -433,7 +433,7 @@ export default function AgentWorkspace({ projectId }: Props) {
                               e.stopPropagation();
                               handleRename(f);
                             }}
-                            className="p-1.5 text-tiffany-500 hover:bg-tiffany-100 rounded transition-colors"
+                            className="p-1.5 text-tiffany-400 hover:bg-ink-600 rounded transition-colors"
                             title="Rename"
                           >
                             {PencilIcon}
@@ -443,7 +443,7 @@ export default function AgentWorkspace({ projectId }: Props) {
                               e.stopPropagation();
                               handleDelete(f);
                             }}
-                            className="p-1.5 text-red-400 hover:bg-red-50 rounded transition-colors"
+                            className="p-1.5 text-red-300 hover:bg-red-500/10 rounded transition-colors"
                             title="Delete"
                           >
                             {TrashIcon}
@@ -459,21 +459,21 @@ export default function AgentWorkspace({ projectId }: Props) {
 
           {/* Editor panel */}
           {editing && (
-            <div className="border border-tiffany-200 rounded-xl overflow-hidden">
-              <div className="flex items-center justify-between px-3 py-2 bg-tiffany-50 border-b border-tiffany-200">
-                <span className="text-xs font-medium text-tiffany-700 truncate">
+            <div className="border border-ink-600 rounded-xl overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2 bg-ink-900 border-b border-ink-600">
+                <span className="text-xs font-medium text-ink-200 truncate">
                   Editing {editing.path}
                 </span>
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={handleSave}
-                    className="px-2 py-1 text-[10px] font-medium text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                    className="px-2 py-1 text-[10px] font-medium text-emerald-400 hover:bg-emerald-500/10 rounded transition-colors"
                   >
                     Save
                   </button>
                   <button
                     onClick={() => setEditing(null)}
-                    className="p-1 text-tiffany-500 hover:bg-tiffany-100 rounded transition-colors"
+                    className="p-1 text-tiffany-400 hover:bg-ink-600 rounded transition-colors"
                     title="Close"
                   >
                     {CloseIcon}
@@ -484,7 +484,7 @@ export default function AgentWorkspace({ projectId }: Props) {
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
                 rows={10}
-                className="w-full px-3 py-2 bg-white text-tiffany-900 text-xs font-mono focus:outline-none resize-y"
+                className="w-full px-3 py-2 bg-ink-800 text-ink-50 text-xs font-mono focus:outline-none resize-y"
               />
             </div>
           )}
@@ -492,9 +492,9 @@ export default function AgentWorkspace({ projectId }: Props) {
 
         {/* Right column: preview pane */}
         <div className="w-72 shrink-0">
-          <div className="border border-tiffany-200 rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-3 py-2 bg-tiffany-50 border-b border-tiffany-200">
-              <span className="text-xs font-medium text-tiffany-700 truncate">
+          <div className="border border-ink-600 rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 bg-ink-900 border-b border-ink-600">
+              <span className="text-xs font-medium text-ink-200 truncate">
                 {preview ? preview.path : "Preview"}
               </span>
               {preview && (
@@ -503,16 +503,16 @@ export default function AgentWorkspace({ projectId }: Props) {
                     setPreview(null);
                     setPreviewContent(null);
                   }}
-                  className="p-1 text-tiffany-500 hover:bg-tiffany-100 rounded transition-colors"
+                  className="p-1 text-tiffany-400 hover:bg-ink-600 rounded transition-colors"
                   title="Close"
                 >
                   {CloseIcon}
                 </button>
               )}
             </div>
-            <div className="p-2 flex justify-center bg-tiffany-50/40">
+            <div className="p-2 flex justify-center bg-ink-900/40">
               {!preview ? (
-                <p className="text-xs text-tiffany-400 italic text-center py-10">
+                <p className="text-xs text-ink-400 italic text-center py-10">
                   Select a file to preview
                 </p>
               ) : preview.kind === "image" ? (
@@ -528,11 +528,11 @@ export default function AgentWorkspace({ projectId }: Props) {
                   className="max-h-72 max-w-full"
                 />
               ) : preview.kind === "text" ? (
-                <pre className="w-full max-h-72 overflow-auto p-2 bg-white rounded text-[11px] text-tiffany-800 whitespace-pre-wrap break-words">
+                <pre className="w-full max-h-72 overflow-auto p-2 bg-ink-800 rounded text-[11px] text-ink-100 whitespace-pre-wrap break-words">
                   {previewContent ?? ""}
                 </pre>
               ) : (
-                <p className="text-xs text-tiffany-400 italic text-center py-10">
+                <p className="text-xs text-ink-400 italic text-center py-10">
                   No preview available
                 </p>
               )}
@@ -544,24 +544,24 @@ export default function AgentWorkspace({ projectId }: Props) {
       {/* Delete confirmation modal */}
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-          <div className="bg-white rounded-2xl shadow-card p-5 w-80">
-            <h3 className="text-sm font-semibold text-tiffany-900 mb-2">
+          <div className="bg-ink-800 rounded-2xl shadow-card p-5 w-80">
+            <h3 className="text-sm font-semibold text-ink-50 mb-2">
               Delete File
             </h3>
-            <p className="text-xs text-tiffany-600 mb-4">
+            <p className="text-xs text-ink-300 mb-4">
               Are you sure you want to delete "{confirmDelete}"? This action
               cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setConfirmDelete(null)}
-                className="px-3 py-2 text-xs font-medium rounded-lg border border-tiffany-200 text-tiffany-600 hover:bg-tiffany-50 transition-colors"
+                className="px-3 py-2 text-xs font-medium rounded-lg border border-ink-600 text-ink-300 hover:bg-ink-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDeleteAction}
-                className="px-3 py-2 text-xs font-medium rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors"
+                className="px-3 py-2 text-xs font-medium rounded-lg bg-red-500 hover:bg-red-500 text-white transition-colors"
               >
                 Delete
               </button>

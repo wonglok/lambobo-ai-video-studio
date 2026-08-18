@@ -78,7 +78,7 @@ export default function MlxVlmServerPanel() {
 
   const SpinnerIcon = (
     <svg
-      className="animate-spin text-tiffany-500"
+      className="animate-spin text-tiffany-400"
       width="16"
       height="16"
       viewBox="0 0 24 24"
@@ -148,7 +148,7 @@ export default function MlxVlmServerPanel() {
   ) => {
     if (value === null) {
       return (
-        <span className="inline-flex items-center gap-1.5 text-tiffany-400">
+        <span className="inline-flex items-center gap-1.5 text-ink-400">
           {SpinnerIcon}
           Checking...
         </span>
@@ -156,14 +156,14 @@ export default function MlxVlmServerPanel() {
     }
     if (value) {
       return (
-        <span className="inline-flex items-center gap-1.5 text-emerald-600">
+        <span className="inline-flex items-center gap-1.5 text-emerald-400">
           {CheckCircleIcon}
           {okText}
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1.5 text-amber-600">
+      <span className="inline-flex items-center gap-1.5 text-amber-400">
         {AlertCircleIcon}
         {missingText}
       </span>
@@ -174,14 +174,14 @@ export default function MlxVlmServerPanel() {
     <>
       {/* ===== Install mlx-vlm ===== */}
       <div>
-        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+        <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
           Setup
         </label>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => store.installMlxVlm()}
             disabled={store.agent.installing}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg border transition-all bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400 disabled:opacity-50"
           >
             {store.agent.installing ? SpinnerIcon : InstallIcon}
             Install mlx-vlm
@@ -197,14 +197,14 @@ export default function MlxVlmServerPanel() {
         </div>
 
         {store.agent.installingLogs.length > 0 && (
-          <div className="mt-2 p-3 bg-tiffany-50 border border-tiffany-200 rounded-xl max-h-32 overflow-y-auto">
-            <pre className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap">
+          <div className="mt-2 p-3 bg-ink-900 border border-ink-600 rounded-xl max-h-32 overflow-y-auto">
+            <pre className="text-xs text-ink-300 font-mono whitespace-pre-wrap">
               {store.agent.installingLogs.join("")}
             </pre>
           </div>
         )}
         {store.agent.installingError && (
-          <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs">
+          <div className="mt-2 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs">
             {store.agent.installingError}
           </div>
         )}
@@ -212,13 +212,13 @@ export default function MlxVlmServerPanel() {
 
       {/* ===== Server ===== */}
       <div>
-        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+        <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
           Server
         </label>
 
         <div className="flex flex-wrap items-end gap-3 mb-3">
           <div className="flex-1 min-w-[260px]">
-            <label className="block text-xs font-medium text-tiffany-700 mb-1.5">
+            <label className="block text-xs font-medium text-ink-200 mb-1.5">
               Model
             </label>
             <div className=" gap-2 mb-2">
@@ -227,7 +227,7 @@ export default function MlxVlmServerPanel() {
                 onChange={(e) => store.setAgentModel(e.target.value)}
                 disabled={store.agent.serverRunning || store.agent.starting}
                 title="Choose a model"
-                className="shrink-0 w-[350px]  px-2 py-2 bg-tiffany-50 border border-tiffany-200 rounded-lg text-tiffany-900 text-sm focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all disabled:opacity-50 cursor-pointer"
+                className="shrink-0 w-[350px]  px-2 py-2 bg-ink-900 border border-ink-600 rounded-lg text-ink-50 text-sm focus:outline-none focus:border-tiffany-400 focus:ring-2 focus:ring-tiffany-400/30 transition-all disabled:opacity-50 cursor-pointer"
               >
                 {modelOptions.map((m) => (
                   <option key={m} value={m}>
@@ -242,7 +242,7 @@ export default function MlxVlmServerPanel() {
                 onChange={(e) => store.setAgentModel(e.target.value)}
                 disabled={store.agent.serverRunning || store.agent.starting}
                 title="enter a model name"
-                className="shrink-0 w-[350px]  px-2 py-2 bg-tiffany-50 border border-tiffany-200 rounded-lg text-tiffany-900 text-sm focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all disabled:opacity-50 cursor-pointer"
+                className="shrink-0 w-[350px]  px-2 py-2 bg-ink-900 border border-ink-600 rounded-lg text-ink-50 text-sm focus:outline-none focus:border-tiffany-400 focus:ring-2 focus:ring-tiffany-400/30 transition-all disabled:opacity-50 cursor-pointer"
               ></input>
             </div>
           </div>
@@ -250,7 +250,7 @@ export default function MlxVlmServerPanel() {
 
         <div className="flex flex-wrap items-end gap-3">
           <div>
-            <label className="block text-xs font-medium text-tiffany-700 mb-1.5">
+            <label className="block text-xs font-medium text-ink-200 mb-1.5">
               Port
             </label>
             <input
@@ -260,14 +260,14 @@ export default function MlxVlmServerPanel() {
               value={store.agent.port}
               onChange={(e) => store.setAgentPort(Number(e.target.value))}
               disabled={store.agent.serverRunning || store.agent.starting}
-              className="w-32 px-3 py-2 bg-tiffany-50 border border-tiffany-200 rounded-lg text-tiffany-900 text-sm focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all disabled:opacity-50"
+              className="w-32 px-3 py-2 bg-ink-900 border border-ink-600 rounded-lg text-ink-50 text-sm focus:outline-none focus:border-tiffany-400 focus:ring-2 focus:ring-tiffany-400/30 transition-all disabled:opacity-50"
             />
           </div>
 
           {store.agent.serverRunning || store.agent.starting ? (
             <button
               onClick={() => store.stopAgentServer()}
-              className="flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg border transition-all bg-red-50 border-red-200 text-red-600 hover:border-red-300"
+              className="flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg border transition-all bg-red-500/10 border-red-500/30 text-red-400 hover:border-red-400"
             >
               {StopIcon}
               Stop Server
@@ -278,7 +278,7 @@ export default function MlxVlmServerPanel() {
               disabled={
                 store.agent.installing || store.agent.installed === false
               }
-              className="flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg border transition-all bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400 disabled:opacity-50"
             >
               {PlayIcon}
               Start Server
@@ -288,22 +288,22 @@ export default function MlxVlmServerPanel() {
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-2 text-xs font-medium">
           {store.agent.starting ? (
-            <span className="inline-flex items-center gap-1.5 text-tiffany-400">
+            <span className="inline-flex items-center gap-1.5 text-ink-400">
               {SpinnerIcon}
               Starting server...
             </span>
           ) : store.agent.serverOnline === true ? (
-            <span className="inline-flex items-center gap-1.5 text-emerald-600">
+            <span className="inline-flex items-center gap-1.5 text-emerald-400">
               {CheckCircleIcon}
               Server online at {serverUrl}
             </span>
           ) : store.agent.serverOnline === false ? (
-            <span className="inline-flex items-center gap-1.5 text-amber-600">
+            <span className="inline-flex items-center gap-1.5 text-amber-400">
               {AlertCircleIcon}
               Server offline
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 text-tiffany-400">
+            <span className="inline-flex items-center gap-1.5 text-ink-400">
               {SpinnerIcon}
               Checking server...
             </span>
@@ -311,7 +311,7 @@ export default function MlxVlmServerPanel() {
           {store.agent.serverOnline === true && (
             <button
               onClick={() => store.openAgentServer()}
-              className="inline-flex items-center gap-1.5 text-tiffany-600 hover:text-tiffany-800 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-ink-300 hover:text-ink-50 transition-colors cursor-pointer"
             >
               {ExternalLinkIcon}
               Open {serverUrl}
@@ -322,18 +322,18 @@ export default function MlxVlmServerPanel() {
         {store.agent.serverLogs.length > 0 && (
           <div
             ref={serverLogsRef}
-            className="mt-2 p-3 bg-tiffany-50 border border-tiffany-200 rounded-xl max-h-48 overflow-y-auto"
+            className="mt-2 p-3 bg-ink-900 border border-ink-600 rounded-xl max-h-48 overflow-y-auto"
           >
-            <p className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+            <p className="text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
               Server Logs
             </p>
-            <pre className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap">
+            <pre className="text-xs text-ink-300 font-mono whitespace-pre-wrap">
               {store.agent.serverLogs.join("")}
             </pre>
           </div>
         )}
         {store.agent.serverError && (
-          <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs">
+          <div className="mt-2 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs">
             {store.agent.serverError}
           </div>
         )}

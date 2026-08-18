@@ -64,7 +64,7 @@ function CharacterCard({ imageUrl, name }: { imageUrl: string; name: string }) {
       ref={canvasRef}
       width={160}
       height={178}
-      className="rounded-lg border border-tiffany-200"
+      className="rounded-lg border border-ink-600"
     />
   );
 }
@@ -375,19 +375,19 @@ export default function CharactersTab({ projectId }: Props) {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-2">
-        <span className="text-tiffany-500">{CharacterIcon}</span>
-        <h2 className="text-base font-semibold text-tiffany-900">Characters</h2>
+        <span className="text-tiffany-400">{CharacterIcon}</span>
+        <h2 className="text-base font-semibold text-ink-50">Characters</h2>
       </div>
 
       {/* Create / Edit panel */}
       {!editing ? (
-        <div className="border border-tiffany-200 rounded-xl p-4 flex flex-col gap-3 bg-tiffany-50/40">
+        <div className="border border-ink-600 rounded-xl p-4 flex flex-col gap-3 bg-ink-900/40">
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Character name"
-            className="px-3 py-2 bg-white border border-tiffany-200 rounded-lg text-sm text-tiffany-900 placeholder-tiffany-400 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30"
+            className="px-3 py-2 bg-ink-800 border border-ink-600 rounded-lg text-sm text-ink-50 placeholder-ink-400 focus:outline-none focus:border-tiffany-400 focus:ring-2 focus:ring-tiffany-400/30"
           />
           <div className="flex items-center gap-2">
             <input
@@ -399,14 +399,14 @@ export default function CharactersTab({ projectId }: Props) {
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-tiffany-200 bg-white text-tiffany-600 hover:border-tiffany-300 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-ink-600 bg-ink-800 text-ink-300 hover:border-ink-400 transition-colors"
             >
               {UploadIcon}
               Upload Image
             </button>
             <button
               onClick={() => setShowImageModal(true)}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-tiffany-200 bg-white text-tiffany-600 hover:border-tiffany-300 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-ink-600 bg-ink-800 text-ink-300 hover:border-ink-400 transition-colors"
             >
               {ImagesIcon}
               Select Project Image
@@ -414,19 +414,19 @@ export default function CharactersTab({ projectId }: Props) {
           </div>
         </div>
       ) : (
-        <div className="border border-tiffany-200 rounded-xl p-4 flex flex-col gap-3 bg-tiffany-50/40">
+        <div className="border border-ink-600 rounded-xl p-4 flex flex-col gap-3 bg-ink-900/40">
           <input
             type="text"
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
             placeholder="Character name"
-            className="px-3 py-2 bg-white border border-tiffany-200 rounded-lg text-sm text-tiffany-900 placeholder-tiffany-400 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30"
+            className="px-3 py-2 bg-ink-800 border border-ink-600 rounded-lg text-sm text-ink-50 placeholder-ink-400 focus:outline-none focus:border-tiffany-400 focus:ring-2 focus:ring-tiffany-400/30"
           />
           {editing && charUrl(editing.filename) && (
             <img
               src={charUrl(editing.filename)!}
               alt={editing.name}
-              className="w-16 h-16 rounded-lg object-cover border border-tiffany-200"
+              className="w-16 h-16 rounded-lg object-cover border border-ink-600"
             />
           )}
           <div className="flex items-center gap-2">
@@ -439,20 +439,20 @@ export default function CharactersTab({ projectId }: Props) {
             />
             <button
               onClick={() => editFileInputRef.current?.click()}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-tiffany-200 bg-white text-tiffany-600 hover:border-tiffany-300 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-ink-600 bg-ink-800 text-ink-300 hover:border-ink-400 transition-colors"
             >
               {UploadIcon}
               Replace Image
             </button>
             <button
               onClick={saveEdit}
-              className="px-3 py-2 text-xs font-medium rounded-lg bg-tiffany-500 hover:bg-tiffany-600 text-white transition-colors"
+              className="px-3 py-2 text-xs font-medium rounded-lg bg-tiffany-500 hover:bg-tiffany-400 text-ink-950 transition-colors"
             >
               Save
             </button>
             <button
               onClick={cancelEdit}
-              className="px-3 py-2 text-xs font-medium rounded-lg border border-tiffany-200 text-tiffany-600 hover:bg-tiffany-50 transition-colors"
+              className="px-3 py-2 text-xs font-medium rounded-lg border border-ink-600 text-ink-300 hover:bg-ink-700 transition-colors"
             >
               Cancel
             </button>
@@ -461,9 +461,9 @@ export default function CharactersTab({ projectId }: Props) {
       )}
 
       {uploading && (
-        <p className="text-xs text-tiffany-600 italic">Saving character...</p>
+        <p className="text-xs text-ink-300 italic">Saving character...</p>
       )}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-red-400">{error}</p>}
 
       {/* Crop tool (create or edit) */}
       {(pendingImage || editImage) && (
@@ -476,11 +476,11 @@ export default function CharactersTab({ projectId }: Props) {
 
       {/* Character grid */}
       {characterStore.loading ? (
-        <p className="text-xs text-tiffany-400 italic text-center py-8">
+        <p className="text-xs text-ink-400 italic text-center py-8">
           Loading characters...
         </p>
       ) : characterStore.characters.length === 0 ? (
-        <p className="text-xs text-tiffany-400 italic text-center py-8 border border-dashed border-tiffany-200 rounded-xl">
+        <p className="text-xs text-ink-400 italic text-center py-8 border border-dashed border-ink-600 rounded-xl">
           No characters yet. Upload one.
         </p>
       ) : (
@@ -497,7 +497,7 @@ export default function CharactersTab({ projectId }: Props) {
                 {url ? (
                   <CharacterCard imageUrl={url} name={c.name} />
                 ) : (
-                  <div className="w-[160px] h-[178px] rounded-lg border border-tiffany-200 bg-tiffany-100 flex items-center justify-center text-tiffany-400">
+                  <div className="w-[160px] h-[178px] rounded-lg border border-ink-600 bg-ink-700 flex items-center justify-center text-ink-400">
                     {CharacterIcon}
                   </div>
                 )}
@@ -507,14 +507,14 @@ export default function CharactersTab({ projectId }: Props) {
                 >
                   <button
                     onClick={() => setPreviewCharacter(c)}
-                    className="w-6 h-6 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-tiffany-500 transition-colors"
+                    className="w-6 h-6 rounded-full bg-black/50 text-ink-950 flex items-center justify-center hover:bg-tiffany-400 transition-colors"
                     title="Preview image"
                   >
                     {MaximizeIcon}
                   </button>
                   <button
                     onClick={() => startEdit(c)}
-                    className="w-6 h-6 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-tiffany-500 transition-colors"
+                    className="w-6 h-6 rounded-full bg-black/50 text-ink-950 flex items-center justify-center hover:bg-tiffany-400 transition-colors"
                     title="Edit character"
                   >
                     {PencilIcon}
@@ -536,8 +536,8 @@ export default function CharactersTab({ projectId }: Props) {
       {/* Character sheet (canvas 2d grid) */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
-          <span className="text-tiffany-500">{ImagesIcon}</span>
-          <h3 className="text-sm font-semibold text-tiffany-900">
+          <span className="text-tiffany-400">{ImagesIcon}</span>
+          <h3 className="text-sm font-semibold text-ink-50">
             Character Sheet
           </h3>
         </div>
@@ -547,14 +547,14 @@ export default function CharactersTab({ projectId }: Props) {
       {/* Select project image modal */}
       {showImageModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-          <div className="bg-white rounded-2xl shadow-card p-5 w-[480px] max-w-full max-h-[80vh] flex flex-col">
+          <div className="bg-ink-800 rounded-2xl shadow-card p-5 w-[480px] max-w-full max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-tiffany-900">
+              <h3 className="text-sm font-semibold text-ink-50">
                 Select Project Image
               </h3>
               <button
                 onClick={() => setShowImageModal(false)}
-                className="w-6 h-6 rounded-full text-tiffany-500 hover:bg-tiffany-100 hover:text-tiffany-700 flex items-center justify-center transition-colors"
+                className="w-6 h-6 rounded-full text-tiffany-400 hover:bg-ink-600 hover:text-ink-100 flex items-center justify-center transition-colors"
                 title="Close"
               >
                 {CloseIcon}
@@ -562,11 +562,11 @@ export default function CharactersTab({ projectId }: Props) {
             </div>
 
             {gen.projectImagesLoading ? (
-              <p className="text-xs text-tiffany-400 italic text-center py-8">
+              <p className="text-xs text-ink-400 italic text-center py-8">
                 Loading images...
               </p>
             ) : gen.projectImages.length === 0 ? (
-              <p className="text-xs text-tiffany-400 italic text-center py-8 border border-dashed border-tiffany-200 rounded-xl">
+              <p className="text-xs text-ink-400 italic text-center py-8 border border-dashed border-ink-600 rounded-xl">
                 No project images yet. Upload or generate one first.
               </p>
             ) : (
@@ -575,7 +575,7 @@ export default function CharactersTab({ projectId }: Props) {
                   <button
                     key={`${img.source}-${img.filename}`}
                     onClick={() => selectProjectImage(img)}
-                    className="relative rounded-lg border border-tiffany-200 hover:border-tiffany-400 overflow-hidden transition-colors"
+                    className="relative rounded-lg border border-ink-600 hover:border-tiffany-300 overflow-hidden transition-colors"
                     title={img.filename}
                   >
                     <img
@@ -583,7 +583,7 @@ export default function CharactersTab({ projectId }: Props) {
                       alt={img.filename}
                       className="aspect-square object-cover w-full"
                     />
-                    <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1 py-0.5 text-[10px] text-tiffany-700 truncate text-center">
+                    <span className="absolute bottom-0 left-0 right-0 bg-ink-800/80 backdrop-blur-sm px-1 py-0.5 text-[10px] text-ink-200 truncate text-center">
                       {img.filename}
                     </span>
                   </button>
@@ -601,23 +601,23 @@ export default function CharactersTab({ projectId }: Props) {
           onClick={() => setPreviewCharacter(null)}
         >
           <div
-            className="bg-white rounded-2xl shadow-card p-5 w-full max-w-2xl max-h-[85vh] flex flex-col"
+            className="bg-ink-800 rounded-2xl shadow-card p-5 w-full max-w-2xl max-h-[85vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-tiffany-900">
+              <h3 className="text-sm font-semibold text-ink-50">
                 {previewCharacter.name}
               </h3>
               <button
                 onClick={() => setPreviewCharacter(null)}
-                className="w-6 h-6 rounded-full text-tiffany-500 hover:bg-tiffany-100 hover:text-tiffany-700 flex items-center justify-center transition-colors"
+                className="w-6 h-6 rounded-full text-tiffany-400 hover:bg-ink-600 hover:text-ink-100 flex items-center justify-center transition-colors"
                 title="Close"
               >
                 {CloseIcon}
               </button>
             </div>
 
-            <div className="flex-1 min-h-0 flex items-center justify-center bg-tiffany-50 rounded-xl overflow-hidden">
+            <div className="flex-1 min-h-0 flex items-center justify-center bg-ink-900 rounded-xl overflow-hidden">
               {charUrl(previewCharacter.filename) ? (
                 <img
                   src={charUrl(previewCharacter.filename)!}
@@ -625,7 +625,7 @@ export default function CharactersTab({ projectId }: Props) {
                   className="max-h-[65vh] max-w-full object-contain"
                 />
               ) : (
-                <div className="text-tiffany-400 py-16">{CharacterIcon}</div>
+                <div className="text-ink-400 py-16">{CharacterIcon}</div>
               )}
             </div>
           </div>
@@ -635,23 +635,23 @@ export default function CharactersTab({ projectId }: Props) {
       {/* Delete confirmation modal */}
       {confirmDeleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-          <div className="bg-white rounded-2xl shadow-card p-5 w-80">
-            <h3 className="text-sm font-semibold text-tiffany-900 mb-2">
+          <div className="bg-ink-800 rounded-2xl shadow-card p-5 w-80">
+            <h3 className="text-sm font-semibold text-ink-50 mb-2">
               Delete Character
             </h3>
-            <p className="text-xs text-tiffany-600 mb-4">
+            <p className="text-xs text-ink-300 mb-4">
               Are you sure you want to delete this character?
             </p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setConfirmDeleteId(null)}
-                className="px-3 py-2 text-xs font-medium rounded-lg border border-tiffany-200 text-tiffany-600 hover:bg-tiffany-50 transition-colors"
+                className="px-3 py-2 text-xs font-medium rounded-lg border border-ink-600 text-ink-300 hover:bg-ink-700 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
-                className="px-3 py-2 text-xs font-medium rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors"
+                className="px-3 py-2 text-xs font-medium rounded-lg bg-red-500 hover:bg-red-500 text-white transition-colors"
               >
                 Delete
               </button>

@@ -45,7 +45,7 @@ Every output must include the following four columns:
 - **Language:** English.
 - **Model:** Optimized for **Z-Image-Turbo**. Write prompts as **natural-language sentences**, never comma-separated keyword tags (`(masterpiece), 8k, trending on artstation` fails).
 - **Subject first:** Lead with the subject and its action — Z-Image-Turbo weights earlier tokens more heavily, so never bury the main subject late in the description.
-- **Character consistency (critical across shots):** before generating any prompts, write one fixed, detailed character description (a "character bible") for every recurring character — name, age, face shape, hair color/style, build, outfit, and any distinctive feature (scar, glasses, earring). Repeat that exact description verbatim at the start of every t2i prompt featuring that character, varying only the shot-specific action, expression, and pose. Never reword or omit core appearance details between shots, or the character's identity will drift across scenes.
+- **Character consistency (critical across shots):** before generating any prompts, write one fixed, detailed character description (a "character bible") for every recurring character — name, age, face shape, hair color/style, build, outfit, and any distinctive feature (scar, glasses, earring). **Every t2i prompt must repeat the full character bible — the visual description of every character in the cast — verbatim, not only the character performing the action.** Lead with the in-focus subject's description, then append the remaining characters' descriptions unchanged, varying only each character's shot-specific action, expression, and pose. Never reword or omit any character's core appearance details between shots, or character identity will drift across scenes.
 - **One focused paragraph** built in this layered order:
   1. **Subject & Action** — who/what, doing what, with specific physical details.
   2. **Environment & Context** — location, time of day, weather, background.
@@ -90,11 +90,14 @@ id,duration,t2i,i2v
 
 ### Sample Character Bible (reused across every shot)
 
-> Alex — a 20-year-old male college student with short black hair, round wire-frame glasses, and a faded blue hoodie, always with a nervous, wide-eyed look. Repeat this exact description verbatim at the start of every t2i prompt that features Alex, changing only his action and expression per moment.
+> Alex — a 20-year-old male college student with short black hair, round wire-frame glasses, and a faded blue hoodie, always with a nervous, wide-eyed look.
+> Sam — a 40-year-old male professor with receding gray hair, a gray tweed blazer, and thick reading glasses perched on his nose, always with a stern, unamused expression.
+>
+> Repeat both characters' exact descriptions verbatim in every t2i prompt, leading with whoever is in focus and appending the other. Change only each character's action, expression, and pose per moment.
 
 ### Sample t2i Prompt Structure (single moment)
 
-> A close-up of Alex, a college student with wide, panicked eyes and sweat beading on his forehead, frantically gripping a pen in an exam hall. Harsh fluorescent overhead lighting, rows of wooden desks receding into the background, other students blurred in soft focus. Cinematic photorealistic style, shot on a 50mm lens at f/2.0, shallow depth of field, tense anxious atmosphere.
+> A close-up of Alex, a 20-year-old male college student with short black hair, round wire-frame glasses, and a faded blue hoodie, now with wide, panicked eyes and sweat beading on his forehead, frantically gripping a pen in an exam hall. Behind him, Sam, a 40-year-old male professor with receding gray hair, a gray tweed blazer, and thick reading glasses perched on his nose, watches with a stern, unamused expression. Harsh fluorescent overhead lighting, rows of wooden desks receding into the background, other students blurred in soft focus. Photo realistic render, shot on a 50mm lens at f/2.0, shallow depth of field, tense anxious atmosphere.
 
 ### Sample i2v Prompt Structure (single moment)
 
