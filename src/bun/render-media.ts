@@ -369,61 +369,14 @@ async function getFfmpegBin(): Promise<string> {
   return "ffmpeg";
 }
 
-const AUDIO_EXT_RE = /\.(mp3|wav|m4a)$/i;
-
 /**
- * Recursively collect audio file paths under `root`, descending up to `depth`
- * levels. mlx-audio may write its saved clip into a subdirectory of --output,
- * so a shallow scan can miss the freshly generated file.
+ * Resolve the TTS output clip for a voice folder. mlx_audio.tts.generate always
+ * writes its single generated clip as `audio_000.mp3` directly into `--output`,
+ * so the path is deterministic and there is no need to scan for a newest file.
  */
-function collectAudioFiles(root: string, depth = 2): string[] {
-  const out: string[] = [];
-  const walk = (dir: string, remaining: number) => {
-    let entries: string[];
-    try {
-      entries = readdirSync(dir);
-    } catch {
-      return;
-    }
-    for (const entry of entries) {
-      const fullPath = join(dir, entry);
-      let isDir = false;
-      try {
-        isDir = statSync(fullPath).isDirectory();
-      } catch {
-        continue;
-      }
-      if (isDir) {
-        if (remaining > 1) walk(fullPath, remaining - 1);
-      } else if (AUDIO_EXT_RE.test(entry)) {
-        out.push(fullPath);
-      }
-    }
-  };
-  walk(root, depth);
-  return out;
-}
-
-/**
- * Find the newest audio file (by mtime) under `root` whose absolute path was
- * not already present before generation started (the `before` set holds the
- * pre-existing audio file paths).
- *
- * Uses `ls -1t` to list `root` newest-first, so the freshly generated clip
- * (which lands directly in `root`) is picked without a recursive walk.
- */
-function findNewestAudioFile(root: string, before: Set<string>): string | null {
-  const proc = Bun.spawnSync(["ls", "-al", root]);
-  if (!proc.success) return null;
-
-  const stdout = proc.stdout?.toString() ?? "";
-  for (const name of stdout.split("\n")) {
-    const trimmed = name.trim();
-    if (!trimmed || !AUDIO_EXT_RE.test(trimmed)) continue;
-    const fullPath = join(root, trimmed);
-    if (!before.has(fullPath)) return fullPath;
-  }
-  return null;
+function resolveAudioFile(root: string): string | null {
+  const path = join(root, "audio_000.mp3");
+  return existsSync(path) ? path : null;
 }
 
 /** Directory where Hugging Face Hub caches downloaded models. */
@@ -1417,10 +1370,6 @@ export async function renderMediaRoutes({
       const voiceDir = join(projectOutputDir, "voices", safeVoiceId);
       ensureDir(voiceDir);
 
-      // Snapshot the existing audio files in this row's voice folder so the
-      // freshly generated one can be picked out afterwards.
-      const beforeSet = new Set<string>(collectAudioFiles(voiceDir));
-
       send("progress", {
         status: "starting",
         label: "Generating speech...",
@@ -1470,7 +1419,7 @@ export async function renderMediaRoutes({
 
       const exitCode = await proc.exited;
       if (exitCode === 0) {
-        const path = findNewestAudioFile(voiceDir, new Set(["audio_000.mp3"]));
+        const path = resolveAudioFile(voiceDir);
         if (path) {
           send("complete", {
             success: true,
