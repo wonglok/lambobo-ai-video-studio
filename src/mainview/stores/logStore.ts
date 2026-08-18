@@ -19,10 +19,7 @@ export const useLogStore = create<LogStore>((set) => ({
   logs: [],
   addLog: (entry) =>
     set((state) => ({
-      logs: [
-        ...state.logs,
-        { ...entry, id: nextId++, timestamp: Date.now() },
-      ],
+      logs: [...state.logs, { ...entry, id: nextId++, timestamp: Date.now() }],
     })),
   clearLogs: () => set({ logs: [] }),
 }));

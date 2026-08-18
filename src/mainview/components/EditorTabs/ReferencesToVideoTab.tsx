@@ -44,6 +44,7 @@ function VideoThumb({
     const v = videoRef.current;
     if (!v) return;
     v.currentTime = 0;
+    v.muted = false;
     v.play().catch(() => {});
   };
 
@@ -51,6 +52,7 @@ function VideoThumb({
     const v = videoRef.current;
     if (!v) return;
     v.pause();
+    v.muted = true;
     v.currentTime = 0;
   };
 
@@ -398,7 +400,10 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
                   src={video.url}
                   onSelect={() => setActiveSlot(index)}
                   onPreview={() =>
-                    setPreviewVideo({ url: video.url, filename: video.filename })
+                    setPreviewVideo({
+                      url: video.url,
+                      filename: video.filename,
+                    })
                   }
                 />
               </div>

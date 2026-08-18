@@ -160,11 +160,11 @@ export const useReferencesToVideoStore = create<ReferencesToVideoStore>(
 
     // Generation parameters
     prompt:
-      "[image1] is standing at [image2], with a voice [audio1] saying: ghost reporting, ready for combat.",
-    steps: 10,
-    width: 320,
+      "with voice [audio1], [image1] say Ghost reporting , ready for combat.",
+    steps: 30,
+    width: 640,
     height: 320,
-    seconds: 3,
+    seconds: 10,
     seed: 42,
 
     // Reference media
