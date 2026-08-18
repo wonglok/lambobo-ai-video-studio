@@ -811,7 +811,6 @@ export async function renderMediaRoutes({
     const {
       prompt,
       projectId,
-      aspect = "1:1",
       width = 512,
       height = 512,
       device = "mps",
@@ -825,6 +824,12 @@ export async function renderMediaRoutes({
       res.status(400).json({ error: "Project ID is required" });
       return;
     }
+
+    // z-image-mps requires width/height to be multiples of 16. Snap any
+    // client-provided size (e.g. an aspect-ratio-derived height) to the
+    // nearest valid multiple so generation does not fail.
+    const imageWidth = Math.max(16, Math.round(Number(width) / 16) * 16);
+    const imageHeight = Math.max(16, Math.round(Number(height) / 16) * 16);
 
     // SSE headers
     res.writeHead(200, {
@@ -866,12 +871,10 @@ export async function renderMediaRoutes({
           "z-image-mps.py",
           "-p",
           prompt,
-          "--aspect",
-          String(aspect),
           "--height",
-          String(height),
+          String(imageHeight),
           "--width",
-          String(width),
+          String(imageWidth),
           "--output",
           outputPath,
           "--device",
