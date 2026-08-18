@@ -408,18 +408,22 @@ function collectAudioFiles(root: string, depth = 2): string[] {
  * Find the newest audio file (by mtime) under `root` whose absolute path was
  * not already present before generation started (the `before` set holds the
  * pre-existing audio file paths).
+ *
+ * Uses `ls -1t` to list `root` newest-first, so the freshly generated clip
+ * (which lands directly in `root`) is picked without a recursive walk.
  */
 function findNewestAudioFile(root: string, before: Set<string>): string | null {
-  const candidates = collectAudioFiles(root)
-    .filter((p) => !before.has(p))
-    .sort((a, b) => {
-      try {
-        return statSync(b).mtimeMs - statSync(a).mtimeMs;
-      } catch {
-        return 0;
-      }
-    });
-  return candidates[0] ?? null;
+  const proc = Bun.spawnSync(["ls", "-al", root]);
+  if (!proc.success) return null;
+
+  const stdout = proc.stdout?.toString() ?? "";
+  for (const name of stdout.split("\n")) {
+    const trimmed = name.trim();
+    if (!trimmed || !AUDIO_EXT_RE.test(trimmed)) continue;
+    const fullPath = join(root, trimmed);
+    if (!before.has(fullPath)) return fullPath;
+  }
+  return null;
 }
 
 /** Directory where Hugging Face Hub caches downloaded models. */
@@ -1466,7 +1470,7 @@ export async function renderMediaRoutes({
 
       const exitCode = await proc.exited;
       if (exitCode === 0) {
-        const path = findNewestAudioFile(voiceDir, beforeSet);
+        const path = findNewestAudioFile(voiceDir, new Set(["audio_000.mp3"]));
         if (path) {
           send("complete", {
             success: true,
