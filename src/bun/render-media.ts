@@ -369,13 +369,16 @@ async function getFfmpegBin(): Promise<string> {
   return "ffmpeg";
 }
 
+/** Fixed filename mlx_audio.tts.generate writes its output clip as. */
+const TTS_OUTPUT_FILENAME = "audio_000.mp3";
+
 /**
  * Resolve the TTS output clip for a voice folder. mlx_audio.tts.generate always
  * writes its single generated clip as `audio_000.mp3` directly into `--output`,
  * so the path is deterministic and there is no need to scan for a newest file.
  */
 function resolveAudioFile(root: string): string | null {
-  const path = join(root, "audio_000.mp3");
+  const path = join(root, TTS_OUTPUT_FILENAME);
   return existsSync(path) ? path : null;
 }
 
@@ -1369,6 +1372,17 @@ export async function renderMediaRoutes({
         .slice(0, 64);
       const voiceDir = join(projectOutputDir, "voices", safeVoiceId);
       ensureDir(voiceDir);
+
+      // Regenerating a row must overwrite the previous clip: delete any
+      // existing output so the generator writes a fresh audio_000.mp3.
+      const prevAudio = join(voiceDir, TTS_OUTPUT_FILENAME);
+      if (existsSync(prevAudio)) {
+        try {
+          unlinkSync(prevAudio);
+        } catch {
+          // Ignore — the generator will overwrite the file regardless.
+        }
+      }
 
       send("progress", {
         status: "starting",
