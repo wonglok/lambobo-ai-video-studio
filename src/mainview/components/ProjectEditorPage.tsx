@@ -315,7 +315,7 @@ export default function ProjectEditorPage() {
           ? "bg-emerald-500 shadow-[0_0_6px_2px_rgba(16,185,129,0.5)]"
           : store.agent.serverOnline === false
             ? "bg-red-500 shadow-[0_0_6px_2px_rgba(239,68,68,0.5)]"
-            : "bg-tiffany-400"
+            : "bg-tiffany-500"
       }`}
     />
   );
@@ -324,8 +324,8 @@ export default function ProjectEditorPage() {
 
   if (!project) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-ink-900">
-        <div className="w-16 h-16 bg-ink-700 rounded-2xl flex items-center justify-center mb-4">
+      <div className="flex flex-col items-center justify-center h-screen bg-ink-50">
+        <div className="w-16 h-16 bg-ink-100 rounded-3xl flex items-center justify-center mb-4">
           <svg
             width="28"
             height="28"
@@ -337,12 +337,12 @@ export default function ProjectEditorPage() {
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
           </svg>
         </div>
-        <p className="text-sm font-medium text-ink-100 mb-3">
+        <p className="text-sm font-medium text-ink-800 mb-3">
           Project not found
         </p>
         <button
           onClick={() => navigate("/app")}
-          className="flex items-center gap-1.5 px-4 py-2 bg-ink-700 hover:bg-ink-500 text-ink-200 text-sm font-medium rounded-xl transition-colors"
+          className="flex items-center gap-1.5 px-4 py-2 bg-ink-100 hover:bg-ink-300 text-ink-700 text-sm font-medium rounded-2xl transition-colors"
         >
           {BackIcon}
           Back to Projects
@@ -352,25 +352,25 @@ export default function ProjectEditorPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-ink-900">
+    <div className="flex flex-col h-screen bg-ink-50">
       {/* Top bar */}
-      <div className="flex items-center gap-4 px-6 py-4 bg-ink-800 border-b border-ink-700  mb-6">
+      <div className="flex items-center gap-6 px-8 py-5 bg-white border-b border-ink-200 mb-8">
         <button
           onClick={() => {
             store.resetAll();
             navigate("/app");
           }}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-ink-900 hover:bg-ink-600 text-ink-200 text-sm font-medium rounded-xl transition-colors border border-ink-600/60"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-ink-50 hover:bg-ink-200 text-ink-700 text-sm font-medium rounded-2xl transition-colors border border-ink-200/60"
         >
           {BackIcon}
           Back
         </button>
         <div className="flex-1">
-          <h1 className="text-lg font-semibold text-ink-50 tracking-tight">
+          <h1 className="text-lg font-semibold text-ink-900 tracking-tight">
             {project.name}
           </h1>
           {project.description && (
-            <p className="text-xs text-ink-300/60 mt-0.5">
+            <p className="text-xs text-ink-600/60 mt-0.5">
               {project.description}
             </p>
           )}
@@ -378,16 +378,16 @@ export default function ProjectEditorPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 px-6 pb-6">
-        <div className="bg-ink-800 border border-ink-600 rounded-2xl shadow-card p-6 min-h-full">
+      <div className="flex-1 px-8 pb-8">
+        <div className="bg-white border border-ink-200 rounded-3xl shadow-card p-8 min-h-full">
           {/* ========== TAB BAR ========== */}
-          <div className="flex items-center gap-1 border-b border-ink-600 pb-4 mb-2 flex-wrap">
+          <div className="flex items-center gap-1.5 border-b border-ink-200 pb-5 mb-4 flex-wrap">
             <button
               onClick={() => store.setActiveTab("video")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-2xl transition-all ${
                 store.activeTab === "video"
-                  ? "bg-tiffany-500/15 text-tiffany-300 shadow-glow-sm"
-                  : "text-ink-300 hover:bg-ink-700 hover:text-ink-100"
+                  ? "bg-tiffany-500/10 text-tiffany-700 shadow-glow-sm"
+                  : "text-ink-600 hover:bg-ink-100 hover:text-ink-800"
               }`}
             >
               {VideoIcon}
@@ -395,10 +395,10 @@ export default function ProjectEditorPage() {
             </button>
             <button
               onClick={() => store.setActiveTab("extend")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-2xl transition-all ${
                 store.activeTab === "extend"
-                  ? "bg-tiffany-500/15 text-tiffany-300 shadow-glow-sm"
-                  : "text-ink-300 hover:bg-ink-700 hover:text-ink-100"
+                  ? "bg-tiffany-500/10 text-tiffany-700 shadow-glow-sm"
+                  : "text-ink-600 hover:bg-ink-100 hover:text-ink-800"
               }`}
             >
               {ExtendIcon}
@@ -406,10 +406,10 @@ export default function ProjectEditorPage() {
             </button>
             <button
               onClick={() => store.setActiveTab("image")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-2xl transition-all ${
                 store.activeTab === "image"
-                  ? "bg-tiffany-500/15 text-tiffany-300 shadow-glow-sm"
-                  : "text-ink-300 hover:bg-ink-700 hover:text-ink-100"
+                  ? "bg-tiffany-500/10 text-tiffany-700 shadow-glow-sm"
+                  : "text-ink-600 hover:bg-ink-100 hover:text-ink-800"
               }`}
             >
               {ImageEditIcon}
@@ -417,10 +417,10 @@ export default function ProjectEditorPage() {
             </button>
             <button
               onClick={() => store.setActiveTab("agent")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-2xl transition-all ${
                 store.activeTab === "agent"
-                  ? "bg-tiffany-500/15 text-tiffany-300 shadow-glow-sm"
-                  : "text-ink-300 hover:bg-ink-700 hover:text-ink-100"
+                  ? "bg-tiffany-500/10 text-tiffany-700 shadow-glow-sm"
+                  : "text-ink-600 hover:bg-ink-100 hover:text-ink-800"
               }`}
             >
               {AgentIcon}
@@ -428,10 +428,10 @@ export default function ProjectEditorPage() {
             </button>
             <button
               onClick={() => store.setActiveTab("storyWriter")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-2xl transition-all ${
                 store.activeTab === "storyWriter"
-                  ? "bg-tiffany-500/15 text-tiffany-300 shadow-glow-sm"
-                  : "text-ink-300 hover:bg-ink-700 hover:text-ink-100"
+                  ? "bg-tiffany-500/10 text-tiffany-700 shadow-glow-sm"
+                  : "text-ink-600 hover:bg-ink-100 hover:text-ink-800"
               }`}
             >
               {StoryWriterIcon}
@@ -439,10 +439,10 @@ export default function ProjectEditorPage() {
             </button>
             <button
               onClick={() => store.setActiveTab("characters")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-2xl transition-all ${
                 store.activeTab === "characters"
-                  ? "bg-tiffany-500/15 text-tiffany-300 shadow-glow-sm"
-                  : "text-ink-300 hover:bg-ink-700 hover:text-ink-100"
+                  ? "bg-tiffany-500/10 text-tiffany-700 shadow-glow-sm"
+                  : "text-ink-600 hover:bg-ink-100 hover:text-ink-800"
               }`}
             >
               {CharacterIcon}
@@ -450,10 +450,10 @@ export default function ProjectEditorPage() {
             </button>
             <button
               onClick={() => store.setActiveTab("extract")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-2xl transition-all ${
                 store.activeTab === "extract"
-                  ? "bg-tiffany-500/15 text-tiffany-300 shadow-glow-sm"
-                  : "text-ink-300 hover:bg-ink-700 hover:text-ink-100"
+                  ? "bg-tiffany-500/10 text-tiffany-700 shadow-glow-sm"
+                  : "text-ink-600 hover:bg-ink-100 hover:text-ink-800"
               }`}
             >
               {ExtractIcon}
@@ -461,10 +461,10 @@ export default function ProjectEditorPage() {
             </button>
             <button
               onClick={() => store.setActiveTab("sceneVisual")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-2xl transition-all ${
                 store.activeTab === "sceneVisual"
-                  ? "bg-tiffany-500/15 text-tiffany-300 shadow-glow-sm"
-                  : "text-ink-300 hover:bg-ink-700 hover:text-ink-100"
+                  ? "bg-tiffany-500/10 text-tiffany-700 shadow-glow-sm"
+                  : "text-ink-600 hover:bg-ink-100 hover:text-ink-800"
               }`}
             >
               {SceneVisualIcon}
@@ -472,10 +472,10 @@ export default function ProjectEditorPage() {
             </button>
             <button
               onClick={() => store.setActiveTab("textToImage")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-2xl transition-all ${
                 store.activeTab === "textToImage"
-                  ? "bg-tiffany-500/15 text-tiffany-300 shadow-glow-sm"
-                  : "text-ink-300 hover:bg-ink-700 hover:text-ink-100"
+                  ? "bg-tiffany-500/10 text-tiffany-700 shadow-glow-sm"
+                  : "text-ink-600 hover:bg-ink-100 hover:text-ink-800"
               }`}
             >
               {TextToImageIcon}
@@ -483,10 +483,10 @@ export default function ProjectEditorPage() {
             </button>
             <button
               onClick={() => store.setActiveTab("referencesToVideo")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-2xl transition-all ${
                 store.activeTab === "referencesToVideo"
-                  ? "bg-tiffany-500/15 text-tiffany-300 shadow-glow-sm"
-                  : "text-ink-300 hover:bg-ink-700 hover:text-ink-100"
+                  ? "bg-tiffany-500/10 text-tiffany-700 shadow-glow-sm"
+                  : "text-ink-600 hover:bg-ink-100 hover:text-ink-800"
               }`}
             >
               {ReferencesToVideoIcon}
@@ -494,10 +494,10 @@ export default function ProjectEditorPage() {
             </button>
             <button
               onClick={() => store.setActiveTab("batchVideo")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-2xl transition-all ${
                 store.activeTab === "batchVideo"
-                  ? "bg-tiffany-500/15 text-tiffany-300 shadow-glow-sm"
-                  : "text-ink-300 hover:bg-ink-700 hover:text-ink-100"
+                  ? "bg-tiffany-500/10 text-tiffany-700 shadow-glow-sm"
+                  : "text-ink-600 hover:bg-ink-100 hover:text-ink-800"
               }`}
             >
               {BatchVideoIcon}
@@ -505,10 +505,10 @@ export default function ProjectEditorPage() {
             </button>
             <button
               onClick={() => store.setActiveTab("batchImageToVideo")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-2xl transition-all ${
                 store.activeTab === "batchImageToVideo"
-                  ? "bg-tiffany-500/15 text-tiffany-300 shadow-glow-sm"
-                  : "text-ink-300 hover:bg-ink-700 hover:text-ink-100"
+                  ? "bg-tiffany-500/10 text-tiffany-700 shadow-glow-sm"
+                  : "text-ink-600 hover:bg-ink-100 hover:text-ink-800"
               }`}
             >
               {BatchImageToVideoIcon}
@@ -516,10 +516,10 @@ export default function ProjectEditorPage() {
             </button>
             <button
               onClick={() => store.setActiveTab("batchVoice")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-2xl transition-all ${
                 store.activeTab === "batchVoice"
-                  ? "bg-tiffany-500/15 text-tiffany-300 shadow-glow-sm"
-                  : "text-ink-300 hover:bg-ink-700 hover:text-ink-100"
+                  ? "bg-tiffany-500/10 text-tiffany-700 shadow-glow-sm"
+                  : "text-ink-600 hover:bg-ink-100 hover:text-ink-800"
               }`}
             >
               {BatchVoiceIcon}
@@ -527,10 +527,10 @@ export default function ProjectEditorPage() {
             </button>
             <button
               onClick={() => store.setActiveTab("llmServer")}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+              className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-2xl transition-all ${
                 store.activeTab === "llmServer"
-                  ? "bg-tiffany-500/15 text-tiffany-300 shadow-glow-sm"
-                  : "text-ink-300 hover:bg-ink-700 hover:text-ink-100"
+                  ? "bg-tiffany-500/10 text-tiffany-700 shadow-glow-sm"
+                  : "text-ink-600 hover:bg-ink-100 hover:text-ink-800"
               }`}
             >
               {ServerIcon}

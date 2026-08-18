@@ -135,40 +135,40 @@ export default function ExtractImageTab({ projectId }: Props) {
   );
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-7">
       <div className="flex items-center gap-2">
-        <span className="text-tiffany-400">{CameraIcon}</span>
-        <h2 className="text-base font-semibold text-ink-50">
+        <span className="text-tiffany-600">{CameraIcon}</span>
+        <h2 className="text-base font-semibold text-ink-900">
           Image Extract from Video
         </h2>
       </div>
 
       {/* Video picker */}
       <div>
-        <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+        <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
           Videos
         </label>
         {gen.projectVideosLoading ? (
-          <p className="text-xs text-ink-400 italic py-4 text-center">
+          <p className="text-xs text-ink-500 italic py-4 text-center">
             Loading videos...
           </p>
         ) : gen.projectVideos.length === 0 ? (
-          <p className="text-xs text-ink-400 italic py-4 text-center border border-dashed border-ink-600 rounded-xl">
+          <p className="text-xs text-ink-500 italic py-4 text-center border border-dashed border-ink-200 rounded-2xl">
             No generated videos yet.
           </p>
         ) : (
-          <ul className="divide-y divide-ink-700 border border-ink-600 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+          <ul className="divide-y divide-ink-200 border border-ink-200 rounded-2xl overflow-hidden max-h-48 overflow-y-auto">
             {gen.projectVideos.map((v) => (
               <li key={v.filename}>
                 <button
                   onClick={() => selectVideo(v)}
                   className={`w-full flex items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
                     selected?.filename === v.filename
-                      ? "bg-ink-700 text-ink-100"
-                      : "text-ink-300 hover:bg-ink-700"
+                      ? "bg-ink-100 text-ink-800"
+                      : "text-ink-600 hover:bg-ink-100"
                   }`}
                 >
-                  <span className="text-ink-400">{VideoIcon}</span>
+                  <span className="text-ink-500">{VideoIcon}</span>
                   <span className="truncate">{v.filename}</span>
                 </button>
               </li>
@@ -178,18 +178,18 @@ export default function ExtractImageTab({ projectId }: Props) {
       </div>
 
       {selected && (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-6">
           <video
             ref={videoRef}
             src={selected.url}
             crossOrigin="anonymous"
             controls
             onLoadedMetadata={onLoadedMetadata}
-            className="w-full max-h-64 rounded-xl border border-ink-600 bg-black"
+            className="w-full max-h-64 rounded-2xl border border-ink-200 bg-black"
           />
 
           <div>
-            <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
               Moment ({time.toFixed(2)}s / {duration.toFixed(2)}s)
             </label>
             <input
@@ -212,23 +212,23 @@ export default function ExtractImageTab({ projectId }: Props) {
             <button
               onClick={handleExtract}
               disabled={extracting || !duration}
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg bg-tiffany-500 hover:bg-tiffany-400 disabled:bg-ink-600 disabled:text-ink-400 text-ink-950 transition-colors"
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-xl bg-tiffany-500 hover:bg-tiffany-600 disabled:bg-ink-200 disabled:text-ink-500 text-ink-950 transition-colors"
             >
               {CameraIcon}
               Extract Frame
             </button>
             {extracting && (
-              <span className="text-xs text-ink-300 italic">
+              <span className="text-xs text-ink-600 italic">
                 Extracting...
               </span>
             )}
           </div>
 
-          {error && <p className="text-xs text-red-400">{error}</p>}
+          {error && <p className="text-xs text-red-600">{error}</p>}
 
           {preview && (
             <div className="flex flex-col gap-3">
-              <div className="rounded-xl overflow-hidden border border-ink-600 inline-block bg-ink-700">
+              <div className="rounded-2xl overflow-hidden border border-ink-200 inline-block bg-ink-100">
                 <img
                   src={preview}
                   alt="extracted"
@@ -236,7 +236,7 @@ export default function ExtractImageTab({ projectId }: Props) {
                 />
               </div>
               {savedName && (
-                <p className="text-xs text-emerald-400">
+                <p className="text-xs text-emerald-600">
                   Saved as {savedName} in extracted-frames/{projectId}
                 </p>
               )}

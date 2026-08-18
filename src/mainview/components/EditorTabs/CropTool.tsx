@@ -169,9 +169,9 @@ export default function CropTool({ image, onApply, onCancel }: Props) {
       : null;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <div>
-        <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+        <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
           Aspect Ratio
         </label>
         <div className="flex flex-wrap gap-2">
@@ -179,10 +179,10 @@ export default function CropTool({ image, onApply, onCancel }: Props) {
             <button
               key={a.label}
               onClick={() => changeAspect(a.value)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-xl border transition-all ${
                 aspect === a.value
-                  ? "bg-ink-700 border-ink-500 text-ink-100"
-                  : "bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400"
+                  ? "bg-ink-100 border-ink-300 text-ink-800"
+                  : "bg-white border-ink-200 text-ink-600 hover:border-ink-300"
               }`}
             >
               {a.label}
@@ -194,7 +194,7 @@ export default function CropTool({ image, onApply, onCancel }: Props) {
       <div className="flex justify-center">
         <div
           ref={containerRef}
-          className="relative overflow-hidden rounded-lg border border-ink-600 bg-ink-700"
+          className="relative overflow-hidden rounded-xl border border-ink-200 bg-ink-100"
           style={{ width: display?.w, height: display?.h }}
         >
           <img
@@ -208,7 +208,7 @@ export default function CropTool({ image, onApply, onCancel }: Props) {
           {crop && display && (
             <div
               onMouseDown={startDrag("move")}
-              className="absolute border-2 border-ink-500 cursor-move"
+              className="absolute border-2 border-ink-300 cursor-move"
               style={{
                 left: crop.x,
                 top: crop.y,
@@ -219,7 +219,7 @@ export default function CropTool({ image, onApply, onCancel }: Props) {
             >
               <div
                 onMouseDown={startDrag("resize")}
-                className="absolute right-0 bottom-0 w-4 h-4 bg-ink-800 border border-tiffany-400 rounded-sm cursor-nwse-resize"
+                className="absolute right-0 bottom-0 w-4 h-4 bg-white border border-tiffany-500 rounded-md cursor-nwse-resize"
               />
             </div>
           )}
@@ -227,7 +227,7 @@ export default function CropTool({ image, onApply, onCancel }: Props) {
       </div>
 
       {cropPx && (
-        <p className="text-xs text-ink-300 text-center">
+        <p className="text-xs text-ink-600 text-center">
           Crop size: {cropPx.w} × {cropPx.h}px
         </p>
       )}
@@ -235,13 +235,13 @@ export default function CropTool({ image, onApply, onCancel }: Props) {
       <div className="flex justify-end gap-2">
         <button
           onClick={onCancel}
-          className="px-4 py-2 text-xs font-medium rounded-lg border border-ink-600 text-ink-300 hover:bg-ink-700 transition-colors"
+          className="px-4 py-2 text-xs font-medium rounded-xl border border-ink-200 text-ink-600 hover:bg-ink-100 transition-colors"
         >
           Cancel
         </button>
         <button
           onClick={apply}
-          className="px-4 py-2 text-xs font-medium rounded-lg bg-tiffany-500 hover:bg-tiffany-400 text-ink-950 transition-colors"
+          className="px-4 py-2 text-xs font-medium rounded-xl bg-tiffany-500 hover:bg-tiffany-600 text-ink-950 transition-colors"
         >
           Apply Crop
         </button>

@@ -199,7 +199,7 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
 
   const SpinnerIcon = (
     <svg
-      className="animate-spin text-tiffany-400"
+      className="animate-spin text-tiffany-600"
       width="16"
       height="16"
       viewBox="0 0 24 24"
@@ -316,13 +316,13 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
   const canSend = serverRunning && !chat.sending;
 
   return (
-    <div className="flex border border-ink-600 rounded-xl overflow-hidden bg-ink-800">
+    <div className="flex border border-ink-200 rounded-2xl overflow-hidden bg-white">
       {/* ===== Session sidebar ===== */}
-      <div className="w-44 shrink-0 border-r border-ink-600 bg-ink-900/40 flex flex-col">
-        <div className="p-2 border-b border-ink-600">
+      <div className="w-44 shrink-0 border-r border-ink-200 bg-ink-100/60 flex flex-col">
+        <div className="p-2 border-b border-ink-200">
           <button
             onClick={() => chat.createSession()}
-            className="flex items-center justify-center gap-1.5 w-full px-2 py-1.5 text-xs font-medium rounded-lg border border-ink-600 bg-ink-800 text-ink-300 hover:border-ink-400 transition-colors"
+            className="flex items-center justify-center gap-1.5 w-full px-2 py-1.5 text-xs font-medium rounded-xl border border-ink-200 bg-white text-ink-600 hover:border-ink-300 transition-colors"
           >
             {PlusIcon}
             New Session
@@ -335,10 +335,10 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
               <div
                 key={sess.id}
                 onClick={() => chat.selectSession(sess.id)}
-                className={`group flex items-center gap-1 px-2.5 py-2 cursor-pointer text-xs border-b border-ink-700 transition-colors ${
+                className={`group flex items-center gap-1 px-2.5 py-2 cursor-pointer text-xs border-b border-ink-200 transition-colors ${
                   active
-                    ? "bg-ink-700 text-ink-100"
-                    : "text-ink-300 hover:bg-ink-700"
+                    ? "bg-ink-100 text-ink-800"
+                    : "text-ink-600 hover:bg-ink-100"
                 }`}
               >
                 <span className="flex-1 truncate">{sess.title}</span>
@@ -347,7 +347,7 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
                     e.stopPropagation();
                     setConfirmDeleteSession(sess.id);
                   }}
-                  className="opacity-0 group-hover:opacity-100 p-0.5 text-red-300 hover:bg-red-500/10 rounded transition-opacity"
+                  className="opacity-0 group-hover:opacity-100 p-0.5 text-red-400 hover:bg-red-50 rounded transition-opacity"
                   title="Delete session"
                 >
                   {TrashIcon}
@@ -361,18 +361,18 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
       {/* ===== Chat area ===== */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <div className="flex items-center gap-2 px-4 py-3 bg-ink-900 border-b border-ink-600">
-          <span className="text-tiffany-400">{BotIcon}</span>
-          <span className="text-sm font-semibold text-ink-50 truncate">
+        <div className="flex items-center gap-2 px-4 py-3 bg-ink-50 border-b border-ink-200">
+          <span className="text-tiffany-600">{BotIcon}</span>
+          <span className="text-sm font-semibold text-ink-900 truncate">
             {activeSession?.title ?? "Agent Chat"}
           </span>
-          <span className="ml-auto text-xs text-ink-300/60">
+          <span className="ml-auto text-xs text-ink-600/60">
             {serverRunning ? "Connected" : "Server offline"}
           </span>
           <button
             onClick={() => chat.resetActiveSession()}
             disabled={messages.length === 0}
-            className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-lg border border-ink-600 text-ink-300 hover:bg-ink-800 transition-colors disabled:opacity-40"
+            className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-xl border border-ink-200 text-ink-600 hover:bg-ink-100 transition-colors disabled:opacity-40"
             title="Reset chat history"
           >
             {ResetIcon}
@@ -383,10 +383,10 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
         {/* Messages */}
         <div
           ref={scrollRef}
-          className="flex flex-col gap-3 p-4 h-[500px] overflow-y-auto bg-ink-900/40"
+          className="flex flex-col gap-3 p-5 h-[500px] overflow-y-auto bg-ink-100/60"
         >
           {messages.length === 0 && (
-            <div className="m-auto text-center text-xs text-ink-400 italic max-w-xs">
+            <div className="m-auto text-center text-xs text-ink-500 italic max-w-xs">
               {serverRunning
                 ? "Ask the agent anything. It can use tools like get_time or list_projects."
                 : "Start the mlx-vlm server above to begin chatting."}
@@ -396,13 +396,13 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
           {messages.map((m) =>
             m.role === "user" ? (
               <div key={m.id} className="flex justify-end">
-                <div className="max-w-[80%] px-3 py-2 rounded-xl bg-tiffany-500 text-ink-950 text-sm whitespace-pre-wrap">
+                <div className="max-w-[80%] px-3 py-2 rounded-2xl bg-tiffany-500 text-ink-950 text-sm whitespace-pre-wrap">
                   {m.image && (
                     <img
                       src={m.image}
                       alt="uploaded"
                       onClick={() => setPreviewImage(m.image!)}
-                      className="mb-2 max-w-48 rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                      className="mb-2 max-w-48 rounded-xl cursor-pointer hover:opacity-80 transition-opacity"
                     />
                   )}
                   {m.content}
@@ -417,9 +417,9 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
                       return (
                         <div
                           key={i}
-                          className="flex items-start gap-1.5 text-[11px] text-ink-300/70"
+                          className="flex items-start gap-1.5 text-[11px] text-ink-600/70"
                         >
-                          <span className="mt-0.5 shrink-0 text-ink-400">
+                          <span className="mt-0.5 shrink-0 text-ink-500">
                             {WrenchIcon}
                           </span>
                           <span className="truncate">
@@ -427,7 +427,7 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
                               Tool: {step.text}
                             </span>
                             {argSummary && (
-                              <span className="text-ink-400">
+                              <span className="text-ink-500">
                                 {" "}
                                 · {argSummary}
                               </span>
@@ -440,7 +440,7 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
                 )}
 
                 {m.thinking && (
-                  <details className="text-[11px] text-tiffany-400/80">
+                  <details className="text-[11px] text-tiffany-600/80">
                     <summary className="cursor-pointer select-none">
                       Thinking
                     </summary>
@@ -455,7 +455,7 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
                     {m.notices.map((n, i) => (
                       <div
                         key={i}
-                        className="text-xs text-ink-300/70 italic whitespace-pre-wrap"
+                        className="text-xs text-ink-600/70 italic whitespace-pre-wrap"
                       >
                         {n}
                       </div>
@@ -471,7 +471,7 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
                         src={img}
                         alt={`result ${i + 1}`}
                         onClick={() => setPreviewImage(img)}
-                        className="max-w-48 max-h-48 rounded-lg border border-ink-600 object-contain cursor-pointer hover:opacity-80 transition-opacity"
+                        className="max-w-48 max-h-48 rounded-xl border border-ink-200 object-contain cursor-pointer hover:opacity-80 transition-opacity"
                       />
                     ))}
                   </div>
@@ -484,7 +484,7 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
                         key={i}
                         src={v}
                         controls
-                        className="max-w-64 max-h-48 rounded-lg border border-ink-600"
+                        className="max-w-64 max-h-48 rounded-xl border border-ink-200"
                       />
                     ))}
                   </div>
@@ -492,14 +492,14 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
 
                 {m.content ? (
                   <div className="flex justify-start">
-                    <div className="max-w-[80%] px-3 py-2 rounded-xl bg-ink-800 border border-ink-600 text-ink-50 text-sm">
+                    <div className="max-w-[80%] px-3 py-2 rounded-2xl bg-white border border-ink-200 text-ink-900 text-sm">
                       <MarkdownMessage content={m.content} />
                     </div>
                   </div>
                 ) : (
                   chat.sending && (
                     <div className="flex justify-start">
-                      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-ink-800 border border-ink-600 text-ink-400 text-sm">
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-white border border-ink-200 text-ink-500 text-sm">
                         {SpinnerIcon}
                         Thinking...
                       </div>
@@ -508,11 +508,11 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
                 )}
 
                 {m.trace && (
-                  <details className="text-[11px] text-ink-300/60">
+                  <details className="text-[11px] text-ink-600/60">
                     <summary className="cursor-pointer">
                       Trace ({m.trace.length} messages)
                     </summary>
-                    <pre className="mt-1 max-h-48 overflow-auto p-2 bg-ink-900 rounded-lg whitespace-pre-wrap text-ink-300">
+                    <pre className="mt-1 max-h-48 overflow-auto p-2 bg-ink-50 rounded-xl whitespace-pre-wrap text-ink-600">
                       {JSON.stringify(m.trace, null, 2)}
                     </pre>
                   </details>
@@ -522,14 +522,14 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
           )}
 
           {chat.error && (
-            <div className="px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
+            <div className="px-3 py-2 rounded-2xl bg-red-50 border border-red-200 text-red-600 text-xs">
               {chat.error}
             </div>
           )}
         </div>
 
         {/* Input */}
-        <div className="border-t border-ink-600 bg-ink-800">
+        <div className="border-t border-ink-200 bg-white">
           <input
             ref={fileRef}
             type="file"
@@ -543,11 +543,11 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
               <img
                 src={chat.pendingImage}
                 alt="pending"
-                className="w-14 h-14 rounded-lg object-cover border border-ink-600"
+                className="w-14 h-14 rounded-xl object-cover border border-ink-200"
               />
               <button
                 onClick={() => chat.setPendingImage(null)}
-                className="flex items-center justify-center w-6 h-6 rounded-full bg-ink-700 text-ink-300 hover:bg-ink-500 transition-colors"
+                className="flex items-center justify-center w-6 h-6 rounded-full bg-ink-100 text-ink-600 hover:bg-ink-300 transition-colors"
                 title="Remove image"
               >
                 {RemoveIcon}
@@ -559,7 +559,7 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
             <button
               onClick={handleAttach}
               disabled={!serverRunning || chat.sending}
-              className="flex items-center justify-center w-10 h-10 shrink-0 rounded-xl border border-ink-600 text-ink-300 hover:border-ink-400 disabled:opacity-50 transition-all"
+              className="flex items-center justify-center w-10 h-10 shrink-0 rounded-2xl border border-ink-200 text-ink-600 hover:border-ink-300 disabled:opacity-50 transition-all"
               title="Attach image"
             >
               {AttachIcon}
@@ -570,7 +570,7 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
               placeholder="Type a message..."
               onKeyDown={handleKeyDown}
               disabled={!serverRunning || chat.sending}
-              className="flex-1 px-3 py-2 bg-ink-900 border border-ink-600 rounded-xl text-ink-50 text-sm placeholder-ink-400/40 focus:outline-none focus:border-tiffany-400 focus:ring-2 focus:ring-tiffany-400/30 transition-all resize-none disabled:opacity-50"
+              className="flex-1 px-3 py-2 bg-ink-50 border border-ink-200 rounded-2xl text-ink-900 text-sm placeholder-ink-500/40 focus:outline-none focus:border-tiffany-500 focus:ring-2 focus:ring-tiffany-500/30 transition-all resize-none disabled:opacity-50"
             />
             {chat.sending ? (
               <button
@@ -580,7 +580,7 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
                     method: "POST",
                   }).catch(() => {});
                 }}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-500 active:bg-red-600 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-2xl transition-all duration-150 shadow-sm"
               >
                 {StopIcon}
                 Stop
@@ -589,7 +589,7 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
               <button
                 onClick={handleSend}
                 disabled={!canSend}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-tiffany-500 hover:bg-tiffany-400 active:bg-tiffany-600 disabled:bg-ink-600 disabled:text-ink-400 text-ink-950 text-sm font-semibold rounded-xl transition-all duration-150 shadow-glow"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-tiffany-500 hover:bg-tiffany-600 active:bg-tiffany-700 disabled:bg-ink-200 disabled:text-ink-500 text-ink-950 text-sm font-semibold rounded-2xl transition-all duration-150 shadow-glow"
               >
                 {SendIcon}
                 Send
@@ -602,23 +602,23 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
       {/* Session delete confirmation modal */}
       {confirmDeleteSession && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-          <div className="bg-ink-800 rounded-2xl shadow-card p-5 w-80">
-            <h3 className="text-sm font-semibold text-ink-50 mb-2">
+          <div className="bg-white rounded-3xl shadow-card p-6 w-80">
+            <h3 className="text-sm font-semibold text-ink-900 mb-2">
               Delete Session
             </h3>
-            <p className="text-xs text-ink-300 mb-4">
+            <p className="text-xs text-ink-600 mb-4">
               Are you sure you want to delete this chat session?
             </p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setConfirmDeleteSession(null)}
-                className="px-3 py-2 text-xs font-medium rounded-lg border border-ink-600 text-ink-300 hover:bg-ink-700 transition-colors"
+                className="px-3 py-2 text-xs font-medium rounded-xl border border-ink-200 text-ink-600 hover:bg-ink-100 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDeleteSessionAction}
-                className="px-3 py-2 text-xs font-medium rounded-lg bg-red-500 hover:bg-red-500 text-white transition-colors"
+                className="px-3 py-2 text-xs font-medium rounded-xl bg-red-500 hover:bg-red-600 text-white transition-colors"
               >
                 Delete
               </button>
@@ -630,7 +630,7 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
       {/* Image preview modal */}
       {previewImage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-8"
           onClick={() => setPreviewImage(null)}
         >
           <button
@@ -644,7 +644,7 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
             src={previewImage}
             alt="preview"
             onClick={(e) => e.stopPropagation()}
-            className="max-w-full max-h-full rounded-lg shadow-2xl object-contain"
+            className="max-w-full max-h-full rounded-xl shadow-2xl object-contain"
           />
         </div>
       )}

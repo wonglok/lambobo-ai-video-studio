@@ -16,7 +16,7 @@ export default function LlmServerTab() {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="text-tiffany-400"
+      className="text-tiffany-600"
     >
       <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
       <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
@@ -26,10 +26,10 @@ export default function LlmServerTab() {
   );
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-7">
       <div className="flex items-center gap-2">
         {ServerIcon}
-        <h2 className="text-base font-semibold text-ink-50">
+        <h2 className="text-base font-semibold text-ink-900">
           LLM Server
         </h2>
       </div>

@@ -209,7 +209,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="text-tiffany-400"
+      className="text-tiffany-600"
     >
       <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
       <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
@@ -368,17 +368,17 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
     return (
       <div
         key={index}
-        className={`relative flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all text-left w-32 ${
+        className={`relative flex flex-col items-center gap-1.5 p-2 rounded-2xl border-2 transition-all text-left w-32 ${
           isActive
-            ? "border-tiffany-400 ring-2 ring-tiffany-400/40"
-            : "border-ink-600 hover:border-ink-400"
+            ? "border-tiffany-500 ring-2 ring-tiffany-500/40"
+            : "border-ink-200 hover:border-ink-300"
         }`}
       >
         <div
           onClick={() => setActiveSlot(index)}
           className="flex flex-col items-center gap-1.5 w-full cursor-pointer"
         >
-          <span className="text-[10px] font-semibold text-ink-300 uppercase tracking-wider">
+          <span className="text-[10px] font-semibold text-ink-600 uppercase tracking-wider">
             {labelFor(index)}
           </span>
           {ref.kind === "image" ? (
@@ -386,16 +386,16 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
               <img
                 src={img.url}
                 alt={img.filename}
-                className="w-24 h-24 object-cover rounded-lg"
+                className="w-24 h-24 object-cover rounded-xl"
               />
             ) : (
-              <span className="w-24 h-24 rounded-lg bg-ink-900 border border-dashed border-ink-600 flex items-center justify-center text-tiffany-400">
+              <span className="w-24 h-24 rounded-xl bg-ink-50 border border-dashed border-ink-200 flex items-center justify-center text-tiffany-600">
                 {ImageIcon}
               </span>
             )
           ) : ref.kind === "video" ? (
             video ? (
-              <div className="w-24 rounded-lg overflow-hidden">
+              <div className="w-24 rounded-xl overflow-hidden">
                 <VideoThumb
                   src={video.url}
                   onSelect={() => setActiveSlot(index)}
@@ -408,22 +408,22 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
                 />
               </div>
             ) : (
-              <span className="w-24 h-24 rounded-lg bg-ink-900 border border-dashed border-ink-600 flex items-center justify-center text-tiffany-400">
+              <span className="w-24 h-24 rounded-xl bg-ink-50 border border-dashed border-ink-200 flex items-center justify-center text-tiffany-600">
                 {VideoIcon}
               </span>
             )
           ) : (
             <span
-              className={`w-24 h-24 rounded-lg border flex items-center justify-center ${
+              className={`w-24 h-24 rounded-xl border flex items-center justify-center ${
                 audio
-                  ? "bg-ink-700 border-ink-600 text-ink-300"
-                  : "bg-ink-900 border-dashed border-ink-600 text-tiffany-400"
+                  ? "bg-ink-100 border-ink-200 text-ink-600"
+                  : "bg-ink-50 border-dashed border-ink-200 text-tiffany-600"
               }`}
             >
               {AudioIcon}
             </span>
           )}
-          <span className="text-[10px] text-ink-300 truncate max-w-[100px]">
+          <span className="text-[10px] text-ink-600 truncate max-w-[100px]">
             {ref.filename || "Not selected"}
           </span>
         </div>
@@ -433,7 +433,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
             setActiveSlot((s) => Math.min(s, store.refs.length - 2));
           }}
           disabled={store.generating}
-          className="absolute top-1 right-1 flex items-center justify-center w-5 h-5 rounded-full bg-ink-700 text-ink-300 hover:bg-red-500/20 hover:text-red-400 transition-colors disabled:opacity-50"
+          className="absolute top-1 right-1 flex items-center justify-center w-5 h-5 rounded-full bg-ink-100 text-ink-600 hover:bg-red-100 hover:text-red-600 transition-colors disabled:opacity-50"
           title="Remove reference"
         >
           {CloseIcon}
@@ -443,21 +443,21 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
   };
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-7">
       <div className="flex items-center gap-2">
         {BookIcon}
-        <h2 className="text-base font-semibold text-ink-50">
+        <h2 className="text-base font-semibold text-ink-900">
           References to Video
         </h2>
       </div>
 
       {/* Model download */}
-      <div className="border border-ink-600 rounded-xl p-4 flex flex-col gap-3 bg-ink-900/40">
+      <div className="border border-ink-200 rounded-2xl p-5 flex flex-col gap-3 bg-ink-100/60">
         <div className="flex flex-col gap-1">
-          <span className="text-sm font-semibold text-ink-100">
+          <span className="text-sm font-semibold text-ink-800">
             AI Model
           </span>
-          <span className="text-xs text-ink-300">
+          <span className="text-xs text-ink-600">
             appautomaton/minimax-h3-base-8bit-mlx
           </span>
         </div>
@@ -465,7 +465,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
         <button
           onClick={() => store.downloadModel()}
           disabled={store.downloading || store.downloaded}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl bg-tiffany-500 hover:bg-tiffany-400 disabled:bg-ink-700 disabled:text-tiffany-400 text-ink-950 transition-colors"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-2xl bg-tiffany-500 hover:bg-tiffany-600 disabled:bg-ink-100 disabled:text-tiffany-600 text-ink-950 transition-colors"
         >
           {store.downloading
             ? SpinnerIcon
@@ -479,11 +479,11 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
               : "Download Model"}
         </button>
 
-        {store.error && <p className="text-xs text-red-400">{store.error}</p>}
+        {store.error && <p className="text-xs text-red-600">{store.error}</p>}
 
         {store.logs.length > 0 && (
-          <div className="p-2 bg-ink-900 border border-ink-600 rounded-lg max-h-40 overflow-y-auto">
-            <pre className="text-[10px] text-ink-300 font-mono whitespace-pre-wrap">
+          <div className="p-2 bg-ink-50 border border-ink-200 rounded-xl max-h-40 overflow-y-auto">
+            <pre className="text-[10px] text-ink-600 font-mono whitespace-pre-wrap">
               {store.logs.join("")}
             </pre>
           </div>
@@ -492,7 +492,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
 
       {/* Prompt */}
       <div>
-        <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+        <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
           Prompt
         </label>
         <textarea
@@ -501,19 +501,19 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
           placeholder="Describe the scene using [image1], [video1] placeholders..."
           rows={3}
           disabled={store.generating}
-          className="w-full px-4 py-3 bg-ink-900 border border-ink-600 rounded-xl text-ink-50 text-sm placeholder-ink-400/40 focus:outline-none focus:border-tiffany-400 focus:ring-2 focus:ring-tiffany-400/30 transition-all resize-none disabled:opacity-50"
+          className="w-full px-4 py-3 bg-ink-50 border border-ink-200 rounded-2xl text-ink-900 text-sm placeholder-ink-500/40 focus:outline-none focus:border-tiffany-500 focus:ring-2 focus:ring-tiffany-500/30 transition-all resize-none disabled:opacity-50"
         />
-        <p className="text-xs text-ink-300/50 mt-1.5">
+        <p className="text-xs text-ink-600/50 mt-1.5">
           Use{" "}
-          <code className="text-[11px] bg-ink-700 px-1 rounded">
+          <code className="text-[11px] bg-ink-100 px-1 rounded">
             [image1]
           </code>
           ,{" "}
-          <code className="text-[11px] bg-ink-700 px-1 rounded">
+          <code className="text-[11px] bg-ink-100 px-1 rounded">
             [image2]
           </code>
           ,{" "}
-          <code className="text-[11px] bg-ink-700 px-1 rounded">
+          <code className="text-[11px] bg-ink-100 px-1 rounded">
             [video1]
           </code>{" "}
           … in order to reference the media below.
@@ -522,7 +522,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
 
       {/* References */}
       <div>
-        <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+        <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
           References
         </label>
 
@@ -537,7 +537,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
               setActiveSlot(store.refs.length);
             }}
             disabled={store.generating}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400 disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border transition-all bg-white border-ink-200 text-ink-600 hover:border-ink-300 disabled:opacity-50"
           >
             {PlusIcon}
             Add Image
@@ -548,7 +548,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
               setActiveSlot(store.refs.length);
             }}
             disabled={store.generating}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400 disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border transition-all bg-white border-ink-200 text-ink-600 hover:border-ink-300 disabled:opacity-50"
           >
             {PlusIcon}
             Add Video
@@ -559,7 +559,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
               setActiveSlot(store.refs.length);
             }}
             disabled={store.generating}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400 disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border transition-all bg-white border-ink-200 text-ink-600 hover:border-ink-300 disabled:opacity-50"
           >
             {PlusIcon}
             Add Audio
@@ -576,15 +576,15 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
                   accept="image/*"
                   onChange={handleImageUpload}
                   disabled={store.generating}
-                  className="flex-1 text-sm text-ink-200 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-ink-700 file:text-ink-200 hover:file:bg-ink-600 file:cursor-pointer file:transition-colors disabled:opacity-50"
+                  className="flex-1 text-sm text-ink-700 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-ink-100 file:text-ink-700 hover:file:bg-ink-200 file:cursor-pointer file:transition-colors disabled:opacity-50"
                 />
               </div>
               {genStore.projectImagesLoading ? (
-                <p className="text-xs text-ink-400 italic py-4 text-center">
+                <p className="text-xs text-ink-500 italic py-4 text-center">
                   Loading images...
                 </p>
               ) : genStore.projectImages.length === 0 ? (
-                <p className="text-xs text-ink-400 italic py-4 text-center border border-dashed border-ink-600 rounded-xl">
+                <p className="text-xs text-ink-500 italic py-4 text-center border border-dashed border-ink-200 rounded-2xl">
                   No images yet. Upload one above.
                 </p>
               ) : (
@@ -598,10 +598,10 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
                           store.setRefFilename(activeSlot, img.filename)
                         }
                         disabled={store.generating}
-                        className={`relative rounded-lg border-2 transition-all ${
+                        className={`relative rounded-xl border-2 transition-all ${
                           isSelected
-                            ? "border-tiffany-400 ring-2 ring-tiffany-400/40"
-                            : "border-ink-600 hover:border-ink-400"
+                            ? "border-tiffany-500 ring-2 ring-tiffany-500/40"
+                            : "border-ink-200 hover:border-ink-300"
                         } disabled:opacity-50`}
                       >
                         <img
@@ -609,7 +609,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
                           alt={img.filename}
                           className="aspect-square object-cover object-center"
                         />
-                        <span className="absolute bottom-0 left-0 right-0 bg-ink-800/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-ink-200 truncate text-center">
+                        <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-ink-700 truncate text-center">
                           {img.filename}
                         </span>
                       </button>
@@ -627,15 +627,15 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
                   accept="video/*"
                   onChange={handleVideoUpload}
                   disabled={store.generating}
-                  className="flex-1 text-sm text-ink-200 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-ink-700 file:text-ink-200 hover:file:bg-ink-600 file:cursor-pointer file:transition-colors disabled:opacity-50"
+                  className="flex-1 text-sm text-ink-700 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-ink-100 file:text-ink-700 hover:file:bg-ink-200 file:cursor-pointer file:transition-colors disabled:opacity-50"
                 />
               </div>
               {genStore.projectVideosLoading ? (
-                <p className="text-xs text-ink-400 italic py-4 text-center">
+                <p className="text-xs text-ink-500 italic py-4 text-center">
                   Loading videos...
                 </p>
               ) : genStore.projectVideos.length === 0 ? (
-                <p className="text-xs text-ink-400 italic py-4 text-center border border-dashed border-ink-600 rounded-xl">
+                <p className="text-xs text-ink-500 italic py-4 text-center border border-dashed border-ink-200 rounded-2xl">
                   No videos yet. Upload one above.
                 </p>
               ) : (
@@ -645,10 +645,10 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
                     return (
                       <div
                         key={video.filename}
-                        className={`relative rounded-lg border-2 overflow-hidden transition-all ${
+                        className={`relative rounded-xl border-2 overflow-hidden transition-all ${
                           isSelected
-                            ? "border-tiffany-400 ring-2 ring-tiffany-400/40"
-                            : "border-ink-600 hover:border-ink-400"
+                            ? "border-tiffany-500 ring-2 ring-tiffany-500/40"
+                            : "border-ink-200 hover:border-ink-300"
                         }`}
                       >
                         <VideoThumb
@@ -665,7 +665,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
                             })
                           }
                         />
-                        <span className="absolute bottom-0 left-0 right-0 bg-ink-800/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-ink-200 truncate text-center pointer-events-none">
+                        <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-ink-700 truncate text-center pointer-events-none">
                           {video.filename}
                         </span>
                       </div>
@@ -683,15 +683,15 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
                   accept="audio/*"
                   onChange={handleAudioUpload}
                   disabled={store.generating}
-                  className="flex-1 text-sm text-ink-200 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-ink-700 file:text-ink-200 hover:file:bg-ink-600 file:cursor-pointer file:transition-colors disabled:opacity-50"
+                  className="flex-1 text-sm text-ink-700 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-ink-100 file:text-ink-700 hover:file:bg-ink-200 file:cursor-pointer file:transition-colors disabled:opacity-50"
                 />
               </div>
               {genStore.projectAudiosLoading ? (
-                <p className="text-xs text-ink-400 italic py-4 text-center">
+                <p className="text-xs text-ink-500 italic py-4 text-center">
                   Loading audio...
                 </p>
               ) : genStore.projectAudios.length === 0 ? (
-                <p className="text-xs text-ink-400 italic py-4 text-center border border-dashed border-ink-600 rounded-xl">
+                <p className="text-xs text-ink-500 italic py-4 text-center border border-dashed border-ink-200 rounded-2xl">
                   No audio yet. Upload one above.
                 </p>
               ) : (
@@ -705,16 +705,16 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
                           store.setRefFilename(activeSlot, audio.filename)
                         }
                         disabled={store.generating}
-                        className={`relative flex items-center gap-2 rounded-lg border-2 px-3 py-2 transition-all text-left ${
+                        className={`relative flex items-center gap-2 rounded-xl border-2 px-3 py-2 transition-all text-left ${
                           isSelected
-                            ? "border-tiffany-400 ring-2 ring-tiffany-400/40"
-                            : "border-ink-600 hover:border-ink-400"
+                            ? "border-tiffany-500 ring-2 ring-tiffany-500/40"
+                            : "border-ink-200 hover:border-ink-300"
                         } disabled:opacity-50`}
                       >
-                        <span className="text-tiffany-400 shrink-0">
+                        <span className="text-tiffany-600 shrink-0">
                           {AudioIcon}
                         </span>
-                        <span className="flex-1 text-[11px] text-ink-200 truncate">
+                        <span className="flex-1 text-[11px] text-ink-700 truncate">
                           {audio.filename}
                         </span>
                       </button>
@@ -725,7 +725,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
             </>
           )
         ) : (
-          <p className="text-xs text-ink-400 italic py-4 text-center border border-dashed border-ink-600 rounded-xl">
+          <p className="text-xs text-ink-500 italic py-4 text-center border border-dashed border-ink-200 rounded-2xl">
             Add a reference above to get started.
           </p>
         )}
@@ -733,7 +733,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
 
       {/* Parameters */}
       <div>
-        <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+        <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
           Parameters
         </label>
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
@@ -747,7 +747,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
             ] as const
           ).map((p) => (
             <div key={p.label} className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-ink-200">
+              <label className="text-xs font-medium text-ink-700">
                 {p.label}
               </label>
               <input
@@ -756,7 +756,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
                 onChange={(e) => p.set(Number(e.target.value))}
                 disabled={store.generating}
                 step={0.5}
-                className="px-3 py-2 bg-ink-900 border border-ink-600 rounded-lg text-ink-50 text-sm focus:outline-none focus:border-tiffany-400 focus:ring-2 focus:ring-tiffany-400/30 transition-all disabled:opacity-50"
+                className="px-3 py-2 bg-ink-50 border border-ink-200 rounded-xl text-ink-900 text-sm focus:outline-none focus:border-tiffany-500 focus:ring-2 focus:ring-tiffany-500/30 transition-all disabled:opacity-50"
               />
             </div>
           ))}
@@ -766,9 +766,9 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
       {/* Generate / Stop */}
       {store.generating ? (
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 flex-1 px-4 py-3 bg-ink-900 border border-ink-600 rounded-xl">
+          <div className="flex items-center gap-2 flex-1 px-4 py-3 bg-ink-50 border border-ink-200 rounded-2xl">
             <svg
-              className="animate-spin text-tiffany-400"
+              className="animate-spin text-tiffany-600"
               width="16"
               height="16"
               viewBox="0 0 24 24"
@@ -779,13 +779,13 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
               <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
               <path d="M12 2a10 10 0 0 1 10 10" strokeOpacity="0.75" />
             </svg>
-            <span className="text-sm font-medium text-ink-200">
+            <span className="text-sm font-medium text-ink-700">
               Generating...
             </span>
           </div>
           <button
             onClick={() => store.cancelGenerate()}
-            className="flex items-center justify-center gap-1.5 px-5 py-3 bg-red-500 hover:bg-red-500 active:bg-red-600 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
+            className="flex items-center justify-center gap-1.5 px-5 py-3 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-2xl transition-all duration-150 shadow-sm"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <rect x="4" y="4" width="16" height="16" rx="2" />
@@ -801,21 +801,21 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
             store.refs.every((r) => !r.filename) ||
             !store.downloaded
           }
-          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-500 hover:bg-tiffany-400 active:bg-tiffany-600 disabled:bg-ink-600 disabled:text-ink-400 text-ink-950 text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
+          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-500 hover:bg-tiffany-600 active:bg-tiffany-700 disabled:bg-ink-200 disabled:text-ink-500 text-ink-950 text-sm font-semibold rounded-2xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
         >
           {SparkleIcon}
           Generate Video
         </button>
       )}
       {!store.downloaded && (
-        <p className="text-xs text-tiffany-400 -mt-2">
+        <p className="text-xs text-tiffany-600 -mt-2">
           Download the AI model above before generating.
         </p>
       )}
 
       {/* Error */}
       {store.genError && (
-        <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
+        <div className="p-5 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-sm">
           {store.genError}
         </div>
       )}
@@ -824,12 +824,12 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
       {store.genLogs.length > 0 && (
         <div
           ref={logRef}
-          className="p-4 bg-ink-900 border border-ink-600 rounded-xl max-h-40 overflow-y-auto"
+          className="p-5 bg-ink-50 border border-ink-200 rounded-2xl max-h-40 overflow-y-auto"
         >
-          <p className="text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+          <p className="text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
             Logs
           </p>
-          <pre className="text-xs text-ink-300 font-mono whitespace-pre-wrap">
+          <pre className="text-xs text-ink-600 font-mono whitespace-pre-wrap">
             {store.genLogs.join("")}
           </pre>
         </div>
@@ -838,10 +838,10 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
       {/* Result */}
       {store.result && (
         <div>
-          <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+          <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
             Generated Video
           </label>
-          <div className="relative rounded-xl overflow-hidden border border-ink-600 shadow-card bg-black w-full max-w-[500px]">
+          <div className="relative rounded-2xl overflow-hidden border border-ink-200 shadow-card bg-black w-full max-w-[500px]">
             <video src={store.result} controls className="w-full h-auto" />
           </div>
         </div>
@@ -850,7 +850,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
       {/* ===== Video Preview Modal ===== */}
       {previewVideo && (
         <div
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6"
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-8"
           onClick={() => setPreviewVideo(null)}
         >
           <div
@@ -861,14 +861,14 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
               src={previewVideo.url}
               controls
               autoPlay
-              className="max-w-full max-h-[80vh] rounded-xl shadow-2xl bg-black"
+              className="max-w-full max-h-[80vh] rounded-2xl shadow-2xl bg-black"
             />
             <span className="text-xs text-white/70 truncate max-w-full">
               {previewVideo.filename}
             </span>
             <button
               onClick={() => setPreviewVideo(null)}
-              className="absolute -top-3 -right-3 flex items-center justify-center w-9 h-9 bg-ink-800 text-ink-200 rounded-full shadow-lg hover:bg-ink-600 transition-colors"
+              className="absolute -top-3 -right-3 flex items-center justify-center w-9 h-9 bg-white text-ink-700 rounded-full shadow-lg hover:bg-ink-200 transition-colors"
               title="Close (Esc)"
             >
               {CloseIcon}

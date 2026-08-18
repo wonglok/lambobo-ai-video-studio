@@ -77,13 +77,13 @@ function CodeBlock({ code, children }: CodeBlockProps) {
     <div className="group relative my-2">
       <button
         onClick={handleCopy}
-        className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-md border border-tiffany-600 bg-ink-700/80 px-1.5 py-1 text-[10px] font-medium text-ink-100 opacity-0 transition-opacity hover:bg-tiffany-400 focus:opacity-100 group-hover:opacity-100"
+        className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-lg border border-tiffany-500 bg-ink-200/80 px-1.5 py-1 text-[10px] font-medium text-ink-800 opacity-0 transition-opacity hover:bg-tiffany-600 focus:opacity-100 group-hover:opacity-100"
         title={copied ? "Copied" : "Copy code"}
       >
         {copied ? CheckIcon : CopyIcon}
         {copied ? "Copied" : "Copy"}
       </button>
-      <pre className="overflow-x-auto rounded-lg bg-ink-950/95 p-3 pr-16 text-xs leading-relaxed text-ink-100">
+      <pre className="overflow-x-auto rounded-xl bg-ink-100/95 p-4 pr-16 text-xs leading-relaxed text-ink-800">
         {children}
       </pre>
     </div>
@@ -134,7 +134,7 @@ function DurationInput({ initialValue }: { initialValue: string }) {
       type="text"
       value={value}
       onChange={(e) => setValue(e.target.value)}
-      className="w-14 rounded-md border border-ink-600 bg-ink-800 px-1.5 py-0.5 text-xs text-ink-50 focus:outline-none focus:border-tiffany-400 focus:ring-2 focus:ring-tiffany-400/30"
+      className="w-14 rounded-lg border border-ink-200 bg-white px-1.5 py-0.5 text-xs text-ink-900 focus:outline-none focus:border-tiffany-500 focus:ring-2 focus:ring-tiffany-500/30"
     />
   );
 }
@@ -145,14 +145,14 @@ function StoryTable({ node }: { node?: HastNode }) {
   const rows = getBodyRows(node);
 
   return (
-    <div className="my-2 overflow-x-auto rounded-lg border border-ink-600">
+    <div className="my-2 overflow-x-auto rounded-xl border border-ink-200">
       <table className="w-full border-collapse text-xs">
-        <thead className="bg-ink-900">
-          <tr className="border-b border-ink-700">
+        <thead className="bg-ink-50">
+          <tr className="border-b border-ink-200">
             {headers.map((th, i) => (
               <th
                 key={i}
-                className="whitespace-nowrap border border-ink-600 px-2 py-1 text-left font-semibold text-ink-200"
+                className="whitespace-nowrap border border-ink-200 px-2 py-1 text-left font-semibold text-ink-700"
               >
                 {hastText(th)}
               </th>
@@ -161,11 +161,11 @@ function StoryTable({ node }: { node?: HastNode }) {
         </thead>
         <tbody>
           {rows.map((cells, ri) => (
-            <tr key={ri} className="border-b border-ink-700">
+            <tr key={ri} className="border-b border-ink-200">
               {cells.map((cell, ci) => (
                 <td
                   key={ci}
-                  className="border border-ink-600 px-2 py-1 align-top text-ink-100"
+                  className="border border-ink-200 px-2 py-1 align-top text-ink-800"
                 >
                   {ci === durationIdx ? (
                     <DurationInput initialValue={hastText(cell).trim()} />
@@ -187,7 +187,7 @@ const components: Components = {
     <p className="my-1 leading-relaxed first:mt-0 last:mb-0">{children}</p>
   ),
   strong: ({ children }) => (
-    <strong className="font-semibold text-ink-50">{children}</strong>
+    <strong className="font-semibold text-ink-900">{children}</strong>
   ),
   em: ({ children }) => <em className="italic">{children}</em>,
   a: ({ href, children }) => (
@@ -195,7 +195,7 @@ const components: Components = {
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="text-ink-300 underline hover:text-ink-100"
+      className="text-ink-600 underline hover:text-ink-800"
     >
       {children}
     </a>
@@ -208,34 +208,34 @@ const components: Components = {
   ),
   li: ({ children }) => <li className="leading-relaxed">{children}</li>,
   blockquote: ({ children }) => (
-    <blockquote className="my-1 border-l-2 border-ink-500 pl-3 italic text-ink-300">
+    <blockquote className="my-1 border-l-2 border-ink-300 pl-3 italic text-ink-600">
       {children}
     </blockquote>
   ),
-  hr: () => <hr className="my-2 border-ink-600" />,
+  hr: () => <hr className="my-2 border-ink-200" />,
   h1: ({ children }) => (
-    <h1 className="mb-1 mt-2 text-base font-bold text-ink-50">{children}</h1>
+    <h1 className="mb-1 mt-2 text-base font-bold text-ink-900">{children}</h1>
   ),
   h2: ({ children }) => (
-    <h2 className="mb-1 mt-2 text-sm font-bold text-ink-50">{children}</h2>
+    <h2 className="mb-1 mt-2 text-sm font-bold text-ink-900">{children}</h2>
   ),
   h3: ({ children }) => (
-    <h3 className="mb-1 mt-2 text-[13px] font-semibold text-ink-100">
+    <h3 className="mb-1 mt-2 text-[13px] font-semibold text-ink-800">
       {children}
     </h3>
   ),
   h4: ({ children }) => (
-    <h4 className="mb-1 mt-1.5 text-xs font-semibold text-ink-100">
+    <h4 className="mb-1 mt-1.5 text-xs font-semibold text-ink-800">
       {children}
     </h4>
   ),
   h5: ({ children }) => (
-    <h5 className="mb-0.5 mt-1 text-xs font-medium text-ink-200">
+    <h5 className="mb-0.5 mt-1 text-xs font-medium text-ink-700">
       {children}
     </h5>
   ),
   h6: ({ children }) => (
-    <h6 className="mb-0.5 mt-1 text-xs font-medium text-ink-200">
+    <h6 className="mb-0.5 mt-1 text-xs font-medium text-ink-700">
       {children}
     </h6>
   ),
@@ -244,22 +244,22 @@ const components: Components = {
       return <StoryTable node={node} />;
     }
     return (
-      <div className="my-2 overflow-x-auto rounded-lg border border-ink-600">
+      <div className="my-2 overflow-x-auto rounded-xl border border-ink-200">
         <table className="w-full border-collapse text-xs">{children}</table>
       </div>
     );
   },
-  thead: ({ children }) => <thead className="bg-ink-900">{children}</thead>,
+  thead: ({ children }) => <thead className="bg-ink-50">{children}</thead>,
   tr: ({ children }) => (
-    <tr className="border-b border-ink-700">{children}</tr>
+    <tr className="border-b border-ink-200">{children}</tr>
   ),
   th: ({ children }) => (
-    <th className="whitespace-nowrap border border-ink-600 px-2 py-1 text-left font-semibold text-ink-200">
+    <th className="whitespace-nowrap border border-ink-200 px-2 py-1 text-left font-semibold text-ink-700">
       {children}
     </th>
   ),
   td: ({ children }) => (
-    <td className="border border-ink-600 px-2 py-1 align-top text-ink-100">
+    <td className="border border-ink-200 px-2 py-1 align-top text-ink-800">
       {children}
     </td>
   ),
@@ -272,7 +272,7 @@ const components: Components = {
       return <code className="font-mono">{children}</code>;
     }
     return (
-      <code className="rounded bg-ink-700 px-1.5 py-0.5 font-mono text-[11px] text-ink-200">
+      <code className="rounded bg-ink-100 px-1.5 py-0.5 font-mono text-[11px] text-ink-700">
         {children}
       </code>
     );

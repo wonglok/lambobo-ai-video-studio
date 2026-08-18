@@ -183,17 +183,17 @@ export default function GenerateVideoTab({ projectId }: Props) {
   );
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-7">
       <div className="flex items-center gap-2">
-        <span className="text-tiffany-400">{VideoIcon}</span>
-        <h2 className="text-base font-semibold text-ink-50">
+        <span className="text-tiffany-600">{VideoIcon}</span>
+        <h2 className="text-base font-semibold text-ink-900">
           Scene Video Generation
         </h2>
       </div>
 
       {/* CSV upload for batch generation */}
       <div>
-        <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+        <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
           CSV Batch Data
         </label>
         <div className="flex items-center gap-2">
@@ -203,13 +203,13 @@ export default function GenerateVideoTab({ projectId }: Props) {
             accept=".csv"
             onChange={handleCsvSelect}
             disabled={store.batchRunning}
-            className="flex-1 text-sm text-ink-200 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-ink-700 file:text-ink-200 hover:file:bg-ink-600 file:cursor-pointer file:transition-colors disabled:opacity-50"
+            className="flex-1 text-sm text-ink-700 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-ink-100 file:text-ink-700 hover:file:bg-ink-200 file:cursor-pointer file:transition-colors disabled:opacity-50"
           />
           {store.csvFilename && (
             <button
               onClick={() => store.clearCsvData()}
               disabled={store.batchRunning}
-              className="px-3 py-2 text-xs font-medium text-red-400 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+              className="px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-50"
             >
               Clear
             </button>
@@ -231,24 +231,24 @@ export default function GenerateVideoTab({ projectId }: Props) {
             return `data:text/csv;charset=utf-8,${encodeURIComponent(csv.trim())}`;
           })()}
           download="bible.csv"
-          className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-ink-300 hover:text-ink-50 transition-colors"
+          className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-ink-600 hover:text-ink-900 transition-colors"
         >
           {DownloadIcon}
           Download example CSV file
         </a>
         {/*  */}
         {store.csvFilename && (
-          <div className="mt-2 border border-ink-600 rounded-xl overflow-hidden">
+          <div className="mt-2 border border-ink-200 rounded-2xl overflow-hidden">
             {/* CSV header */}
-            <div className="flex items-center justify-between px-4 py-2.5 bg-ink-900 border-b border-ink-600">
-              <div className="flex items-center gap-2 text-xs text-ink-200">
+            <div className="flex items-center justify-between px-4 py-2.5 bg-ink-50 border-b border-ink-200">
+              <div className="flex items-center gap-2 text-xs text-ink-700">
                 {CsvIcon}
                 <span className="font-medium">{store.csvFilename}</span>
-                <span className="text-ink-300/60">
+                <span className="text-ink-600/60">
                   ({store.csvRows.length} rows, {store.csvColumns.length}{" "}
                   columns)
                 </span>
-                <span className="text-ink-300/60">
+                <span className="text-ink-600/60">
                   — {store.csvSelectedIndices.size} selected
                 </span>
               </div>
@@ -256,14 +256,14 @@ export default function GenerateVideoTab({ projectId }: Props) {
                 <button
                   onClick={() => store.selectAllCsvRows()}
                   disabled={store.batchRunning}
-                  className="px-2 py-1 text-[10px] font-medium text-ink-300 hover:bg-ink-600 rounded transition-colors disabled:opacity-50"
+                  className="px-2 py-1 text-[10px] font-medium text-ink-600 hover:bg-ink-200 rounded transition-colors disabled:opacity-50"
                 >
                   Select All
                 </button>
                 <button
                   onClick={() => store.deselectAllCsvRows()}
                   disabled={store.batchRunning}
-                  className="px-2 py-1 text-[10px] font-medium text-ink-300 hover:bg-ink-600 rounded transition-colors disabled:opacity-50"
+                  className="px-2 py-1 text-[10px] font-medium text-ink-600 hover:bg-ink-200 rounded transition-colors disabled:opacity-50"
                 >
                   Deselect All
                 </button>
@@ -275,17 +275,17 @@ export default function GenerateVideoTab({ projectId }: Props) {
               <table className="w-full text-xs">
                 {/* Column headers */}
                 <thead>
-                  <tr className="bg-ink-900/50 border-b border-ink-700">
-                    <th className="sticky top-0 bg-ink-900 px-3 py-2 text-left font-semibold text-ink-200 w-10">
+                  <tr className="bg-ink-100/70 border-b border-ink-200">
+                    <th className="sticky top-0 bg-ink-50 px-3 py-2 text-left font-semibold text-ink-700 w-10">
                       <span className="sr-only">Select</span>
                     </th>
                     {store.csvColumns.map((col) => (
                       <th
                         key={col}
-                        className="sticky top-0 bg-ink-900 px-3 py-2 text-left font-semibold text-ink-200 whitespace-nowrap"
+                        className="sticky top-0 bg-ink-50 px-3 py-2 text-left font-semibold text-ink-700 whitespace-nowrap"
                       >
                         {col}
-                        <span className="ml-1 text-[10px] font-normal text-ink-400">{`{{${col}}}`}</span>
+                        <span className="ml-1 text-[10px] font-normal text-ink-500">{`{{${col}}}`}</span>
                       </th>
                     ))}
                   </tr>
@@ -296,10 +296,10 @@ export default function GenerateVideoTab({ projectId }: Props) {
                     return (
                       <tr
                         key={rowIdx}
-                        className={`border-b border-ink-700 transition-colors ${
+                        className={`border-b border-ink-200 transition-colors ${
                           isSelected
-                            ? "bg-ink-800"
-                            : "bg-ink-900/30 opacity-60"
+                            ? "bg-white"
+                            : "bg-ink-100/50 opacity-60"
                         }`}
                       >
                         <td className="px-3 py-1.5">
@@ -308,7 +308,7 @@ export default function GenerateVideoTab({ projectId }: Props) {
                             checked={isSelected}
                             onChange={() => store.toggleCsvRow(rowIdx)}
                             disabled={store.batchRunning}
-                            className="w-3.5 h-3.5 rounded border-ink-500 text-ink-300 focus:ring-tiffany-400 cursor-pointer disabled:opacity-50"
+                            className="w-3.5 h-3.5 rounded border-ink-300 text-ink-600 focus:ring-tiffany-500 cursor-pointer disabled:opacity-50"
                           />
                         </td>
                         {store.csvColumns.map((col) => (
@@ -320,7 +320,7 @@ export default function GenerateVideoTab({ projectId }: Props) {
                                 store.updateCsvCell(rowIdx, col, e.target.value)
                               }
                               disabled={store.batchRunning}
-                              className="w-full min-w-[120px] px-2 py-1 bg-transparent border border-transparent hover:border-ink-500 focus:border-tiffany-400 focus:outline-none focus:ring-1 focus:ring-tiffany-400/30 rounded text-ink-100 transition-colors disabled:opacity-50"
+                              className="w-full min-w-[120px] px-2 py-1 bg-transparent border border-transparent hover:border-ink-400 focus:border-tiffany-500 focus:outline-none focus:ring-1 focus:ring-tiffany-500/30 rounded text-ink-800 transition-colors disabled:opacity-50"
                             />
                           </td>
                         ))}
@@ -333,13 +333,13 @@ export default function GenerateVideoTab({ projectId }: Props) {
           </div>
         )}
         {!store.csvFilename && (
-          <p className="text-xs text-ink-300/50 mt-1.5">
+          <p className="text-xs text-ink-600/50 mt-1.5">
             Upload a CSV with a{" "}
-            <code className="text-[11px] bg-ink-700 px-1 rounded">
+            <code className="text-[11px] bg-ink-100 px-1 rounded">
               name
             </code>{" "}
             column to batch-generate many videos. Use{" "}
-            <code className="text-[11px] bg-ink-700 px-1 rounded">{`{{column}}`}</code>{" "}
+            <code className="text-[11px] bg-ink-100 px-1 rounded">{`{{column}}`}</code>{" "}
             in your prompt as a template.
           </p>
         )}
@@ -347,7 +347,7 @@ export default function GenerateVideoTab({ projectId }: Props) {
       {/*  */}
       {/* Image upload */}
       <div>
-        <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+        <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
           Input Image
         </label>
         <input
@@ -355,16 +355,16 @@ export default function GenerateVideoTab({ projectId }: Props) {
           type="file"
           accept="image/*"
           onChange={handleFileSelect}
-          className="w-full text-sm text-ink-200 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-ink-700 file:text-ink-200 hover:file:bg-ink-600 file:cursor-pointer file:transition-colors"
+          className="w-full text-sm text-ink-700 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-ink-100 file:text-ink-700 hover:file:bg-ink-200 file:cursor-pointer file:transition-colors"
         />
-        <p className="text-xs text-ink-300/50 mt-1.5">
+        <p className="text-xs text-ink-600/50 mt-1.5">
           Upload an image to animate.
         </p>
 
         <a
           href={`/lambobo.png.zip`}
           download="lambobo.zip"
-          className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-ink-300 hover:text-ink-50 transition-colors"
+          className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-ink-600 hover:text-ink-900 transition-colors"
         >
           {DownloadIcon}
           Download example image file
@@ -372,20 +372,20 @@ export default function GenerateVideoTab({ projectId }: Props) {
         <br />
 
         {store.uploading && (
-          <p className="text-xs text-ink-300 mt-1">Uploading...</p>
+          <p className="text-xs text-ink-600 mt-1">Uploading...</p>
         )}
         {store.uploadError && (
-          <p className="text-xs text-red-400 mt-1">{store.uploadError}</p>
+          <p className="text-xs text-red-600 mt-1">{store.uploadError}</p>
         )}
         {store.uploadedImageUrl && (
-          <div className="mt-3 rounded-xl overflow-hidden border border-ink-600 bg-ink-700  inline-block">
+          <div className="mt-3 rounded-2xl overflow-hidden border border-ink-200 bg-ink-100  inline-block">
             <img
               src={store.uploadedImageUrl}
               alt={store.uploadedImageFilename || "Uploaded image"}
               className="w-full h-32 object-cover"
             />
             {store.uploadedImageFilename && (
-              <p className="px-3 py-1.5 text-xs text-ink-300 truncate">
+              <p className="px-3 py-1.5 text-xs text-ink-600 truncate">
                 {store.uploadedImageFilename}
               </p>
             )}
@@ -395,15 +395,15 @@ export default function GenerateVideoTab({ projectId }: Props) {
 
       {/* Project images picker */}
       <div>
-        <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+        <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
           Project Images
         </label>
         {store.projectImagesLoading ? (
-          <p className="text-xs text-ink-400 italic py-4 text-center">
+          <p className="text-xs text-ink-500 italic py-4 text-center">
             Loading images...
           </p>
         ) : store.projectImages.length === 0 ? (
-          <p className="text-xs text-ink-400 italic py-4 text-center border border-dashed border-ink-600 rounded-xl">
+          <p className="text-xs text-ink-500 italic py-4 text-center border border-dashed border-ink-200 rounded-2xl">
             No images yet. Upload one above.
           </p>
         ) : (
@@ -422,10 +422,10 @@ export default function GenerateVideoTab({ projectId }: Props) {
                   key={`${img.source}-${img.filename}`}
                   onClick={() => store.selectImage(img)}
                   disabled={store.video.generating}
-                  className={`relative rounded-lg border-2 transition-all ${
+                  className={`relative rounded-xl border-2 transition-all ${
                     isSelected
-                      ? "border-tiffany-400 ring-2 ring-tiffany-400/40"
-                      : "border-ink-600 hover:border-ink-400"
+                      ? "border-tiffany-500 ring-2 ring-tiffany-500/40"
+                      : "border-ink-200 hover:border-ink-300"
                   } disabled:opacity-50`}
                 >
                   <img
@@ -433,7 +433,7 @@ export default function GenerateVideoTab({ projectId }: Props) {
                     alt={img.filename}
                     className="aspect-square object-cover object-center"
                   />
-                  <span className="absolute bottom-0 left-0 right-0 bg-ink-800/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-ink-200 truncate text-center">
+                  <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-ink-700 truncate text-center">
                     {img.source === "generated" ? "✦ " : "↑ "}
                     {img.filename}
                   </span>
@@ -443,9 +443,9 @@ export default function GenerateVideoTab({ projectId }: Props) {
           </div>
         )}
         {store.selectedImage && (
-          <p className="text-xs text-ink-300/60 mt-1.5">
+          <p className="text-xs text-ink-600/60 mt-1.5">
             Selected:{" "}
-            <span className="font-medium text-ink-200">
+            <span className="font-medium text-ink-700">
               {store.selectedImage.filename}
             </span>
           </p>
@@ -454,10 +454,10 @@ export default function GenerateVideoTab({ projectId }: Props) {
 
       {/* Prompt */}
       <div>
-        <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+        <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
           Scene Prompt
           {store.csvColumns.length > 0 && (
-            <span className="ml-2 text-[10px] font-normal text-tiffany-400">
+            <span className="ml-2 text-[10px] font-normal text-tiffany-600">
               — template with {`{{column}}`} placeholders
             </span>
           )}
@@ -472,13 +472,13 @@ export default function GenerateVideoTab({ projectId }: Props) {
           }
           rows={4}
           disabled={store.video.generating || store.batchRunning}
-          className="w-full px-4 py-3 bg-ink-900 border border-ink-600 rounded-xl text-ink-50 text-sm placeholder-ink-400/40 focus:outline-none focus:border-tiffany-400 focus:ring-2 focus:ring-tiffany-400/30 transition-all resize-none disabled:opacity-50"
+          className="w-full px-4 py-3 bg-ink-50 border border-ink-200 rounded-2xl text-ink-900 text-sm placeholder-ink-500/40 focus:outline-none focus:border-tiffany-500 focus:ring-2 focus:ring-tiffany-500/30 transition-all resize-none disabled:opacity-50"
         />
       </div>
 
       {/* Duration selector */}
       <div>
-        <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+        <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
           Duration (seconds)
         </label>
         <div className="flex flex-wrap gap-2">
@@ -487,10 +487,10 @@ export default function GenerateVideoTab({ projectId }: Props) {
               key={d}
               onClick={() => store.setVideoDuration(d)}
               disabled={store.video.generating}
-              className={`px-4 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+              className={`px-4 py-1.5 text-xs font-medium rounded-xl border transition-all ${
                 store.video.duration === d
-                  ? "bg-ink-700 border-ink-500 text-ink-100"
-                  : "bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400"
+                  ? "bg-ink-100 border-ink-300 text-ink-800"
+                  : "bg-white border-ink-200 text-ink-600 hover:border-ink-300"
               } disabled:opacity-50`}
             >
               {d}s
@@ -501,7 +501,7 @@ export default function GenerateVideoTab({ projectId }: Props) {
 
       {/* Aspect Ratio selector */}
       <div>
-        <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+        <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
           Aspect Ratio
         </label>
         <div className="flex flex-wrap gap-2">
@@ -510,10 +510,10 @@ export default function GenerateVideoTab({ projectId }: Props) {
               key={ratio}
               onClick={() => store.setVideoAspectRatio(ratio)}
               disabled={store.video.generating}
-              className={`px-4 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+              className={`px-4 py-1.5 text-xs font-medium rounded-xl border transition-all ${
                 store.video.aspectRatio === ratio
-                  ? "bg-ink-700 border-ink-500 text-ink-100"
-                  : "bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400"
+                  ? "bg-ink-100 border-ink-300 text-ink-800"
+                  : "bg-white border-ink-200 text-ink-600 hover:border-ink-300"
               } disabled:opacity-50`}
             >
               {ratio}
@@ -524,7 +524,7 @@ export default function GenerateVideoTab({ projectId }: Props) {
 
       {/* Resolution selector */}
       <div>
-        <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+        <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
           Resolution
         </label>
         <div className="flex flex-wrap gap-2">
@@ -534,10 +534,10 @@ export default function GenerateVideoTab({ projectId }: Props) {
                 key={res}
                 onClick={() => store.setVideoResolution(res)}
                 disabled={store.video.generating}
-                className={`px-4 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                className={`px-4 py-1.5 text-xs font-medium rounded-xl border transition-all ${
                   store.video.resolution === res
-                    ? "bg-ink-700 border-ink-500 text-ink-100"
-                    : "bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400"
+                    ? "bg-ink-100 border-ink-300 text-ink-800"
+                    : "bg-white border-ink-200 text-ink-600 hover:border-ink-300"
                 } disabled:opacity-50`}
               >
                 {res}
@@ -549,7 +549,7 @@ export default function GenerateVideoTab({ projectId }: Props) {
 
       {/* Quality selector */}
       <div>
-        <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+        <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
           Quality
         </label>
         <div className="flex flex-wrap gap-2">
@@ -564,10 +564,10 @@ export default function GenerateVideoTab({ projectId }: Props) {
               key={q.value}
               onClick={() => store.setVideoMode(q.value)}
               disabled={store.video.generating}
-              className={`px-4 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+              className={`px-4 py-1.5 text-xs font-medium rounded-xl border transition-all ${
                 store.video.mode === q.value
-                  ? "bg-ink-700 border-ink-500 text-ink-100"
-                  : "bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400"
+                  ? "bg-ink-100 border-ink-300 text-ink-800"
+                  : "bg-white border-ink-200 text-ink-600 hover:border-ink-300"
               } disabled:opacity-50`}
             >
               {q.label}
@@ -578,7 +578,7 @@ export default function GenerateVideoTab({ projectId }: Props) {
 
       <button
         onClick={handleOpenVideoFolder}
-        className="flex items-center justify-center gap-2 w-full px-4 py-2.5 mb-3 bg-ink-900 hover:bg-ink-600 text-ink-200 text-sm font-medium rounded-xl border border-ink-600 transition-colors"
+        className="flex items-center justify-center gap-2 w-full px-4 py-2.5 mb-3 bg-ink-50 hover:bg-ink-200 text-ink-700 text-sm font-medium rounded-2xl border border-ink-200 transition-colors"
       >
         {FolderIcon}
         Open Output Folder
@@ -588,11 +588,11 @@ export default function GenerateVideoTab({ projectId }: Props) {
       {store.csvRows.length > 0 && (
         <div className="space-y-2">
           {store.batchProgress && (
-            <div className="flex items-center gap-3 p-3 bg-ink-900 border border-ink-600 rounded-xl">
-              <span className="text-xs font-medium text-ink-200">
+            <div className="flex items-center gap-3 p-4 bg-ink-50 border border-ink-200 rounded-2xl">
+              <span className="text-xs font-medium text-ink-700">
                 {store.batchRunning ? "Batch Progress" : "Batch Complete"}
               </span>
-              <div className="flex-1 h-2 bg-ink-600 rounded-full overflow-hidden">
+              <div className="flex-1 h-2 bg-ink-200 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-tiffany-500 rounded-full transition-all duration-300"
                   style={{
@@ -600,7 +600,7 @@ export default function GenerateVideoTab({ projectId }: Props) {
                   }}
                 />
               </div>
-              <span className="text-xs font-semibold text-ink-200 tabular-nums">
+              <span className="text-xs font-semibold text-ink-700 tabular-nums">
                 {store.batchProgress.current}/{store.batchProgress.total}
               </span>
             </div>
@@ -611,7 +611,7 @@ export default function GenerateVideoTab({ projectId }: Props) {
                 store.cancelBatch();
                 store.cancelGenerate();
               }}
-              className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-semibold rounded-xl border border-red-500/30 transition-colors"
+              className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-red-50 hover:bg-red-100 text-red-600 text-sm font-semibold rounded-2xl border border-red-200 transition-colors"
             >
               Cancel Batch
             </button>
@@ -623,7 +623,7 @@ export default function GenerateVideoTab({ projectId }: Props) {
                 !store.video.prompt.trim() ||
                 store.uploading
               }
-              className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-500 hover:bg-tiffany-400 active:bg-tiffany-600 disabled:bg-ink-600 disabled:text-ink-400 text-ink-950 text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
+              className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-500 hover:bg-tiffany-600 active:bg-tiffany-700 disabled:bg-ink-200 disabled:text-ink-500 text-ink-950 text-sm font-semibold rounded-2xl transition-all duration-150 shadow-sm"
             >
               {TableIcon}
               Generate Batch ({store.csvSelectedIndices.size} videos)
@@ -635,9 +635,9 @@ export default function GenerateVideoTab({ projectId }: Props) {
       {/* Generate / Stop button (video) */}
       {store.video.generating ? (
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 flex-1 px-4 py-3 bg-ink-900 border border-ink-600 rounded-xl">
+          <div className="flex items-center gap-2 flex-1 px-4 py-3 bg-ink-50 border border-ink-200 rounded-2xl">
             <svg
-              className="animate-spin text-tiffany-400"
+              className="animate-spin text-tiffany-600"
               width="16"
               height="16"
               viewBox="0 0 24 24"
@@ -648,7 +648,7 @@ export default function GenerateVideoTab({ projectId }: Props) {
               <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
               <path d="M12 2a10 10 0 0 1 10 10" strokeOpacity="0.75" />
             </svg>
-            <span className="text-sm font-medium text-ink-200">
+            <span className="text-sm font-medium text-ink-700">
               Generating...
             </span>
           </div>
@@ -657,7 +657,7 @@ export default function GenerateVideoTab({ projectId }: Props) {
               store.cancelBatch();
               store.cancelGenerate();
             }}
-            className="flex items-center justify-center gap-1.5 px-5 py-3 bg-red-500 hover:bg-red-500 active:bg-red-600 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
+            className="flex items-center justify-center gap-1.5 px-5 py-3 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-2xl transition-all duration-150 shadow-sm"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <rect x="4" y="4" width="16" height="16" rx="2" />
@@ -671,7 +671,7 @@ export default function GenerateVideoTab({ projectId }: Props) {
           disabled={
             store.batchRunning || !store.video.prompt.trim() || store.uploading
           }
-          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-500 hover:bg-tiffany-400 active:bg-tiffany-600 disabled:bg-ink-600 disabled:text-ink-400 text-ink-950 text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
+          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-500 hover:bg-tiffany-600 active:bg-tiffany-700 disabled:bg-ink-200 disabled:text-ink-500 text-ink-950 text-sm font-semibold rounded-2xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
         >
           {SparkleIcon}
           {`Generate 1 Video (No CSV / Template support)`}
@@ -680,7 +680,7 @@ export default function GenerateVideoTab({ projectId }: Props) {
 
       {/* Error */}
       {store.video.error && (
-        <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
+        <div className="p-5 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-sm">
           {store.video.error}
         </div>
       )}
@@ -690,12 +690,12 @@ export default function GenerateVideoTab({ projectId }: Props) {
         <div
           ref={videoLogRef}
           id="video-logs"
-          className="p-4 bg-ink-900 border border-ink-600 rounded-xl max-h-40 overflow-y-auto"
+          className="p-5 bg-ink-50 border border-ink-200 rounded-2xl max-h-40 overflow-y-auto"
         >
-          <p className="text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+          <p className="text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
             Logs
           </p>
-          <pre className="text-xs text-ink-300 font-mono whitespace-pre-wrap">
+          <pre className="text-xs text-ink-600 font-mono whitespace-pre-wrap">
             {store.video.logs.join("\n")}
           </pre>
         </div>
@@ -704,11 +704,11 @@ export default function GenerateVideoTab({ projectId }: Props) {
       {/* Result */}
       {store.video.result && (
         <div>
-          <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+          <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
             Generated Video
           </label>
 
-          <div className="relative rounded-xl overflow-hidden border border-ink-600 shadow-card bg-black w-[500px]">
+          <div className="relative rounded-2xl overflow-hidden border border-ink-200 shadow-card bg-black w-[500px]">
             <video
               src={store.video.result}
               controls

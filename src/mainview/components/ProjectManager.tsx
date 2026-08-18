@@ -165,12 +165,12 @@ export default function ProjectManager() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-xl font-semibold text-ink-50 tracking-tight">
+          <h2 className="text-xl font-semibold text-ink-900 tracking-tight">
             Projects
           </h2>
-          <p className="text-sm text-ink-300/70 mt-0.5">
+          <p className="text-sm text-ink-600/70 mt-0.5">
             Manage your media projects
           </p>
         </div>
@@ -179,7 +179,7 @@ export default function ProjectManager() {
             resetForm();
             setShowCreate(true);
           }}
-          className="flex items-center gap-1.5 px-4 py-2 bg-tiffany-500 hover:bg-tiffany-400 active:bg-tiffany-600 text-ink-950 text-sm font-medium rounded-xl transition-all duration-150 shadow-glow hover:shadow-glow"
+          className="flex items-center gap-1.5 px-4 py-2 bg-tiffany-500 hover:bg-tiffany-600 active:bg-tiffany-700 text-ink-950 text-sm font-medium rounded-2xl transition-all duration-150 shadow-glow hover:shadow-glow"
         >
           {PlusIcon}
           New Project
@@ -188,15 +188,15 @@ export default function ProjectManager() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
+        <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-sm">
           {error}
         </div>
       )}
 
       {/* Create / Edit Form */}
       {showCreate && (
-        <div className="mb-5 p-5 bg-ink-800 border border-ink-600 rounded-2xl shadow-card">
-          <h3 className="text-sm font-semibold text-ink-50 mb-3">
+        <div className="mb-5 p-6 bg-white border border-ink-200 rounded-3xl shadow-card">
+          <h3 className="text-sm font-semibold text-ink-900 mb-3">
             {editingId ? "Edit Project" : "New Project"}
           </h3>
           <input
@@ -210,7 +210,7 @@ export default function ProjectManager() {
                 editingId ? handleUpdate() : handleCreate();
               if (e.key === "Escape") resetForm();
             }}
-            className="w-full mb-3 px-4 py-2.5 bg-ink-900 border border-ink-600 rounded-xl text-ink-50 text-sm placeholder-ink-400/40 focus:outline-none focus:border-tiffany-400 focus:ring-2 focus:ring-tiffany-400/30 transition-all"
+            className="w-full mb-3 px-4 py-2.5 bg-ink-50 border border-ink-200 rounded-2xl text-ink-900 text-sm placeholder-ink-500/40 focus:outline-none focus:border-tiffany-500 focus:ring-2 focus:ring-tiffany-500/30 transition-all"
           />
           <input
             type="text"
@@ -222,18 +222,18 @@ export default function ProjectManager() {
                 editingId ? handleUpdate() : handleCreate();
               if (e.key === "Escape") resetForm();
             }}
-            className="w-full mb-4 px-4 py-2.5 bg-ink-900 border border-ink-600 rounded-xl text-ink-50 text-sm placeholder-ink-400/40 focus:outline-none focus:border-tiffany-400 focus:ring-2 focus:ring-tiffany-400/30 transition-all"
+            className="w-full mb-4 px-4 py-2.5 bg-ink-50 border border-ink-200 rounded-2xl text-ink-900 text-sm placeholder-ink-500/40 focus:outline-none focus:border-tiffany-500 focus:ring-2 focus:ring-tiffany-500/30 transition-all"
           />
           <div className="flex gap-2">
             <button
               onClick={editingId ? handleUpdate : handleCreate}
-              className="px-5 py-2 bg-tiffany-500 hover:bg-tiffany-400 active:bg-tiffany-600 text-ink-950 text-sm font-medium rounded-xl transition-all duration-150"
+              className="px-5 py-2 bg-tiffany-500 hover:bg-tiffany-600 active:bg-tiffany-700 text-ink-950 text-sm font-medium rounded-2xl transition-all duration-150"
             >
               {editingId ? "Update" : "Create"}
             </button>
             <button
               onClick={resetForm}
-              className="px-5 py-2 bg-ink-700 hover:bg-ink-500 text-ink-200 text-sm font-medium rounded-xl transition-all duration-150"
+              className="px-5 py-2 bg-ink-100 hover:bg-ink-300 text-ink-700 text-sm font-medium rounded-2xl transition-all duration-150"
             >
               Cancel
             </button>
@@ -243,12 +243,12 @@ export default function ProjectManager() {
 
       {/* Project List */}
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-ink-300/50 text-sm">
+        <div className="flex items-center justify-center py-16 text-ink-600/50 text-sm">
           Loading...
         </div>
       ) : projects.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16">
-          <div className="w-16 h-16 bg-ink-700 rounded-2xl flex items-center justify-center mb-4">
+          <div className="w-16 h-16 bg-ink-100 rounded-3xl flex items-center justify-center mb-4">
             <svg
               width="28"
               height="28"
@@ -260,10 +260,10 @@ export default function ProjectManager() {
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
             </svg>
           </div>
-          <p className="text-sm font-medium text-ink-100">
+          <p className="text-sm font-medium text-ink-800">
             No projects yet
           </p>
-          <p className="text-xs text-ink-300/60 mt-1">
+          <p className="text-xs text-ink-600/60 mt-1">
             Create your first project to get started
           </p>
         </div>
@@ -272,14 +272,14 @@ export default function ProjectManager() {
           {projects.map((p) => (
             <div
               key={p.id}
-              className="flex items-center gap-3 px-4 py-3.5 bg-ink-800 border border-ink-700 hover:border-ink-500 hover:shadow-card-hover rounded-xl transition-all duration-150 group"
+              className="flex items-center gap-3 px-4 py-3.5 bg-white border border-ink-200 hover:border-ink-400 hover:shadow-card-hover rounded-2xl transition-all duration-150 group"
             >
               {/* Project info */}
               <button
                 onClick={() => openProject(p.id)}
                 className="flex-1 flex items-center gap-3 text-left min-w-0"
               >
-                <div className="shrink-0 w-9 h-9 bg-ink-700 border border-ink-600 rounded-xl flex items-center justify-center">
+                <div className="shrink-0 w-9 h-9 bg-ink-100 border border-ink-200 rounded-2xl flex items-center justify-center">
                   <svg
                     width="15"
                     height="15"
@@ -292,15 +292,15 @@ export default function ProjectManager() {
                   </svg>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-ink-50 truncate">
+                  <p className="text-sm font-medium text-ink-900 truncate">
                     {p.name}
                   </p>
                   {p.description ? (
-                    <p className="text-xs text-ink-300/60 truncate mt-0.5">
+                    <p className="text-xs text-ink-600/60 truncate mt-0.5">
                       {p.description}
                     </p>
                   ) : (
-                    <p className="text-xs text-ink-400/60 italic mt-0.5">
+                    <p className="text-xs text-ink-500/60 italic mt-0.5">
                       No description
                     </p>
                   )}
@@ -311,35 +311,35 @@ export default function ProjectManager() {
               <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                 <button
                   onClick={() => startEdit(p)}
-                  className="p-2 text-ink-300/40 hover:text-tiffany-400 hover:bg-ink-700 rounded-lg transition-colors"
+                  className="p-2 text-ink-600/40 hover:text-tiffany-600 hover:bg-ink-100 rounded-xl transition-colors"
                   title="Edit"
                 >
                   {EditIcon}
                 </button>
                 <button
                   onClick={() => openFolder(p.id, "upload")}
-                  className="p-2 text-ink-300/40 hover:text-tiffany-400 hover:bg-ink-700 rounded-lg transition-colors"
+                  className="p-2 text-ink-600/40 hover:text-tiffany-600 hover:bg-ink-100 rounded-xl transition-colors"
                   title="Open Uploads Folder"
                 >
                   {UploadFolderIcon}
                 </button>
                 <button
                   onClick={() => openFolder(p.id, "output")}
-                  className="p-2 text-ink-300/40 hover:text-tiffany-400 hover:bg-ink-700 rounded-lg transition-colors"
+                  className="p-2 text-ink-600/40 hover:text-tiffany-600 hover:bg-ink-100 rounded-xl transition-colors"
                   title="Open Outputs Folder"
                 >
                   {OutputFolderIcon}
                 </button>
                 <button
                   onClick={() => setDeleteConfirm(p.id)}
-                  className="p-2 text-ink-300/40 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                  className="p-2 text-ink-600/40 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                   title="Delete"
                 >
                   {DeleteIcon}
                 </button>
                 <button
                   onClick={() => openProject(p.id)}
-                  className="p-2 text-ink-300/40 hover:text-tiffany-400 hover:bg-ink-700 rounded-lg transition-colors"
+                  className="p-2 text-ink-600/40 hover:text-tiffany-600 hover:bg-ink-100 rounded-xl transition-colors"
                   title="Open"
                 >
                   {OpenIcon}
@@ -353,24 +353,24 @@ export default function ProjectManager() {
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-ink-800 border border-ink-600 rounded-2xl p-6 w-80 shadow-modal">
-            <h3 className="text-sm font-semibold text-ink-50 mb-2">
+          <div className="bg-white border border-ink-200 rounded-3xl p-8 w-80 shadow-modal">
+            <h3 className="text-sm font-semibold text-ink-900 mb-2">
               Delete Project
             </h3>
-            <p className="text-sm text-ink-300/80 mb-5 leading-relaxed">
+            <p className="text-sm text-ink-600/80 mb-5 leading-relaxed">
               Are you sure you want to delete this project? This action cannot
               be undone.
             </p>
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="px-4 py-2 bg-ink-700 hover:bg-ink-500 text-ink-200 text-sm font-medium rounded-xl transition-colors"
+                className="px-4 py-2 bg-ink-100 hover:bg-ink-300 text-ink-700 text-sm font-medium rounded-2xl transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
-                className="px-4 py-2 bg-red-500 hover:bg-red-500 text-white text-sm font-medium rounded-xl transition-colors"
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-2xl transition-colors"
               >
                 Delete
               </button>

@@ -26,10 +26,10 @@ export default function StoryWriterTab({ projectId }: Props) {
   );
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-7">
       <div className="flex items-center gap-2">
-        <span className="text-tiffany-400">{StoryWriterIcon}</span>
-        <h2 className="text-base font-semibold text-ink-50">
+        <span className="text-tiffany-600">{StoryWriterIcon}</span>
+        <h2 className="text-base font-semibold text-ink-900">
           Story Writer
         </h2>
       </div>
@@ -41,9 +41,9 @@ export default function StoryWriterTab({ projectId }: Props) {
       {store.agent.serverRunning && store.agent.serverOnline ? (
         <ChatUI projectId={projectId} agent="story-writer" />
       ) : (
-        <div className="flex flex-col items-center justify-center gap-2 p-8 border border-dashed border-ink-600 rounded-xl">
-          <span className="text-ink-400">{StoryWriterIcon}</span>
-          <p className="text-xs text-ink-400 italic">
+        <div className="flex flex-col items-center justify-center gap-2 p-8 border border-dashed border-ink-200 rounded-2xl">
+          <span className="text-ink-500">{StoryWriterIcon}</span>
+          <p className="text-xs text-ink-500 italic">
             Start the LLM server to plan videos and build scene CSV scripts.
           </p>
         </div>

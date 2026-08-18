@@ -3,13 +3,13 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
   margin: 0;
-  background: #17191b;
-  color: #c9d0d6;
+  background: #f5f8f9;
+  color: #3e4d54;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
     Cantarell, sans-serif;
@@ -24,7 +24,7 @@ pre,
     "Liberation Mono", monospace;
 }
 
-/* Subtle dark scrollbar */
+/* Subtle light scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -33,9 +33,9 @@ pre,
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #363c41;
+  background: #d8e2e6;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #464d53;
+  background: #bcc9cf;
 }
