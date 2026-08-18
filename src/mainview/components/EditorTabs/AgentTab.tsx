@@ -1,6 +1,7 @@
 import { useGenerationStore } from "../../stores/generationStore";
 import { ChatUI } from "../ChatUI/ChatUI";
 import AgentWorkspace from "../AgentWorkspace";
+import VoiceChatPanel from "./VoiceChatPanel";
 // import MlxVlmServerPanel from "./MlxVlmServerPanel";
 
 interface Props {
@@ -38,6 +39,8 @@ export default function AgentTab({ projectId }: Props) {
       </div>
 
       {/* <MlxVlmServerPanel /> */}
+
+      <VoiceChatPanel projectId={projectId} />
 
       {store.agent.serverRunning && store.agent.serverOnline ? (
         <div className="">

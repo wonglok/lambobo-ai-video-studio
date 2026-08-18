@@ -1526,6 +1526,140 @@ export async function renderMediaRoutes({
     }
   });
 
+  // ========== Render: Voice Chat (TTS with reference voice) ==========
+
+  app.post("/api/render/voice-chat", async (req, res) => {
+    const { text, refAudioPath, projectId } = req.body || {};
+
+    if (!text || typeof text !== "string" || !text.trim()) {
+      res.status(400).json({ error: "Text is required" });
+      return;
+    }
+    if (!refAudioPath) {
+      res.status(400).json({ error: "Reference audio is required" });
+      return;
+    }
+    if (!projectId || !isValidProjectId(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+
+    // Resolve reference audio — only bare filenames in this project's dirs.
+    const resolvedRef = resolveSafePath(refAudioPath, String(projectId));
+    if (!resolvedRef) {
+      res.status(400).json({
+        error:
+          "Invalid reference audio path. Provide a filename previously uploaded to this project.",
+      });
+      return;
+    }
+
+    // SSE headers
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: string, data: object) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      const uvPath = await getUvPath();
+      const projectOutputDir = resolveOutputDir(null, String(projectId));
+      if (!projectOutputDir) {
+        send("error", { error: "Invalid output directory." });
+        res.end();
+        return;
+      }
+
+      // Isolate each utterance so a new response never overwrites a previous
+      // one. mlx_audio writes the clip as <dir>/audio_000.mp3.
+      const voiceDir = join(
+        projectOutputDir,
+        "voice-chat",
+        `chat-${Date.now()}`,
+      );
+      ensureDir(voiceDir);
+
+      send("progress", {
+        status: "starting",
+        label: "Generating voice...",
+      });
+
+      const proc = spawn(
+        [
+          uvPath,
+          "run",
+          "mlx_audio.tts.generate",
+          "--model",
+          TTS_MODELS.low,
+          "--text",
+          text.trim(),
+          "--ref_audio",
+          resolvedRef,
+          "--play",
+          "--output",
+          voiceDir,
+          "--audio_format",
+          "mp3",
+          "--stream",
+          "--save",
+          "--instruct",
+          "slow down",
+        ],
+        {
+          env: process.env,
+          cwd: voiceDir,
+          stdout: "pipe",
+          stderr: "pipe",
+        },
+      );
+
+      activeProc = proc;
+
+      const stdoutPromise = streamToSSE(
+        proc.stdout as ReadableStream<Uint8Array>,
+        "VoiceChat",
+        send,
+      );
+      const stderrText = await streamToSSE(
+        proc.stderr as ReadableStream<Uint8Array>,
+        "VoiceChat",
+        send,
+      );
+      await stdoutPromise;
+
+      const exitCode = await proc.exited;
+      if (exitCode === 0) {
+        const path = resolveAudioFile(voiceDir);
+        if (path) {
+          send("complete", {
+            success: true,
+            path,
+            filename: path.split(sep).pop(),
+          });
+        } else {
+          send("error", {
+            error: "TTS completed but no audio file was produced",
+          });
+        }
+      } else {
+        send("error", {
+          error: stderrText || `Process exited with code ${exitCode}`,
+          exitCode,
+        });
+      }
+    } catch (e) {
+      send("error", { error: String(e) });
+    } finally {
+      activeProc = null;
+      res.end();
+    }
+  });
+
   // ========== Render: Mux Video + Audio ==========
 
   app.post("/api/render/mux-audio", async (req, res) => {
