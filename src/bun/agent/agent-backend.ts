@@ -23,6 +23,8 @@ import { TOOLS, toolDefinitions, runTool } from "./tools";
 
 const DEFAULT_MODEL = "mlx-community/gemma-4-e2b-it-4bit";
 const MAX_ITERATIONS = 500;
+const STORY_WRITER_AGENT = "story-writer";
+const STORY_WRITER_PROMPT_FILE = "vid-script-buidler.md";
 
 type Role = "system" | "user" | "assistant" | "tool";
 
@@ -150,6 +152,60 @@ function buildSystemPrompt(): string {
     "  - If an image was chosen, call `image_to_video_generation` with the image, prompt, duration, and mode.",
     "  - Otherwise, call `text_to_video_generation` with the prompt, duration, and mode.",
   ].join("\n");
+}
+
+/** Normalize a client-supplied agent id to a safe storage key (defaults to "default"). */
+function safeAgent(value: unknown): string {
+  const s = typeof value === "string" ? value : "";
+  return /^[a-zA-Z0-9_-]{1,32}$/.test(s) ? s : "default";
+}
+
+let cachedStoryWriterPrompt: string | null = null;
+
+/** Load the Story Writer system prompt from the bundled `prompt/` file. */
+function storyWriterSystemPrompt(): string {
+  if (cachedStoryWriterPrompt !== null) return cachedStoryWriterPrompt;
+
+  const candidates = [
+    join(process.cwd(), "prompt", STORY_WRITER_PROMPT_FILE),
+    join(
+      dirname(import.meta.path),
+      "..",
+      "..",
+      "prompt",
+      STORY_WRITER_PROMPT_FILE,
+    ),
+    join(
+      dirname(import.meta.path),
+      "..",
+      "..",
+      "..",
+      "prompt",
+      STORY_WRITER_PROMPT_FILE,
+    ),
+  ];
+  for (const p of candidates) {
+    try {
+      if (existsSync(p)) {
+        const text = readFileSync(p, "utf-8").trim();
+        if (text) {
+          cachedStoryWriterPrompt = text;
+          return cachedStoryWriterPrompt;
+        }
+      }
+    } catch {
+      // try the next candidate
+    }
+  }
+
+  // Fallback so the tab still works when the prompt file is unavailable.
+  cachedStoryWriterPrompt = [
+    "You are a short-form video planner and AI prompt specialist.",
+    "Convert the user's topic into CSV with columns: id,duration,t2i,i2v.",
+    "Each row is one single camera-shot moment; break large scenes into many small moments.",
+    "Output the result as a clean CSV code block.",
+  ].join(" ");
+  return cachedStoryWriterPrompt;
 }
 
 /** Build a sanitized trace of the conversation for the client (no secrets/system). */
@@ -333,7 +389,8 @@ export async function agentBackend({
       res.status(400).json({ error: "Invalid project ID" });
       return;
     }
-    const file = join(workspaceDir(projectId), "chat", "threads.json");
+    const agent = safeAgent(req.query.agent);
+    const file = join(workspaceDir(projectId), "chat", agent, "threads.json");
     if (!existsSync(file)) {
       res.json({ threads: [] });
       return;
@@ -346,12 +403,12 @@ export async function agentBackend({
   });
 
   app.post("/api/agent/threads", (req, res) => {
-    const { projectId, threads } = req.body || {};
+    const { projectId, threads, agent } = req.body || {};
     if (!projectId || !/^[a-zA-Z0-9_-]{1,64}$/.test(String(projectId))) {
       res.status(400).json({ error: "Invalid project ID" });
       return;
     }
-    const dir = join(workspaceDir(String(projectId)), "chat");
+    const dir = join(workspaceDir(String(projectId)), "chat", safeAgent(agent));
     ensureDir(dir);
     writeFileSync(
       join(dir, "threads.json"),
@@ -371,7 +428,14 @@ export async function agentBackend({
       res.status(400).json({ error: "Invalid ID" });
       return;
     }
-    const file = join(workspaceDir(projectId), "chat", threadId, "chat.json");
+    const agent = safeAgent(req.query.agent);
+    const file = join(
+      workspaceDir(projectId),
+      "chat",
+      agent,
+      threadId,
+      "chat.json",
+    );
     if (!existsSync(file)) {
       res.json({ messages: [] });
       return;
@@ -384,7 +448,7 @@ export async function agentBackend({
   });
 
   app.post("/api/agent/thread/chat", (req, res) => {
-    const { projectId, threadId, messages } = req.body || {};
+    const { projectId, threadId, messages, agent } = req.body || {};
     if (!projectId || !/^[a-zA-Z0-9_-]{1,64}$/.test(String(projectId))) {
       res.status(400).json({ error: "Invalid project ID" });
       return;
@@ -393,7 +457,12 @@ export async function agentBackend({
       res.status(400).json({ error: "Invalid thread ID" });
       return;
     }
-    const dir = join(workspaceDir(String(projectId)), "chat", String(threadId));
+    const dir = join(
+      workspaceDir(String(projectId)),
+      "chat",
+      safeAgent(agent),
+      String(threadId),
+    );
     ensureDir(dir);
     writeFileSync(
       join(dir, "chat.json"),
@@ -455,8 +524,14 @@ export async function agentBackend({
           : undefined,
     }));
 
+    const agent = safeAgent(body.agent);
+    const systemPrompt =
+      agent === STORY_WRITER_AGENT
+        ? storyWriterSystemPrompt()
+        : buildSystemPrompt();
+
     const messages: ChatMessage[] = [
-      { role: "system", content: buildSystemPrompt() },
+      { role: "system", content: systemPrompt },
       ...history,
     ];
 

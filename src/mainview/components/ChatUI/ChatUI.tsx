@@ -18,6 +18,7 @@ function summarizeArgs(args?: string): string {
 
 interface Props {
   projectId: string;
+  agent?: string;
 }
 
 async function uploadToAgentWorkspace(
@@ -39,7 +40,7 @@ async function uploadToAgentWorkspace(
   }
 }
 
-export function ChatUI({ projectId }: Props) {
+export function ChatUI({ projectId, agent = "default" }: Props) {
   const gen = useGenerationStore();
   const chat = useChatStore();
 
@@ -67,9 +68,9 @@ export function ChatUI({ projectId }: Props) {
   }, [messages, chat.sending]);
 
   useEffect(() => {
-    chat.loadThreads(projectId);
+    chat.loadThreads(projectId, agent);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]);
+  }, [projectId, agent]);
 
   useEffect(() => {
     if (!previewImage) return;

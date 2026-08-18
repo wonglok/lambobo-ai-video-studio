@@ -16,6 +16,7 @@ export type GenerationTab =
   | "video"
   | "extend"
   | "agent"
+  | "storyWriter"
   | "characters"
   | "extract"
   | "sceneVisual"

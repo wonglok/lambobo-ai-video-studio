@@ -63,6 +63,22 @@ const UploadIcon = (
   </svg>
 );
 
+const ClipboardIcon = (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+    <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+  </svg>
+);
+
 const FileIcon = (
   <svg
     width="14"
@@ -261,6 +277,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
   const logRef = useRef<HTMLDivElement | null>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
   const [csvFilename, setCsvFilename] = useState<string | null>(null);
+  const [csvText, setCsvText] = useState("");
   const [preview, setPreview] = useState<{
     url: string;
     filename: string;
@@ -300,6 +317,13 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
     };
     reader.readAsDataURL(file);
     e.target.value = "";
+  };
+
+  const handlePasteCsv = () => {
+    if (!csvText.trim()) return;
+    store.parseCsvText(csvText);
+    setCsvFilename(null);
+    setCsvText("");
   };
 
   const imageCount = store.rows.filter((r) => r.t2iPrompt.trim()).length;
@@ -350,11 +374,33 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
             </span>
           )}
         </div>
+
+        <div className="flex items-start gap-2">
+          <textarea
+            value={csvText}
+            onChange={(e) => setCsvText(e.target.value)}
+            placeholder={`Paste CSV here, e.g.\nt2i,i2v,duration\nA student sleeping in class...,Slow pan across the classroom...,5`}
+            rows={4}
+            disabled={store.running}
+            className="flex-1 px-2.5 py-1.5 bg-white border border-tiffany-200 rounded-lg text-tiffany-800 text-xs placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-1 focus:ring-tiffany-300/30 transition-all resize-y disabled:opacity-50 font-mono"
+          />
+          <button
+            onClick={handlePasteCsv}
+            disabled={store.running || !csvText.trim()}
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-tiffany-200 bg-white text-tiffany-600 text-xs font-medium cursor-pointer hover:border-tiffany-300 hover:bg-tiffany-50 transition-colors disabled:opacity-50"
+          >
+            {ClipboardIcon}
+            Parse CSV
+          </button>
+        </div>
+
         <p className="text-xs text-tiffany-500 italic">
           CSV must contain columns <code className="text-[11px] bg-tiffany-100 px-1 rounded">t2i</code>{" "}
           (text-to-image prompt) and{" "}
           <code className="text-[11px] bg-tiffany-100 px-1 rounded">i2v</code>{" "}
-          (image-to-video prompt).
+          (image-to-video prompt). An optional{" "}
+          <code className="text-[11px] bg-tiffany-100 px-1 rounded">duration</code>{" "}
+          column (seconds) overrides the shared duration for that row.
         </p>
       </div>
 
@@ -502,6 +548,9 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
                   <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 min-w-[220px]">
                     Image-to-Video Prompt
                   </th>
+                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-28">
+                    Duration
+                  </th>
                   <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-32">
                     Image
                   </th>
@@ -552,6 +601,32 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
                         disabled={store.running}
                         className="w-full px-2.5 py-1.5 bg-transparent border border-tiffany-200 rounded-lg text-tiffany-800 text-xs placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-1 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
                       />
+                    </td>
+
+                    {/* Duration override */}
+                    <td className="px-3 py-2">
+                      <select
+                        value={
+                          row.duration == null ? "" : String(row.duration)
+                        }
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          store.updateRowDuration(
+                            row.id,
+                            v === "" ? null : Number(v),
+                          );
+                        }}
+                        disabled={store.running}
+                        title="Override video duration for this row"
+                        className="w-full px-2 py-1.5 bg-white border border-tiffany-200 rounded-lg text-tiffany-800 text-xs focus:outline-none focus:border-tiffany-300 focus:ring-1 focus:ring-tiffany-300/30 transition-all disabled:opacity-50"
+                      >
+                        <option value="">Default ({store.duration}s)</option>
+                        {[0.5, 3, 5, 7.5, 10, 15, 20].map((d) => (
+                          <option key={d} value={String(d)}>
+                            {d}s
+                          </option>
+                        ))}
+                      </select>
                     </td>
 
                     {/* Generated image */}

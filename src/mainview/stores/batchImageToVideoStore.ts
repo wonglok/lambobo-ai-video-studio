@@ -22,6 +22,8 @@ export interface BatchI2VRow {
   t2iPrompt: string;
   // Image-to-video prompt (drives the motion on top of the generated image)
   i2vPrompt: string;
+  // Optional per-row video duration override (seconds); null = use shared.
+  duration: number | null;
   imagePath: string | null;
   imageUrl: string | null;
   imageFilename: string | null;
@@ -55,7 +57,9 @@ interface BatchImageToVideoStore {
   removeRow: (id: string) => void;
   updateT2IPrompt: (id: string, v: string) => void;
   updateI2VPrompt: (id: string, v: string) => void;
+  updateRowDuration: (id: string, duration: number | null) => void;
   uploadCsv: (base64: string, filename: string) => void;
+  parseCsvText: (text: string) => void;
 
   setAspectRatio: (v: AspectRatio) => void;
   setResolution: (v: Resolution) => void;
@@ -175,6 +179,7 @@ function makeRow(): BatchI2VRow {
     id: `row-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     t2iPrompt: "",
     i2vPrompt: "",
+    duration: null,
     imagePath: null,
     imageUrl: null,
     imageFilename: null,
@@ -183,6 +188,36 @@ function makeRow(): BatchI2VRow {
     videoStatus: "idle",
     error: null,
   };
+}
+
+/** Parse raw CSV text (t2i / i2v columns) into batch rows. */
+function parseCsvRows(text: string): BatchI2VRow[] {
+  const parsed = Papa.parse<Record<string, string>>(text, {
+    header: true,
+    skipEmptyLines: true,
+  });
+  return parsed.data
+    .filter((r) => (r.t2i || "").trim() || (r.i2v || "").trim())
+    .map((r) => {
+      const rawDuration = String(r.duration ?? "").trim().replace(/s$/i, "");
+      const parsedDuration = rawDuration ? Number(rawDuration) : NaN;
+      return {
+        id: `row-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        t2iPrompt: (r.t2i || "").trim(),
+        i2vPrompt: (r.i2v || "").trim(),
+        duration:
+          Number.isFinite(parsedDuration) && parsedDuration > 0
+            ? parsedDuration
+            : null,
+        imagePath: null,
+        imageUrl: null,
+        imageFilename: null,
+        imageStatus: "idle",
+        videoResult: null,
+        videoStatus: "idle",
+        error: null,
+      };
+    });
 }
 
 function toPersistedState(
@@ -196,6 +231,7 @@ function toPersistedState(
       id: r.id,
       t2iPrompt: r.t2iPrompt,
       i2vPrompt: r.i2vPrompt,
+      duration: r.duration ?? null,
     })),
     aspectRatio: s.aspectRatio,
     resolution: s.resolution,
@@ -451,7 +487,7 @@ async function runPipeline(
         await runVideoGeneration(
           projectId,
           row.id,
-          { width, height, duration, mode },
+          { width, height, duration: row.duration ?? duration, mode },
           signal,
           onLog,
         );
@@ -519,6 +555,7 @@ export const useBatchImageToVideoStore = create<BatchImageToVideoStore>(
           id: r.id,
           t2iPrompt: r.t2iPrompt,
           i2vPrompt: r.i2vPrompt,
+          duration: r.duration ?? null,
           imagePath: null,
           imageUrl: null,
           imageFilename: null,
@@ -568,6 +605,13 @@ export const useBatchImageToVideoStore = create<BatchImageToVideoStore>(
       persistBatchState();
     },
 
+    updateRowDuration: (id, duration) => {
+      set((s) => ({
+        rows: s.rows.map((r) => (r.id === id ? { ...r, duration } : r)),
+      }));
+      persistBatchState();
+    },
+
     uploadCsv: (base64, _filename) => {
       try {
         const raw = base64
@@ -576,26 +620,17 @@ export const useBatchImageToVideoStore = create<BatchImageToVideoStore>(
           .replace(/^data:text\/plain;base64,/, "");
         const bytes = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
         const text = new TextDecoder("utf-8").decode(bytes);
-        const parsed = Papa.parse<Record<string, string>>(text, {
-          header: true,
-          skipEmptyLines: true,
-        });
+        const rows = parseCsvRows(text);
+        set({ rows: rows.length > 0 ? rows : [makeRow()] });
+        persistBatchState();
+      } catch {
+        set({ rows: [makeRow()] });
+      }
+    },
 
-        const rows: BatchI2VRow[] = parsed.data
-          .filter((r) => (r.t2i || "").trim() || (r.i2v || "").trim())
-          .map((r) => ({
-            id: `row-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            t2iPrompt: (r.t2i || "").trim(),
-            i2vPrompt: (r.i2v || "").trim(),
-            imagePath: null,
-            imageUrl: null,
-            imageFilename: null,
-            imageStatus: "idle",
-            videoResult: null,
-            videoStatus: "idle",
-            error: null,
-          }));
-
+    parseCsvText: (text) => {
+      try {
+        const rows = parseCsvRows(text);
         set({ rows: rows.length > 0 ? rows : [makeRow()] });
         persistBatchState();
       } catch {

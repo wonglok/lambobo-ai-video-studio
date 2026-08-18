@@ -15,6 +15,7 @@ export default {
       "src/mainview/lambobo.png": "views/mainview/lambobo.png",
       "python-src": "python-src",
       "python-src/images/lambobo.png": "views/mainview/images/lambobo.png",
+      "prompt": "prompt",
     },
     // Ignore Vite output in watch mode — HMR handles view rebuilds separately
     watchIgnore: ["dist/**"],

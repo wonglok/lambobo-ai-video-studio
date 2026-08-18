@@ -96,6 +96,7 @@ async function readSSEStream(
 async function persistThreads(
   projectId: string,
   sessions: ChatSession[],
+  agent: string,
 ): Promise<void> {
   try {
     await fetch(`${API_BASE}/api/agent/threads`, {
@@ -103,6 +104,7 @@ async function persistThreads(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         projectId,
+        agent,
         threads: sessions.map((s) => ({
           id: s.id,
           title: s.title,
@@ -118,6 +120,7 @@ async function persistThreads(
 async function persistThreadChat(
   projectId: string,
   session: ChatSession,
+  agent: string,
 ): Promise<void> {
   try {
     await fetch(`${API_BASE}/api/agent/thread/chat`, {
@@ -125,6 +128,7 @@ async function persistThreadChat(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         projectId,
+        agent,
         threadId: session.id,
         messages: session.messages,
       }),
@@ -138,11 +142,12 @@ interface ChatStore {
   sessions: ChatSession[];
   activeSessionId: string | null;
   projectId: string | null;
+  agentType: string;
   sending: boolean;
   error: string | null;
   pendingImage: string | null;
   setPendingImage: (dataUrl: string | null) => void;
-  loadThreads: (projectId: string) => Promise<void>;
+  loadThreads: (projectId: string, agent?: string) => Promise<void>;
   createSession: () => void;
   selectSession: (id: string) => void;
   deleteSession: (id: string) => void;
@@ -165,17 +170,20 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   sessions: [firstSession],
   activeSessionId: firstSession.id,
   projectId: null,
+  agentType: "default",
   sending: false,
   error: null,
   pendingImage: null,
 
   setPendingImage: (dataUrl) => set({ pendingImage: dataUrl }),
 
-  loadThreads: async (projectId) => {
-    set({ projectId });
+  loadThreads: async (projectId, agent = "default") => {
+    set({ projectId, agentType: agent });
     try {
       const res = await fetch(
-        `${API_BASE}/api/agent/threads?projectId=${encodeURIComponent(projectId)}`,
+        `${API_BASE}/api/agent/threads?projectId=${encodeURIComponent(
+          projectId,
+        )}&agent=${encodeURIComponent(agent)}`,
       );
       if (!res.ok) return;
       const data = await res.json();
@@ -190,7 +198,9 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         const chatRes = await fetch(
           `${API_BASE}/api/agent/thread/chat?projectId=${encodeURIComponent(
             projectId,
-          )}&threadId=${encodeURIComponent(meta.id)}`,
+          )}&agent=${encodeURIComponent(agent)}&threadId=${encodeURIComponent(
+            meta.id,
+          )}`,
         );
         let messages: ChatMessage[] = [];
         if (chatRes.ok) {
@@ -222,7 +232,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       error: null,
     }));
     const st = get();
-    if (st.projectId) persistThreads(st.projectId, st.sessions);
+    if (st.projectId) persistThreads(st.projectId, st.sessions, st.agentType);
   },
 
   selectSession: (id) => set({ activeSessionId: id, error: null }),
@@ -243,7 +253,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       return { sessions, activeSessionId };
     });
     const st = get();
-    if (st.projectId) persistThreads(st.projectId, st.sessions);
+    if (st.projectId) persistThreads(st.projectId, st.sessions, st.agentType);
   },
 
   resetActiveSession: () => {
@@ -257,15 +267,17 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }));
     const st = get();
     if (st.projectId) {
-      persistThreads(st.projectId, st.sessions);
+      persistThreads(st.projectId, st.sessions, st.agentType);
       const session = st.sessions.find((x) => x.id === st.activeSessionId);
-      if (session) persistThreadChat(st.projectId, session);
+      if (session) persistThreadChat(st.projectId, session, st.agentType);
     }
   },
 
   sendMessage: async (content, port, model, projectId, image) => {
     const text = content.trim();
     if ((!text && !image) || get().sending) return;
+
+    const agent = get().agentType;
 
     let sessionId = get().activeSessionId;
     if (!sessionId) {
@@ -345,7 +357,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       const res = await fetch(`${API_BASE}/api/agent/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history, port, model, projectId }),
+        body: JSON.stringify({ messages: history, port, model, projectId, agent }),
         signal: chatAbortController.signal,
       });
 
@@ -431,8 +443,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       const st = get();
       if (st.projectId) {
         const session = st.sessions.find((x) => x.id === sessionId);
-        if (session) persistThreadChat(st.projectId, session);
-        persistThreads(st.projectId, st.sessions);
+        if (session) persistThreadChat(st.projectId, session, agent);
+        persistThreads(st.projectId, st.sessions, agent);
       }
     }
   },

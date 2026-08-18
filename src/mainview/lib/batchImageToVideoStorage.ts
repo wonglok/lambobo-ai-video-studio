@@ -12,6 +12,7 @@ export interface PersistedBatchI2VRow {
   id: string;
   t2iPrompt: string;
   i2vPrompt: string;
+  duration: number | null;
 }
 
 export interface PersistedBatchImageToVideoState {
