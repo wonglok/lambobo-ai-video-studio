@@ -539,7 +539,7 @@ const TEXT_TO_IMAGE_PRESETS: Record<
   optimal: {
     aspectRatio: "1:1",
     resolution: "1080p",
-    steps: 8,
+    steps: 6,
     quality: "8bit",
   },
 };
@@ -689,8 +689,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     set((s) => ({ video: { ...s.video, aspectRatio } })),
   setVideoResolution: (resolution) =>
     set((s) => ({ video: { ...s.video, resolution } })),
-  setVideoMode: (mode) =>
-    set((s) => ({ video: { ...s.video, mode } })),
+  setVideoMode: (mode) => set((s) => ({ video: { ...s.video, mode } })),
   clearVideoResult: () =>
     set((s) => ({
       video: { ...s.video, result: null, error: null, logs: [] },
