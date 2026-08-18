@@ -1130,110 +1130,110 @@ async function testRenderVideo({
   return success;
 }
 
-// ========== Render Functions ==========
+// // ========== Render Functions ==========
 
-let firstImageEdit: Subprocess | null = null;
+// let firstImageEdit: Subprocess | null = null;
 
-async function testQwenImageEditGeneration({
-  send,
-}: {
-  send: (event: string, data: object) => void;
-}): Promise<boolean> {
-  const uvPath = await getUvPath();
+// async function testQwenImageEditGeneration({
+//   send,
+// }: {
+//   send: (event: string, data: object) => void;
+// }): Promise<boolean> {
+//   const uvPath = await getUvPath();
 
-  console.log("Try Render Image...");
+//   console.log("Try Render Image...");
 
-  const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
-  if (!existsSync(pythonAppSrcDir)) {
-    mkdirSync(pythonAppSrcDir, { recursive: true });
-  }
+//   const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
+//   if (!existsSync(pythonAppSrcDir)) {
+//     mkdirSync(pythonAppSrcDir, { recursive: true });
+//   }
 
-  const zImageFolder = join(pythonAppSrcDir, "qwen-image-mps");
+//   const zImageFolder = join(pythonAppSrcDir, "qwen-image-mps");
 
-  // Kill any previous image process
-  if (firstImageEdit && !firstImageEdit.killed) {
-    firstImageEdit.kill();
-  }
+//   // Kill any previous image process
+//   if (firstImageEdit && !firstImageEdit.killed) {
+//     firstImageEdit.kill();
+//   }
 
-  if (!existsSync(join(OUTPUT_DIR, "welcome"))) {
-    mkdirSync(join(OUTPUT_DIR, "welcome"), { recursive: true });
-  }
+//   if (!existsSync(join(OUTPUT_DIR, "welcome"))) {
+//     mkdirSync(join(OUTPUT_DIR, "welcome"), { recursive: true });
+//   }
 
-  //
-  const outputPath = join(OUTPUT_DIR, "welcome", "thank-you-edit.png");
-  if (existsSync(outputPath)) {
-    console.log("Image already rendered, skipping.");
-    return true;
-  }
+//   //
+//   const outputPath = join(OUTPUT_DIR, "welcome", "thank-you-edit.png");
+//   if (existsSync(outputPath)) {
+//     console.log("Image already rendered, skipping.");
+//     return true;
+//   }
 
-  const lambobo = join(
-    import.meta.path,
-    "..",
-    "..",
-    "python-src",
-    "images",
-    "lambobo.png",
-  );
+//   const lambobo = join(
+//     import.meta.path,
+//     "..",
+//     "..",
+//     "python-src",
+//     "images",
+//     "lambobo.png",
+//   );
 
-  firstImageEdit = spawn(
-    [
-      uvPath,
-      "run",
-      "qwen-image-mps",
-      "edit",
-      "-i",
-      JSON.stringify(lambobo),
-      "-p",
-      "Change the background to sunset",
-      "--ultra-fast",
-      "--quantization",
-      "Q4_0",
-      "--output",
-      JSON.stringify(outputPath),
-    ],
-    {
-      cwd: zImageFolder,
-      stdout: "pipe",
-      stderr: "pipe",
-    },
-  );
+//   firstImageEdit = spawn(
+//     [
+//       uvPath,
+//       "run",
+//       "qwen-image-mps",
+//       "edit",
+//       "-i",
+//       JSON.stringify(lambobo),
+//       "-p",
+//       "Change the background to sunset",
+//       "--ultra-fast",
+//       "--quantization",
+//       "Q4_0",
+//       "--output",
+//       JSON.stringify(outputPath),
+//     ],
+//     {
+//       cwd: zImageFolder,
+//       stdout: "pipe",
+//       stderr: "pipe",
+//     },
+//   );
 
-  const proc: Subprocess = firstImageEdit;
+//   const proc: Subprocess = firstImageEdit;
 
-  // Stream stdout and stderr concurrently (cast: we always use "pipe" mode)
-  const stdoutPromise = streamProcessOutput(
-    proc.stdout as ReadableStream<Uint8Array>,
-    "EditImage",
-    send,
-  );
-  const stderrText = await streamProcessOutput(
-    proc.stderr as ReadableStream<Uint8Array>,
-    "EditImage",
-    send,
-  );
-  await stdoutPromise;
+//   // Stream stdout and stderr concurrently (cast: we always use "pipe" mode)
+//   const stdoutPromise = streamProcessOutput(
+//     proc.stdout as ReadableStream<Uint8Array>,
+//     "EditImage",
+//     send,
+//   );
+//   const stderrText = await streamProcessOutput(
+//     proc.stderr as ReadableStream<Uint8Array>,
+//     "EditImage",
+//     send,
+//   );
+//   await stdoutPromise;
 
-  // Wait for process to exit and check result
-  const exitCode = await proc.exited;
-  const success = exitCode === 0 && existsSync(outputPath);
+//   // Wait for process to exit and check result
+//   const exitCode = await proc.exited;
+//   const success = exitCode === 0 && existsSync(outputPath);
 
-  if (success) {
-    send("progress", {
-      step: "edit-image",
-      status: "completed",
-      label: "Processing edit image task...",
-    });
-  } else {
-    send("progress", {
-      step: "edit-image",
-      status: "error",
-      label: "Processing edit image task...",
-      error: stderrText || `Process exited with code ${exitCode}`,
-    });
-  }
+//   if (success) {
+//     send("progress", {
+//       step: "edit-image",
+//       status: "completed",
+//       label: "Processing edit image task...",
+//     });
+//   } else {
+//     send("progress", {
+//       step: "edit-image",
+//       status: "error",
+//       label: "Processing edit image task...",
+//       error: stderrText || `Process exited with code ${exitCode}`,
+//     });
+//   }
 
-  return success;
-}
+//   return success;
+// }
 
 // // ========== Render Functions ==========
 

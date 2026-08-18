@@ -52,6 +52,11 @@ const VIDEO_STAGE_FLAGS: Record<string, string> = {
   "two-stage": "--two-stage",
 };
 
+const TTS_MODELS: Record<string, string> = {
+  low: "Qwen/Qwen3-TTS-12Hz-0.6B-Base",
+  high: "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+};
+
 /** Resolve the CLI stage flag for a video generation mode (defaults to distilled). */
 function stageFlagFor(mode: unknown): string {
   return typeof mode === "string"
@@ -223,6 +228,25 @@ function resolveSafePath(candidate: string, projectId: string): string | null {
     }
   }
 
+  // TTS voiceovers are stored under <output>/<projectId>/voices/<id>/. Search
+  // each voice folder for the basename so muxing can resolve the audio.
+  const voicesRoot = join(OUTPUT_DIR, projectId, "voices");
+  let voiceSubdirs: string[] = [];
+  try {
+    voiceSubdirs = readdirSync(voicesRoot).map((entry) =>
+      join(voicesRoot, entry),
+    );
+  } catch {
+    // voices dir does not exist yet — nothing to search
+  }
+  for (const voiceDir of voiceSubdirs) {
+    const candidatePath = join(voiceDir, base);
+    if (existsSync(candidatePath)) {
+      const resolved = realpathSync(candidatePath);
+      if (isPathAllowed(resolved)) return resolved;
+    }
+  }
+
   return null;
 }
 
@@ -331,6 +355,71 @@ function isMlxVlmInstalled(): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Resolve the ffmpeg binary installed via Homebrew (Apple Silicon then Intel).
+ * Falls back to relying on PATH when neither known location exists.
+ */
+async function getFfmpegBin(): Promise<string> {
+  const candidates = ["/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg"];
+  for (const p of candidates) {
+    if (existsSync(p)) return p;
+  }
+  return "ffmpeg";
+}
+
+const AUDIO_EXT_RE = /\.(mp3|wav|m4a)$/i;
+
+/**
+ * Recursively collect audio file paths under `root`, descending up to `depth`
+ * levels. mlx-audio may write its saved clip into a subdirectory of --output,
+ * so a shallow scan can miss the freshly generated file.
+ */
+function collectAudioFiles(root: string, depth = 2): string[] {
+  const out: string[] = [];
+  const walk = (dir: string, remaining: number) => {
+    let entries: string[];
+    try {
+      entries = readdirSync(dir);
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const fullPath = join(dir, entry);
+      let isDir = false;
+      try {
+        isDir = statSync(fullPath).isDirectory();
+      } catch {
+        continue;
+      }
+      if (isDir) {
+        if (remaining > 1) walk(fullPath, remaining - 1);
+      } else if (AUDIO_EXT_RE.test(entry)) {
+        out.push(fullPath);
+      }
+    }
+  };
+  walk(root, depth);
+  return out;
+}
+
+/**
+ * Find the newest audio file (by mtime) under `root` whose absolute path was
+ * not already present before generation started (the `before` set holds the
+ * pre-existing audio file paths).
+ */
+function findNewestAudioFile(root: string, before: Set<string>): string | null {
+  const candidates = collectAudioFiles(root)
+    .filter((p) => !before.has(p))
+    .sort((a, b) => {
+      try {
+        return statSync(b).mtimeMs - statSync(a).mtimeMs;
+      } catch {
+        return 0;
+      }
+    });
+  return candidates[0] ?? null;
 }
 
 /** Directory where Hugging Face Hub caches downloaded models. */
@@ -547,6 +636,47 @@ export async function renderMediaRoutes({
       res
         .status(500)
         .json({ error: "Failed to save video", details: String(e) });
+    }
+  });
+
+  app.post("/api/upload/audio", async (req, res) => {
+    const { audio, filename, projectId } = req.body || {};
+
+    if (!audio) {
+      res.status(400).json({ error: "Audio data is required (base64)" });
+      return;
+    }
+    if (!projectId || !isValidProjectId(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+
+    try {
+      // Decode base64 (strip data URL prefix if present)
+      const base64 = String(audio).replace(/^data:audio\/\w+;base64,/, "");
+      const buffer = Buffer.from(base64, "base64");
+
+      const projectUploadDir = join(UPLOAD_DIR, projectId);
+      ensureDir(projectUploadDir);
+
+      const safeName = (filename || `upload-${Date.now()}.mp3`).replace(
+        /[^a-zA-Z0-9._-]/g,
+        "_",
+      );
+      const filePath = join(projectUploadDir, safeName);
+
+      writeFileSync(filePath, buffer);
+
+      res.json({
+        success: true,
+        path: filePath,
+        filename: safeName,
+        size: buffer.length,
+      });
+    } catch (e) {
+      res
+        .status(500)
+        .json({ error: "Failed to save audio", details: String(e) });
     }
   });
 
@@ -1191,6 +1321,295 @@ export async function renderMediaRoutes({
           success: true,
           path: outputPath,
           filename: outputFile,
+        });
+      } else {
+        send("error", {
+          error: stderrText || `Process exited with code ${exitCode}`,
+          exitCode,
+        });
+      }
+    } catch (e) {
+      send("error", { error: String(e) });
+    } finally {
+      activeProc = null;
+      res.end();
+    }
+  });
+
+  // ========== MLX-Audio: Status ==========
+
+  app.get("/api/mlxaudio/status", async (_req, res) => {
+    // Never throw on a missing uv — installation state is based on the folder.
+    try {
+      await getUvPath();
+    } catch {
+      // uv not found; installed is still reported from the folder below.
+    }
+    res.json({
+      installed: existsSync(join(PYTHON_DIR, "mlx-audio")),
+    });
+  });
+
+  // ========== Render: Text-to-Speech (mlx-audio) ==========
+
+  app.post("/api/render/tts", async (req, res) => {
+    const { text, refAudioPath, projectId, outputDir, quality, voiceId } =
+      req.body || {};
+
+    if (!text || typeof text !== "string" || !text.trim()) {
+      res.status(400).json({ error: "Text is required" });
+      return;
+    }
+    if (!refAudioPath) {
+      res.status(400).json({ error: "Reference audio is required" });
+      return;
+    }
+    if (!projectId || !isValidProjectId(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    if (quality !== "low" && quality !== "high") {
+      res.status(400).json({ error: "Quality must be 'low' or 'high'" });
+      return;
+    }
+
+    // Resolve reference audio — only bare filenames in this project's dirs
+    const resolvedRef = resolveSafePath(refAudioPath, projectId);
+    if (!resolvedRef) {
+      res.status(400).json({
+        error:
+          "Invalid reference audio path. Provide a filename previously uploaded to this project.",
+      });
+      return;
+    }
+
+    // SSE headers
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: string, data: object) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      const uvPath = await getUvPath();
+      const projectOutputDir = resolveOutputDir(outputDir, projectId);
+      if (!projectOutputDir) {
+        send("error", { error: "Invalid output directory." });
+        res.end();
+        return;
+      }
+
+      // TTS audio is saved under <projectOutputDir>/voices/<voiceId>/ so each
+      // row's voiceover stays isolated in its own folder. Sanitize voiceId to
+      // alphanumerics/_/- so it can never escape the voices directory.
+      const safeVoiceId = String(voiceId ?? `voice-${Date.now()}`)
+        .replace(/[^a-zA-Z0-9_-]/g, "_")
+        .slice(0, 64);
+      const voiceDir = join(projectOutputDir, "voices", safeVoiceId);
+      ensureDir(voiceDir);
+
+      // Snapshot the existing audio files in this row's voice folder so the
+      // freshly generated one can be picked out afterwards.
+      const beforeSet = new Set<string>(collectAudioFiles(voiceDir));
+
+      send("progress", {
+        status: "starting",
+        label: "Generating speech...",
+        model: TTS_MODELS[quality],
+      });
+
+      // No --play flag: this is a silent server-side batch generation. The mp3
+      // lands in <projectOutputDir>/voices/<voiceId>/, which is servable via
+      // /api/files and resolvable via resolveSafePath for the mux step.
+      const proc = spawn(
+        [
+          uvPath,
+          "run",
+          "mlx_audio.tts.generate",
+          "--model",
+          TTS_MODELS[quality],
+          "--text",
+          text,
+          "--ref_audio",
+          resolvedRef,
+          "--output",
+          voiceDir,
+          "--audio_format",
+          "mp3",
+          "--stream",
+          "--save",
+          "--play",
+        ],
+        {
+          env: process.env,
+          cwd: voiceDir,
+          stdout: "pipe",
+          stderr: "pipe",
+        },
+      );
+
+      activeProc = proc;
+
+      const stdoutPromise = streamToSSE(
+        proc.stdout as ReadableStream<Uint8Array>,
+        "TTS",
+        send,
+      );
+      const stderrText = await streamToSSE(
+        proc.stderr as ReadableStream<Uint8Array>,
+        "TTS",
+        send,
+      );
+      await stdoutPromise;
+
+      const exitCode = await proc.exited;
+      if (exitCode === 0) {
+        const path = findNewestAudioFile(voiceDir, beforeSet);
+        if (path) {
+          send("complete", {
+            success: true,
+            path,
+            filename: path.split(sep).pop(),
+          });
+        } else {
+          send("error", {
+            error: "TTS completed but no audio file was produced",
+          });
+        }
+      } else {
+        send("error", {
+          error: stderrText || `Process exited with code ${exitCode}`,
+          exitCode,
+        });
+      }
+    } catch (e) {
+      send("error", { error: String(e) });
+    } finally {
+      activeProc = null;
+      res.end();
+    }
+  });
+
+  // ========== Render: Mux Video + Audio ==========
+
+  app.post("/api/render/mux-audio", async (req, res) => {
+    const { videoPath, audioPath, projectId, outputDir } = req.body || {};
+
+    if (!videoPath) {
+      res.status(400).json({ error: "Video path is required" });
+      return;
+    }
+    if (!audioPath) {
+      res.status(400).json({ error: "Audio path is required" });
+      return;
+    }
+    if (!projectId || !isValidProjectId(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+
+    // Resolve video path — only bare .mp4 filenames in this project's output dir
+    const resolvedVideo = resolveSafeVideoPath(videoPath, projectId);
+    if (!resolvedVideo) {
+      res.status(400).json({
+        error:
+          "Invalid video path. Provide a filename previously generated in this project.",
+      });
+      return;
+    }
+
+    // Resolve audio path — only bare filenames in this project's dirs
+    const resolvedAudio = resolveSafePath(audioPath, projectId);
+    if (!resolvedAudio) {
+      res.status(400).json({
+        error:
+          "Invalid audio path. Provide a filename previously generated or uploaded to this project.",
+      });
+      return;
+    }
+
+    // SSE headers
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: string, data: object) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      const ffmpegBin = await getFfmpegBin();
+      const projectOutputDir = resolveOutputDir(outputDir, projectId);
+      if (!projectOutputDir) {
+        send("error", { error: "Invalid output directory." });
+        res.end();
+        return;
+      }
+
+      const finalFile = `voice-${Date.now()}.mp4`;
+      const finalPath = join(projectOutputDir, finalFile);
+
+      send("progress", {
+        status: "starting",
+        label: "Muxing video and audio...",
+        outputFile: finalFile,
+      });
+
+      const proc = spawn(
+        [
+          ffmpegBin,
+          "-y",
+          "-i",
+          resolvedVideo,
+          "-i",
+          resolvedAudio,
+          "-map",
+          "0:v",
+          "-map",
+          "1:a",
+          "-c:v",
+          "copy",
+          "-c:a",
+          "aac",
+          "-b:a",
+          "192k",
+          "-shortest",
+          finalPath,
+        ],
+        {
+          stdout: "pipe",
+          stderr: "pipe",
+        },
+      );
+
+      activeProc = proc;
+
+      const stdoutPromise = streamToSSE(
+        proc.stdout as ReadableStream<Uint8Array>,
+        "Mux",
+        send,
+      );
+      const stderrText = await streamToSSE(
+        proc.stderr as ReadableStream<Uint8Array>,
+        "Mux",
+        send,
+      );
+      await stdoutPromise;
+
+      const exitCode = await proc.exited;
+      if (exitCode === 0 && existsSync(finalPath)) {
+        send("complete", {
+          success: true,
+          path: finalPath,
+          filename: finalFile,
         });
       } else {
         send("error", {

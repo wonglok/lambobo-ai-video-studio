@@ -12,6 +12,7 @@ import SceneVisualTab from "./EditorTabs/SceneVisualTab";
 import TextToImageTab from "./EditorTabs/TextToImageTab";
 import ReferencesToVideoTab from "./EditorTabs/ReferencesToVideoTab";
 import BatchVideoTab from "./EditorTabs/BatchVideoTab";
+import BatchVoiceVideoTab from "./EditorTabs/BatchVoiceVideoTab";
 import LlmServerTab from "./EditorTabs/LlmServerTab";
 
 export default function ProjectEditorPage() {
@@ -237,6 +238,23 @@ export default function ProjectEditorPage() {
     </svg>
   );
 
+  const BatchVoiceIcon = (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+      <line x1="12" y1="19" x2="12" y2="23" />
+    </svg>
+  );
+
   const ServerIcon = (
     <svg
       width="18"
@@ -440,6 +458,17 @@ export default function ProjectEditorPage() {
               Batch Video
             </button>
             <button
+              onClick={() => store.setActiveTab("batchVoice")}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+                store.activeTab === "batchVoice"
+                  ? "bg-tiffany-100 text-tiffany-800"
+                  : "text-tiffany-600 hover:bg-tiffany-50 hover:text-tiffany-700"
+              }`}
+            >
+              {BatchVoiceIcon}
+              Batch Voice Video
+            </button>
+            <button
               onClick={() => store.setActiveTab("llmServer")}
               className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
                 store.activeTab === "llmServer"
@@ -491,6 +520,11 @@ export default function ProjectEditorPage() {
           {/* ========== BATCH VIDEO PANEL ========== */}
           {store.activeTab === "batchVideo" && (
             <BatchVideoTab projectId={id!} />
+          )}
+
+          {/* ========== BATCH VOICE VIDEO PANEL ========== */}
+          {store.activeTab === "batchVoice" && (
+            <BatchVoiceVideoTab projectId={id!} />
           )}
 
           {/* ========== LLM SERVER PANEL ========== */}
