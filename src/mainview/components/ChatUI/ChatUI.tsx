@@ -383,7 +383,7 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
         {/* Messages */}
         <div
           ref={scrollRef}
-          className="flex flex-col gap-3 p-4 h-72 overflow-y-auto bg-tiffany-50/40"
+          className="flex flex-col gap-3 p-4 h-[500px] overflow-y-auto bg-tiffany-50/40"
         >
           {messages.length === 0 && (
             <div className="m-auto text-center text-xs text-tiffany-400 italic max-w-xs">
