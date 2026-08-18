@@ -90,6 +90,98 @@ function CodeBlock({ code, children }: CodeBlockProps) {
   );
 }
 
+// ===== Story table (id / duration / t2i / i2v) =====
+
+type HastNode = {
+  type?: string;
+  tagName?: string;
+  value?: string;
+  children?: HastNode[];
+};
+
+/** Flatten a HAST node into its plain text content. */
+function hastText(node: HastNode | undefined): string {
+  if (!node) return "";
+  if (node.type === "text") return node.value ?? "";
+  if (Array.isArray(node.children)) return node.children.map(hastText).join("");
+  return "";
+}
+
+function getHeaderCells(node: HastNode | undefined): HastNode[] {
+  const thead = node?.children?.find((c) => c.tagName === "thead");
+  const tr = thead?.children?.find((c) => c.tagName === "tr");
+  return (tr?.children ?? []).filter((c) => c.tagName === "th");
+}
+
+function getBodyRows(node: HastNode | undefined): HastNode[][] {
+  const tbody = node?.children?.find((c) => c.tagName === "tbody");
+  return (tbody?.children ?? [])
+    .filter((c) => c.tagName === "tr")
+    .map((tr) => (tr.children ?? []).filter((c) => c.tagName === "td"));
+}
+
+/** Return the column index of the `duration` header, or -1 if absent. */
+function getDurationIndex(node: HastNode | undefined): number {
+  return getHeaderCells(node).findIndex(
+    (th) => hastText(th).trim().toLowerCase() === "duration",
+  );
+}
+
+function DurationInput({ initialValue }: { initialValue: string }) {
+  const [value, setValue] = useState(initialValue);
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      className="w-14 rounded-md border border-tiffany-200 bg-white px-1.5 py-0.5 text-xs text-tiffany-900 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30"
+    />
+  );
+}
+
+function StoryTable({ node }: { node?: HastNode }) {
+  const durationIdx = getDurationIndex(node);
+  const headers = getHeaderCells(node);
+  const rows = getBodyRows(node);
+
+  return (
+    <div className="my-2 overflow-x-auto rounded-lg border border-tiffany-200">
+      <table className="w-full border-collapse text-xs">
+        <thead className="bg-tiffany-50">
+          <tr className="border-b border-tiffany-100">
+            {headers.map((th, i) => (
+              <th
+                key={i}
+                className="whitespace-nowrap border border-tiffany-200 px-2 py-1 text-left font-semibold text-tiffany-700"
+              >
+                {hastText(th)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((cells, ri) => (
+            <tr key={ri} className="border-b border-tiffany-100">
+              {cells.map((cell, ci) => (
+                <td
+                  key={ci}
+                  className="border border-tiffany-200 px-2 py-1 align-top text-tiffany-800"
+                >
+                  {ci === durationIdx ? (
+                    <DurationInput initialValue={hastText(cell).trim()} />
+                  ) : (
+                    hastText(cell)
+                  )}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 const components: Components = {
   p: ({ children }) => (
     <p className="my-1 leading-relaxed first:mt-0 last:mb-0">{children}</p>
@@ -147,11 +239,16 @@ const components: Components = {
       {children}
     </h6>
   ),
-  table: ({ children }) => (
-    <div className="my-2 overflow-x-auto rounded-lg border border-tiffany-200">
-      <table className="w-full border-collapse text-xs">{children}</table>
-    </div>
-  ),
+  table: ({ node, children }) => {
+    if (getDurationIndex(node) >= 0) {
+      return <StoryTable node={node} />;
+    }
+    return (
+      <div className="my-2 overflow-x-auto rounded-lg border border-tiffany-200">
+        <table className="w-full border-collapse text-xs">{children}</table>
+      </div>
+    );
+  },
   thead: ({ children }) => <thead className="bg-tiffany-50">{children}</thead>,
   tr: ({ children }) => (
     <tr className="border-b border-tiffany-100">{children}</tr>
