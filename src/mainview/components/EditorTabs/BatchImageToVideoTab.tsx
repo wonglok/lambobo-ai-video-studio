@@ -195,6 +195,23 @@ const CheckIcon = (
   </svg>
 );
 
+const RefreshCwIcon = (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="23 4 23 10 17 10" />
+    <polyline points="1 20 1 14 7 14" />
+    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+  </svg>
+);
+
 const SpinnerIcon = (
   <svg
     className="animate-spin"
@@ -494,7 +511,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
                   <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-32">
                     Status
                   </th>
-                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-16">
+                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-36">
                     Actions
                   </th>
                 </tr>
@@ -614,14 +631,52 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
 
                     {/* Actions */}
                     <td className="px-3 py-2">
-                      <button
-                        onClick={() => store.removeRow(row.id)}
-                        disabled={store.running}
-                        title="Remove row"
-                        className="flex items-center justify-center w-7 h-7 rounded-lg border border-tiffany-200 text-tiffany-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors disabled:opacity-40"
-                      >
-                        {CloseIcon}
-                      </button>
+                      <div className="flex flex-wrap gap-1">
+                        <button
+                          onClick={() =>
+                            store.regenerateImage(projectId, row.id)
+                          }
+                          disabled={store.running || !row.t2iPrompt.trim()}
+                          title="Regenerate image"
+                          className="flex items-center justify-center w-7 h-7 rounded-lg border border-tiffany-200 text-tiffany-600 hover:bg-tiffany-50 hover:text-tiffany-700 hover:border-tiffany-300 transition-colors disabled:opacity-40"
+                        >
+                          {ImageIcon}
+                        </button>
+                        <button
+                          onClick={() =>
+                            store.regenerateVideo(projectId, row.id)
+                          }
+                          disabled={
+                            store.running ||
+                            !row.imagePath ||
+                            !row.i2vPrompt.trim()
+                          }
+                          title="Regenerate video"
+                          className="flex items-center justify-center w-7 h-7 rounded-lg border border-tiffany-200 text-tiffany-600 hover:bg-tiffany-50 hover:text-tiffany-700 hover:border-tiffany-300 transition-colors disabled:opacity-40"
+                        >
+                          {FilmIcon}
+                        </button>
+                        <button
+                          onClick={() => store.regenerateBoth(projectId, row.id)}
+                          disabled={
+                            store.running ||
+                            !row.t2iPrompt.trim() ||
+                            !row.i2vPrompt.trim()
+                          }
+                          title="Regenerate image + video"
+                          className="flex items-center justify-center w-7 h-7 rounded-lg border border-tiffany-200 text-tiffany-600 hover:bg-tiffany-50 hover:text-tiffany-700 hover:border-tiffany-300 transition-colors disabled:opacity-40"
+                        >
+                          {RefreshCwIcon}
+                        </button>
+                        <button
+                          onClick={() => store.removeRow(row.id)}
+                          disabled={store.running}
+                          title="Remove row"
+                          className="flex items-center justify-center w-7 h-7 rounded-lg border border-tiffany-200 text-tiffany-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors disabled:opacity-40"
+                        >
+                          {CloseIcon}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

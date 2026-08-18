@@ -65,6 +65,9 @@ interface BatchImageToVideoStore {
   generateAllImages: (projectId: string) => Promise<void>;
   generateAllVideos: (projectId: string) => Promise<void>;
   generateAll: (projectId: string) => Promise<void>;
+  regenerateImage: (projectId: string, rowId: string) => Promise<void>;
+  regenerateVideo: (projectId: string, rowId: string) => Promise<void>;
+  regenerateBoth: (projectId: string, rowId: string) => Promise<void>;
   cancel: () => void;
 
   reset: () => void;
@@ -634,6 +637,31 @@ export const useBatchImageToVideoStore = create<BatchImageToVideoStore>(
     generateAll: (projectId) => {
       const ids = get()
         .rows.filter((r) => r.t2iPrompt.trim() && r.i2vPrompt.trim())
+        .map((r) => r.id);
+      return runPipeline(projectId, ids, "both");
+    },
+
+    regenerateImage: (projectId, rowId) => {
+      const ids = get()
+        .rows.filter((r) => r.id === rowId && r.t2iPrompt.trim())
+        .map((r) => r.id);
+      return runPipeline(projectId, ids, "images");
+    },
+
+    regenerateVideo: (projectId, rowId) => {
+      const ids = get()
+        .rows.filter(
+          (r) => r.id === rowId && r.imagePath && r.i2vPrompt.trim(),
+        )
+        .map((r) => r.id);
+      return runPipeline(projectId, ids, "videos");
+    },
+
+    regenerateBoth: (projectId, rowId) => {
+      const ids = get()
+        .rows.filter(
+          (r) => r.id === rowId && r.t2iPrompt.trim() && r.i2vPrompt.trim(),
+        )
         .map((r) => r.id);
       return runPipeline(projectId, ids, "both");
     },
