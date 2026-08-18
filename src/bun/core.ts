@@ -801,14 +801,17 @@ async function installPythonDependencies(): Promise<boolean> {
         //
         "tool",
         "install",
-        "--force",
         "mlx-audio",
+        "--force",
         "--prerelease=allow",
       ],
       {
-        cwd: homedir(),
+        //
       },
     );
+
+    console.log(uvSyncResult);
+
     if (!uvSyncResult.success) {
       console.error(
         "Failed to install uv mlx-audio global:",
