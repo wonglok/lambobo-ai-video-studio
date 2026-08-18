@@ -29,6 +29,7 @@ export type Resolution =
   | "1080p"
   | "2048p";
 export type ZImageQuality = "4bit" | "8bit";
+export type TextToImagePreset = "prototype" | "optimal";
 export type VideoMode = "distilled" | "one-stage" | "two-stage";
 
 function getDimensions(
@@ -190,6 +191,7 @@ interface GenerationStore {
   setTextToImageResolution: (v: Resolution) => void;
   setTextToImageQuality: (v: ZImageQuality) => void;
   setTextToImageSteps: (v: number) => void;
+  applyTextToImagePreset: (preset: TextToImagePreset) => void;
   clearTextToImageResult: () => void;
   checkTextToImageStatus: () => Promise<void>;
   installTextToImage: () => Promise<void>;
@@ -517,6 +519,29 @@ const initialImageEdit: ImageEditState = {
   logs: [],
   mlxgenInstalled: null,
   modelDownloaded: null,
+};
+
+const TEXT_TO_IMAGE_PRESETS: Record<
+  TextToImagePreset,
+  {
+    aspectRatio: AspectRatio;
+    resolution: Resolution;
+    steps: number;
+    quality: ZImageQuality;
+  }
+> = {
+  prototype: {
+    aspectRatio: "1:1",
+    resolution: "320p",
+    steps: 4,
+    quality: "4bit",
+  },
+  optimal: {
+    aspectRatio: "1:1",
+    resolution: "1080p",
+    steps: 8,
+    quality: "8bit",
+  },
 };
 
 const initialTextToImage: TextToImageState = {
@@ -1624,6 +1649,11 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
 
   setTextToImageQuality: (quality) =>
     set((s) => ({ textToImage: { ...s.textToImage, quality } })),
+
+  applyTextToImagePreset: (preset) => {
+    const p = TEXT_TO_IMAGE_PRESETS[preset];
+    set((s) => ({ textToImage: { ...s.textToImage, ...p } }));
+  },
 
   clearTextToImageResult: () =>
     set((s) => ({
