@@ -2,6 +2,7 @@ import { useGenerationStore } from "../../stores/generationStore";
 import { ChatUI } from "../ChatUI/ChatUI";
 import AgentWorkspace from "../AgentWorkspace";
 import VoiceChatPanel from "./VoiceChatPanel";
+import MlxVlmServerPanel from "./MlxVlmServerPanel";
 // import MlxVlmServerPanel from "./MlxVlmServerPanel";
 
 interface Props {
@@ -38,12 +39,13 @@ export default function AgentTab({ projectId }: Props) {
         <h2 className="text-base font-semibold text-tiffany-900">Agent</h2>
       </div>
 
-      {/* <MlxVlmServerPanel /> */}
-
-      <VoiceChatPanel projectId={projectId} />
+      {store.agent.serverRunning && store.agent.serverOnline ? null : (
+        <MlxVlmServerPanel />
+      )}
 
       {store.agent.serverRunning && store.agent.serverOnline ? (
         <div className="">
+          <VoiceChatPanel projectId={projectId} />
           <ChatUI projectId={projectId} />
           <div className="h-4" />
           <AgentWorkspace projectId={projectId} />
@@ -53,13 +55,6 @@ export default function AgentTab({ projectId }: Props) {
           <span className="text-tiffany-400">{AgentIcon}</span>
           <p className="text-xs text-tiffany-400 italic">
             Start the LLM server to chat with the agent.{" "}
-            <button
-              onClick={() => store.setActiveTab("llmServer")}
-              className="font-semibold text-tiffany-600 underline underline-offset-2 hover:text-tiffany-800 transition-colors"
-            >
-              Click here
-            </button>{" "}
-            to open the LLM Server tab.
           </p>
         </div>
       )}
