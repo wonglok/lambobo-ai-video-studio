@@ -202,6 +202,11 @@ interface GenerationStore {
   selectedVideo: ProjectVideo | null;
   selectVideo: (video: ProjectVideo | null) => void;
 
+  // Project audio picker
+  projectAudios: ProjectAudio[];
+  projectAudiosLoading: boolean;
+  fetchProjectAudios: (projectId: string) => Promise<void>;
+
   // Upload
   uploading: boolean;
   uploadError: string | null;
@@ -249,6 +254,11 @@ export interface ProjectImage {
 }
 
 export interface ProjectVideo {
+  filename: string;
+  url: string;
+}
+
+export interface ProjectAudio {
   filename: string;
   url: string;
 }
@@ -2078,6 +2088,28 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     set({ selectedVideo: { ...video, url: fullUrl } });
   },
 
+  // ---- Project Audio ----
+  projectAudios: [],
+  projectAudiosLoading: false,
+
+  fetchProjectAudios: async (projectId) => {
+    set({ projectAudiosLoading: true });
+    try {
+      const res = await fetch(`${API_BASE}/api/projects/${projectId}/audios`);
+      if (!res.ok) throw new Error(await res.text());
+      const audios: ProjectAudio[] = await res.json();
+      const resolved = audios.map((a) => ({
+        ...a,
+        url: a.url.startsWith("http")
+          ? a.url
+          : `http://localhost:${(window as any).PORT}${a.url}`,
+      }));
+      set({ projectAudios: resolved, projectAudiosLoading: false });
+    } catch {
+      set({ projectAudiosLoading: false });
+    }
+  },
+
   cancelGenerate: () => {
     if (generateAbortController) {
       generateAbortController.abort();
@@ -2142,6 +2174,8 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       projectVideos: [],
       projectVideosLoading: false,
       selectedVideo: null,
+      projectAudios: [],
+      projectAudiosLoading: false,
       csvRows: [],
       csvColumns: [],
       csvFilename: null,

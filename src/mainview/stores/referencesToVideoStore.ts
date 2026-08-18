@@ -5,7 +5,7 @@ const API_BASE = `http://localhost:${(window as any).PORT}`;
 // Abort controller for the in-flight generation request, so it can be cancelled.
 let generateAbortController: AbortController | null = null;
 
-export type ReferenceKind = "image" | "video";
+export type ReferenceKind = "image" | "video" | "audio";
 
 export interface ReferenceRef {
   kind: ReferenceKind;
@@ -50,6 +50,11 @@ interface ReferencesToVideoStore {
   removeRef: (index: number) => void;
   setRefFilename: (index: number, filename: string) => void;
   uploadVideo: (
+    base64: string,
+    filename: string,
+    projectId: string,
+  ) => Promise<string | null>;
+  uploadAudio: (
     base64: string,
     filename: string,
     projectId: string,
@@ -199,6 +204,32 @@ export const useReferencesToVideoStore = create<ReferencesToVideoStore>(
           body: JSON.stringify({
             video: base64,
             filename: filename || `upload-${Date.now()}.mp4`,
+            projectId,
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.text();
+          set({ genError: err });
+          return null;
+        }
+
+        const data = await res.json();
+        return data.filename as string;
+      } catch (e) {
+        set({ genError: String(e) });
+        return null;
+      }
+    },
+
+    uploadAudio: async (base64, filename, projectId) => {
+      try {
+        const res = await fetch(`${API_BASE}/api/upload/audio`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            audio: base64,
+            filename: filename || `upload-${Date.now()}.mp3`,
             projectId,
           }),
         });

@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { useReferencesToVideoStore } from "../../stores/referencesToVideoStore";
+import {
+  useReferencesToVideoStore,
+  type ReferenceKind,
+} from "../../stores/referencesToVideoStore";
 import { useGenerationStore } from "../../stores/generationStore";
 
 interface Props {
@@ -110,12 +113,14 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
   } | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
   const logRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     store.checkStatus();
     genStore.fetchProjectImages(projectId);
     genStore.fetchProjectVideos(projectId);
+    genStore.fetchProjectAudios(projectId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
@@ -143,12 +148,18 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
   const findVideo = (filename: string | null) =>
     genStore.projectVideos.find((v) => v.filename === filename) || null;
 
+  const findAudio = (filename: string | null) =>
+    genStore.projectAudios.find((a) => a.filename === filename) || null;
+
+  const kindLabel = (kind: ReferenceKind) =>
+    kind === "image" ? "Image" : kind === "video" ? "Video" : "Audio";
+
   const labelFor = (index: number) => {
     const ref = store.refs[index];
     const count = store.refs
       .slice(0, index + 1)
       .filter((r) => r.kind === ref.kind).length;
-    return ref.kind === "image" ? `Image ${count}` : `Video ${count}`;
+    return `${kindLabel(ref.kind)} ${count}`;
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -177,6 +188,22 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
       const filename = await store.uploadVideo(base64, file.name, projectId);
       if (filename) {
         genStore.fetchProjectVideos(projectId);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      const filename = await store.uploadAudio(base64, file.name, projectId);
+      if (filename) {
+        genStore.fetchProjectAudios(projectId);
       }
     };
     reader.readAsDataURL(file);
@@ -282,6 +309,23 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
     </svg>
   );
 
+  const AudioIcon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M9 18V5l12-2v13" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="18" cy="16" r="3" />
+    </svg>
+  );
+
   const PlusIcon = (
     <svg
       width="14"
@@ -332,6 +376,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
     const isActive = activeSlot === index;
     const img = ref.kind === "image" ? findImage(ref.filename) : null;
     const video = ref.kind === "video" ? findVideo(ref.filename) : null;
+    const audio = ref.kind === "audio" ? findAudio(ref.filename) : null;
 
     return (
       <div
@@ -347,7 +392,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
           className="flex flex-col items-center gap-1.5 w-full cursor-pointer"
         >
           <span className="text-[10px] font-semibold text-tiffany-600 uppercase tracking-wider">
-            {ref.kind === "image" ? "Image" : "Video"} {labelFor(index)}
+            {labelFor(index)}
           </span>
           {ref.kind === "image" ? (
             img ? (
@@ -361,19 +406,31 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
                 {ImageIcon}
               </span>
             )
-          ) : video ? (
-            <div className="w-24 rounded-lg overflow-hidden">
-              <VideoThumb
-                src={video.url}
-                onSelect={() => setActiveSlot(index)}
-                onPreview={() =>
-                  setPreviewVideo({ url: video.url, filename: video.filename })
-                }
-              />
-            </div>
+          ) : ref.kind === "video" ? (
+            video ? (
+              <div className="w-24 rounded-lg overflow-hidden">
+                <VideoThumb
+                  src={video.url}
+                  onSelect={() => setActiveSlot(index)}
+                  onPreview={() =>
+                    setPreviewVideo({ url: video.url, filename: video.filename })
+                  }
+                />
+              </div>
+            ) : (
+              <span className="w-24 h-24 rounded-lg bg-tiffany-50 border border-dashed border-tiffany-200 flex items-center justify-center text-tiffany-300">
+                {VideoIcon}
+              </span>
+            )
           ) : (
-            <span className="w-24 h-24 rounded-lg bg-tiffany-50 border border-dashed border-tiffany-200 flex items-center justify-center text-tiffany-300">
-              {VideoIcon}
+            <span
+              className={`w-24 h-24 rounded-lg border flex items-center justify-center ${
+                audio
+                  ? "bg-tiffany-100 border-tiffany-200 text-tiffany-600"
+                  : "bg-tiffany-50 border-dashed border-tiffany-200 text-tiffany-300"
+              }`}
+            >
+              {AudioIcon}
             </span>
           )}
           <span className="text-[10px] text-tiffany-600 truncate max-w-[100px]">
@@ -506,6 +563,17 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
             {PlusIcon}
             Add Video
           </button>
+          <button
+            onClick={() => {
+              store.addRef("audio");
+              setActiveSlot(store.refs.length);
+            }}
+            disabled={store.generating}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50"
+          >
+            {PlusIcon}
+            Add Audio
+          </button>
         </div>
 
         {activeRef ? (
@@ -560,7 +628,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
                 </div>
               )}
             </>
-          ) : (
+          ) : activeRef.kind === "video" ? (
             <>
               <div className="flex items-center gap-2 mb-2">
                 <input
@@ -611,6 +679,55 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
                           {video.filename}
                         </span>
                       </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 mb-2">
+                <input
+                  ref={audioInputRef}
+                  type="file"
+                  accept="audio/*"
+                  onChange={handleAudioUpload}
+                  disabled={store.generating}
+                  className="flex-1 text-sm text-tiffany-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-tiffany-100 file:text-tiffany-700 hover:file:bg-tiffany-200 file:cursor-pointer file:transition-colors disabled:opacity-50"
+                />
+              </div>
+              {genStore.projectAudiosLoading ? (
+                <p className="text-xs text-tiffany-400 italic py-4 text-center">
+                  Loading audio...
+                </p>
+              ) : genStore.projectAudios.length === 0 ? (
+                <p className="text-xs text-tiffany-400 italic py-4 text-center border border-dashed border-tiffany-200 rounded-xl">
+                  No audio yet. Upload one above.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                  {genStore.projectAudios.map((audio) => {
+                    const isSelected = audio.filename === activeRef.filename;
+                    return (
+                      <button
+                        key={audio.filename}
+                        onClick={() =>
+                          store.setRefFilename(activeSlot, audio.filename)
+                        }
+                        disabled={store.generating}
+                        className={`relative flex items-center gap-2 rounded-lg border-2 px-3 py-2 transition-all text-left ${
+                          isSelected
+                            ? "border-tiffany-500 ring-2 ring-tiffany-300/40"
+                            : "border-tiffany-200 hover:border-tiffany-300"
+                        } disabled:opacity-50`}
+                      >
+                        <span className="text-tiffany-500 shrink-0">
+                          {AudioIcon}
+                        </span>
+                        <span className="flex-1 text-[11px] text-tiffany-700 truncate">
+                          {audio.filename}
+                        </span>
+                      </button>
                     );
                   })}
                 </div>

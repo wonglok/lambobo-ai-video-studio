@@ -741,6 +741,57 @@ export async function renderMediaRoutes({
     res.json(results);
   });
 
+  // List project audio (from uploads)
+  app.get("/api/projects/:id/audios", (req, res) => {
+    const { id } = req.params;
+    const audioExts = new Set([
+      ".mp3",
+      ".wav",
+      ".m4a",
+      ".flac",
+      ".aac",
+      ".ogg",
+      ".opus",
+    ]);
+
+    const raw: { filename: string; url: string; birthtime: number }[] = [];
+
+    for (const dir of [UPLOAD_DIR, OUTPUT_DIR]) {
+      const projectDir = join(dir, id);
+      if (!existsSync(projectDir)) continue;
+
+      let entries: string[];
+      try {
+        entries = readdirSync(projectDir);
+      } catch {
+        continue;
+      }
+
+      for (const entry of entries) {
+        const ext = entry.slice(entry.lastIndexOf(".")).toLowerCase();
+        if (!audioExts.has(ext)) continue;
+
+        const fullPath = join(projectDir, entry);
+        let stats;
+        try {
+          stats = statSync(fullPath);
+          if (!stats.isFile()) continue;
+        } catch {
+          continue;
+        }
+
+        raw.push({
+          filename: entry,
+          url: `/api/files?path=${encodeURIComponent(fullPath)}`,
+          birthtime: stats.birthtimeMs,
+        });
+      }
+    }
+
+    raw.sort((a, b) => b.birthtime - a.birthtime);
+    res.json(raw.map(({ filename, url }) => ({ filename, url })));
+  });
+
   // ========== Render: Text-to-Image ==========
 
   app.post("/api/render/text-to-image", async (req, res) => {
@@ -1867,12 +1918,12 @@ export async function renderMediaRoutes({
       return;
     }
 
-    // Resolve ordered reference media (images and videos) to safe paths.
+    // Resolve ordered reference media (images, videos, and audio) to safe paths.
     const mediaRefs = Array.isArray(refs)
       ? refs.filter(
-          (r): r is { kind: "image" | "video"; filename: string } =>
+          (r): r is { kind: "image" | "video" | "audio"; filename: string } =>
             !!r &&
-            (r.kind === "image" || r.kind === "video") &&
+            (r.kind === "image" || r.kind === "video" || r.kind === "audio") &&
             typeof r.filename === "string" &&
             !!r.filename.trim(),
         )
@@ -1880,12 +1931,13 @@ export async function renderMediaRoutes({
     if (mediaRefs.length === 0) {
       res.status(400).json({
         error:
-          "At least one reference image or video is required. Upload or select one first.",
+          "At least one reference image, video, or audio is required. Upload or select one first.",
       });
       return;
     }
 
-    const resolvedRefs: { kind: "image" | "video"; path: string }[] = [];
+    const resolvedRefs: { kind: "image" | "video" | "audio"; path: string }[] =
+      [];
     for (const ref of mediaRefs) {
       const resolved = resolveSafePath(ref.filename.trim(), String(projectId));
       if (!resolved) {
@@ -1949,10 +2001,13 @@ export async function renderMediaRoutes({
 
       const args: string[] = [uvPath, "run", "mlx-h3"];
       for (const ref of resolvedRefs) {
-        args.push(
-          ref.kind === "image" ? "--ref-image" : "--ref-video",
-          ref.path,
-        );
+        const flag =
+          ref.kind === "image"
+            ? "--ref-image"
+            : ref.kind === "video"
+              ? "--ref-video"
+              : "--ref-audio";
+        args.push(flag, ref.path);
       }
       args.push(
         "--steps",
