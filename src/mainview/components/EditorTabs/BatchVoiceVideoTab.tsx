@@ -290,9 +290,8 @@ export default function BatchVoiceVideoTab({ projectId }: Props) {
   const readyCount = store.rows.filter(
     (r) =>
       r.prompt.trim() &&
-      r.script.trim() &&
       r.imagePath &&
-      store.voiceRefPath,
+      (!r.script.trim() || store.voiceRefPath),
   ).length;
 
   return (
@@ -526,7 +525,7 @@ export default function BatchVoiceVideoTab({ projectId }: Props) {
                     Video Prompt
                   </th>
                   <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 min-w-[220px]">
-                    Script (Voice)
+                    Script (Voice · optional)
                   </th>
                   <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-28">
                     Status
@@ -614,7 +613,7 @@ export default function BatchVoiceVideoTab({ projectId }: Props) {
                         onChange={(e) =>
                           store.updateScript(row.id, e.target.value)
                         }
-                        placeholder="Text the character says in the cloned voice..."
+                        placeholder="Optional — text spoken in the cloned voice (leave empty for a silent video)..."
                         rows={3}
                         disabled={store.running}
                         className="w-full px-2.5 py-1.5 bg-transparent border border-tiffany-200 rounded-lg text-tiffany-800 text-xs placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-1 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
@@ -654,9 +653,8 @@ export default function BatchVoiceVideoTab({ projectId }: Props) {
                           disabled={
                             store.running ||
                             !row.prompt.trim() ||
-                            !row.script.trim() ||
                             !row.imagePath ||
-                            !store.voiceRefPath
+                            (!!row.script.trim() && !store.voiceRefPath)
                           }
                           title="Generate this row"
                           className="flex items-center justify-center w-7 h-7 rounded-lg border border-tiffany-200 text-tiffany-600 hover:bg-tiffany-100 hover:border-tiffany-300 transition-colors disabled:opacity-40"
@@ -752,8 +750,9 @@ export default function BatchVoiceVideoTab({ projectId }: Props) {
 
       {readyCount === 0 && !store.running && (
         <p className="text-xs text-tiffany-500 -mt-2">
-          Each row needs a starting image, a video prompt, a script, and the
-          shared reference voice. Rows without a starting image are skipped.
+          Each row needs a starting image and a video prompt. The script is
+          optional — leave it empty for a silent video. Rows with a script also
+          need the shared reference voice.
         </p>
       )}
 

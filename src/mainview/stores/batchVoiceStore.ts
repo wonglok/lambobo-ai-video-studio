@@ -28,7 +28,7 @@ export interface BatchVoiceRow {
   id: string;
   // Video prompt (drives the image-to-video stage)
   prompt: string;
-  // TTS text (spoken in the cloned voice)
+  // TTS text (spoken in the cloned voice). Empty = silent video (no voiceover).
   script: string;
   imagePath: string | null;
   imageUrl: string | null;
@@ -508,9 +508,8 @@ export const useBatchVoiceStore = create<BatchVoiceStore>((set, get) => ({
       .filter(
         (r) =>
           r.prompt.trim() &&
-          r.script.trim() &&
           r.imagePath &&
-          get().voiceRefPath,
+          (!r.script.trim() || get().voiceRefPath),
       );
 
     if (targets.length === 0) return;
@@ -518,7 +517,7 @@ export const useBatchVoiceStore = create<BatchVoiceStore>((set, get) => ({
     const { duration, aspectRatio, resolution, mode, quality, voiceRefPath } =
       get();
     const { width, height } = getDimensions(aspectRatio, resolution);
-    const refAudioPath = normalizeImagePath(voiceRefPath!);
+    const refAudioPath = voiceRefPath ? normalizeImagePath(voiceRefPath) : null;
 
     batchAbortController = new AbortController();
     const signal = batchAbortController.signal;
@@ -539,6 +538,7 @@ export const useBatchVoiceStore = create<BatchVoiceStore>((set, get) => ({
       }
 
       const row = targets[i];
+      const hasVoice = row.script.trim().length > 0;
 
       set((s) => ({
         progress: { current: i + 1, total: targets.length },
@@ -546,7 +546,7 @@ export const useBatchVoiceStore = create<BatchVoiceStore>((set, get) => ({
           r.id === row.id
             ? {
                 ...r,
-                status: "tts",
+                status: hasVoice ? "tts" : "video",
                 error: null,
                 logs: [],
                 result: null,
@@ -557,87 +557,89 @@ export const useBatchVoiceStore = create<BatchVoiceStore>((set, get) => ({
         ),
         logs: [
           ...s.logs,
-          `[${i + 1}/${targets.length}] Voice: ${row.prompt.trim().slice(0, 80)}`,
+          `[${i + 1}/${targets.length}] ${hasVoice ? "Voice" : "Video (no voice)"}: ${row.prompt.trim().slice(0, 80)}`,
         ],
       }));
 
       try {
-        // ===== STEP 1: TTS =====
-        const ttsRes = await fetch(`${API_BASE}/api/render/tts`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            text: row.script.trim(),
-            refAudioPath,
-            projectId,
-            quality,
-            // Each row's voiceover is saved under
-            // <projectOutputDir>/voices/<voiceId>/, keyed by the row id.
-            voiceId: row.id,
-          }),
-          signal,
-        });
+        // ===== STEP 1: TTS (skipped when the row has no script) =====
+        if (hasVoice) {
+          const ttsRes = await fetch(`${API_BASE}/api/render/tts`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              text: row.script.trim(),
+              refAudioPath,
+              projectId,
+              quality,
+              // Each row's voiceover is saved under
+              // <projectOutputDir>/voices/<voiceId>/, keyed by the row id.
+              voiceId: row.id,
+            }),
+            signal,
+          });
 
-        if (!ttsRes.ok) {
-          const err = await ttsRes.text();
-          set((s) => ({
-            rows: s.rows.map((r) =>
-              r.id === row.id ? { ...r, status: "error", error: err } : r,
-            ),
-          }));
-          continue;
-        }
-
-        let ttsDone = false;
-        await readSSEStream(ttsRes, (event, data) => {
-          if (ttsDone) return;
-          switch (event) {
-            case "log":
-              set((s) => ({
-                rows: s.rows.map((r) =>
-                  r.id === row.id
-                    ? { ...r, logs: [...r.logs, data.text as string] }
-                    : r,
-                ),
-                logs: [
-                  ...s.logs,
-                  `[${i + 1}/${targets.length}] ${data.text as string}`,
-                ],
-              }));
-              break;
-            case "complete":
-              ttsDone = true;
-              set((s) => ({
-                rows: s.rows.map((r) =>
-                  r.id === row.id
-                    ? {
-                        ...r,
-                        audioResult: `http://localhost:${(window as any).PORT}/api/files?path=${encodeURIComponent(data.path)}`,
-                      }
-                    : r,
-                ),
-              }));
-              break;
-            case "error":
-              ttsDone = true;
-              set((s) => ({
-                rows: s.rows.map((r) =>
-                  r.id === row.id
-                    ? {
-                        ...r,
-                        status: "error",
-                        error: data.error || "Voice generation failed",
-                      }
-                    : r,
-                ),
-              }));
-              break;
+          if (!ttsRes.ok) {
+            const err = await ttsRes.text();
+            set((s) => ({
+              rows: s.rows.map((r) =>
+                r.id === row.id ? { ...r, status: "error", error: err } : r,
+              ),
+            }));
+            continue;
           }
-        });
 
-        const ttsRow = get().rows.find((r) => r.id === row.id);
-        if (!ttsRow || ttsRow.status === "error") {
-          continue;
+          let ttsDone = false;
+          await readSSEStream(ttsRes, (event, data) => {
+            if (ttsDone) return;
+            switch (event) {
+              case "log":
+                set((s) => ({
+                  rows: s.rows.map((r) =>
+                    r.id === row.id
+                      ? { ...r, logs: [...r.logs, data.text as string] }
+                      : r,
+                  ),
+                  logs: [
+                    ...s.logs,
+                    `[${i + 1}/${targets.length}] ${data.text as string}`,
+                  ],
+                }));
+                break;
+              case "complete":
+                ttsDone = true;
+                set((s) => ({
+                  rows: s.rows.map((r) =>
+                    r.id === row.id
+                      ? {
+                          ...r,
+                          audioResult: `http://localhost:${(window as any).PORT}/api/files?path=${encodeURIComponent(data.path)}`,
+                        }
+                      : r,
+                  ),
+                }));
+                break;
+              case "error":
+                ttsDone = true;
+                set((s) => ({
+                  rows: s.rows.map((r) =>
+                    r.id === row.id
+                      ? {
+                          ...r,
+                          status: "error",
+                          error: data.error || "Voice generation failed",
+                        }
+                      : r,
+                  ),
+                }));
+                break;
+            }
+          });
+
+          const ttsRow = get().rows.find((r) => r.id === row.id);
+          if (!ttsRow || ttsRow.status === "error") {
+            continue;
+          }
         }
 
         // ===== STEP 2: Video =====
@@ -724,6 +726,18 @@ export const useBatchVoiceStore = create<BatchVoiceStore>((set, get) => ({
 
         const vidRow = get().rows.find((r) => r.id === row.id);
         if (!vidRow || vidRow.status === "error") {
+          continue;
+        }
+
+        // No script → no voiceover: the motion video is the final result.
+        if (!hasVoice) {
+          set((s) => ({
+            rows: s.rows.map((r) =>
+              r.id === row.id
+                ? { ...r, status: "done", result: vidRow.motionResult }
+                : r,
+            ),
+          }));
           continue;
         }
 
@@ -832,9 +846,8 @@ export const useBatchVoiceStore = create<BatchVoiceStore>((set, get) => ({
       .rows.filter(
         (r) =>
           r.prompt.trim() &&
-          r.script.trim() &&
           r.imagePath &&
-          get().voiceRefPath,
+          (!r.script.trim() || get().voiceRefPath),
       )
       .map((r) => r.id);
     return get().generateRows(projectId, ids);
