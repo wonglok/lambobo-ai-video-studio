@@ -114,13 +114,11 @@ interface TextToImageState {
   prompt: string;
   aspectRatio: AspectRatio;
   resolution: Resolution;
-  quality: ZImageQuality;
   steps: number;
   installing: boolean;
   installingLogs: string[];
   installingError: string | null;
   downloading: boolean;
-  downloadingQuality: ZImageQuality | null;
   downloadingLogs: string[];
   downloadingError: string | null;
   generating: boolean;
@@ -129,7 +127,6 @@ interface TextToImageState {
   logs: string[];
   mlxgenInstalled: boolean | null;
   zModelDownloaded: boolean | null;
-  zModel4BitDownloaded: boolean | null;
 }
 
 interface AgentState {
