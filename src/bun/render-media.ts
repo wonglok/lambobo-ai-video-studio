@@ -643,6 +643,10 @@ export async function renderMediaRoutes({
   // List project images (from uploads and generated outputs)
   app.get("/api/projects/:id/images", (req, res) => {
     const { id } = req.params;
+    if (!isValidProjectId(id)) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
     const imageExts = new Set([
       ".png",
       ".jpg",
@@ -698,6 +702,10 @@ export async function renderMediaRoutes({
   // List project videos (from generated outputs)
   app.get("/api/projects/:id/videos", (req, res) => {
     const { id } = req.params;
+    if (!isValidProjectId(id)) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
     const videoExts = new Set([".mp4"]);
 
     const raw: { filename: string; url: string; birthtime: number }[] = [];
@@ -744,6 +752,10 @@ export async function renderMediaRoutes({
   // List project audio (from uploads)
   app.get("/api/projects/:id/audios", (req, res) => {
     const { id } = req.params;
+    if (!isValidProjectId(id)) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
     const audioExts = new Set([
       ".mp3",
       ".wav",

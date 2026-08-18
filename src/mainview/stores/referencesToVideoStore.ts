@@ -112,10 +112,10 @@ export const useReferencesToVideoStore = create<ReferencesToVideoStore>(
 
     // Generation parameters
     prompt: "[image1] is dancing at [image2]",
-    steps: 20,
-    width: 640,
-    height: 448,
-    seconds: 5,
+    steps: 10,
+    width: 320,
+    height: 320,
+    seconds: 3,
     seed: 42,
 
     // Reference media
