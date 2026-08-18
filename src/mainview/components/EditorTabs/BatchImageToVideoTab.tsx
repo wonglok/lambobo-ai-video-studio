@@ -268,6 +268,57 @@ function StatusBadge({ status }: { status: BatchI2VRowStatus }) {
   }
 }
 
+// ========== Duration cell (text input) ==========
+
+function DurationCell({
+  value,
+  shared,
+  disabled,
+  onCommit,
+}: {
+  value: number | null;
+  shared: number;
+  disabled: boolean;
+  onCommit: (v: number | null) => void;
+}) {
+  const [text, setText] = useState(value == null ? "" : String(value));
+
+  // Sync local text when the row's value changes externally (e.g. CSV re-parse).
+  useEffect(() => {
+    setText(value == null ? "" : String(value));
+  }, [value]);
+
+  const commit = () => {
+    const t = text.trim();
+    if (t === "") {
+      onCommit(null);
+      return;
+    }
+    const n = Number(t);
+    if (Number.isFinite(n) && n > 0) {
+      onCommit(n);
+    } else {
+      setText(value == null ? "" : String(value));
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+      }}
+      placeholder={`Default (${shared}s)`}
+      disabled={disabled}
+      title="Override video duration in seconds (empty = shared default)"
+      className="w-full px-2 py-1.5 bg-white border border-tiffany-200 rounded-lg text-tiffany-800 text-xs placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-1 focus:ring-tiffany-300/30 transition-all disabled:opacity-50"
+    />
+  );
+}
+
 // ========== Component ==========
 
 export default function BatchImageToVideoTab({ projectId }: Props) {
@@ -605,28 +656,12 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
 
                     {/* Duration override */}
                     <td className="px-3 py-2">
-                      <select
-                        value={
-                          row.duration == null ? "" : String(row.duration)
-                        }
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          store.updateRowDuration(
-                            row.id,
-                            v === "" ? null : Number(v),
-                          );
-                        }}
+                      <DurationCell
+                        value={row.duration}
+                        shared={store.duration}
                         disabled={store.running}
-                        title="Override video duration for this row"
-                        className="w-full px-2 py-1.5 bg-white border border-tiffany-200 rounded-lg text-tiffany-800 text-xs focus:outline-none focus:border-tiffany-300 focus:ring-1 focus:ring-tiffany-300/30 transition-all disabled:opacity-50"
-                      >
-                        <option value="">Default ({store.duration}s)</option>
-                        {[0.5, 3, 5, 7.5, 10, 15, 20].map((d) => (
-                          <option key={d} value={String(d)}>
-                            {d}s
-                          </option>
-                        ))}
-                      </select>
+                        onCommit={(v) => store.updateRowDuration(row.id, v)}
+                      />
                     </td>
 
                     {/* Generated image */}
