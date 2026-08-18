@@ -545,7 +545,7 @@ const TEXT_TO_IMAGE_PRESETS: Record<
     aspectRatio: "1:1",
     resolution: "320p",
     steps: 4,
-    quality: "4bit",
+    quality: "8bit",
   },
   medium: {
     aspectRatio: "1:1",
