@@ -1441,9 +1441,6 @@ export async function renderMediaRoutes({
           voiceDir,
           "--audio_format",
           "mp3",
-          "--stream",
-          "--save",
-          "--play",
         ],
         {
           env: process.env,
