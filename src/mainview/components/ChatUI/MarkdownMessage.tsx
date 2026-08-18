@@ -281,8 +281,10 @@ const components: Components = {
 
 export function MarkdownMessage({ content }: Props) {
   return (
-    <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-      {content}
-    </ReactMarkdown>
+    <div className="font-serif">
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+        {content}
+      </ReactMarkdown>
+    </div>
   );
 }

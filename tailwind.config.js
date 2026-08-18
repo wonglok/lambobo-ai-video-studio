@@ -3,6 +3,36 @@ export default {
   content: ["./src/mainview/**/*.{html,js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        // Claude-like: geometric grotesque for UI (Styrene-adjacent),
+        // bookish serif for prose (Tiempos/Copernicus-adjacent).
+        sans: [
+          '"Avenir Next"',
+          "Avenir",
+          '"Helvetica Neue"',
+          "-apple-system",
+          "BlinkMacSystemFont",
+          '"Segoe UI"',
+          "Roboto",
+          "sans-serif",
+        ],
+        serif: [
+          "Charter",
+          '"Iowan Old Style"',
+          "Georgia",
+          '"Times New Roman"',
+          "serif",
+        ],
+        mono: [
+          "ui-monospace",
+          '"SF Mono"',
+          '"JetBrains Mono"',
+          "Menlo",
+          "Consolas",
+          '"Liberation Mono"',
+          "monospace",
+        ],
+      },
       colors: {
         // Cool light-neutral scale (ink 50 = page, ink 900 = darkest text).
         ink: {

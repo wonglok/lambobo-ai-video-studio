@@ -396,7 +396,7 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
           {messages.map((m) =>
             m.role === "user" ? (
               <div key={m.id} className="flex justify-end">
-                <div className="max-w-[80%] px-3 py-2 rounded-2xl bg-tiffany-500 text-ink-950 text-sm whitespace-pre-wrap">
+                <div className="max-w-[80%] px-3 py-2 rounded-2xl bg-tiffany-500 text-ink-950 text-sm whitespace-pre-wrap font-serif">
                   {m.image && (
                     <img
                       src={m.image}
