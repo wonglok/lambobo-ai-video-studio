@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useGenerationStore } from "../../stores/generationStore";
 import { useChatStore } from "../../stores/chatStore";
+import { MarkdownMessage } from "./MarkdownMessage";
 
 const API_BASE = `http://localhost:${(window as any).PORT}`;
 
@@ -491,8 +492,8 @@ export function ChatUI({ projectId, agent = "default" }: Props) {
 
                 {m.content ? (
                   <div className="flex justify-start">
-                    <div className="max-w-[80%] px-3 py-2 rounded-xl bg-white border border-tiffany-200 text-tiffany-900 text-sm whitespace-pre-wrap">
-                      {m.content}
+                    <div className="max-w-[80%] px-3 py-2 rounded-xl bg-white border border-tiffany-200 text-tiffany-900 text-sm">
+                      <MarkdownMessage content={m.content} />
                     </div>
                   </div>
                 ) : (

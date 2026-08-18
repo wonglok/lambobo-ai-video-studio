@@ -18,13 +18,14 @@ import {
   ensureDir,
 } from "./workspace";
 import { TOOLS, toolDefinitions, runTool } from "./tools";
+import story from "./prompt/story-writer.txt" with { type: "txt" };
 
 // ========== Constants ==========
 
 const DEFAULT_MODEL = "mlx-community/gemma-4-e2b-it-4bit";
 const MAX_ITERATIONS = 500;
 const STORY_WRITER_AGENT = "story-writer";
-const STORY_WRITER_PROMPT_FILE = "vid-script-buidler.md";
+// const STORY_WRITER_PROMPT_FILE = "vid-script-buidler.md";
 
 type Role = "system" | "user" | "assistant" | "tool";
 
@@ -160,52 +161,9 @@ function safeAgent(value: unknown): string {
   return /^[a-zA-Z0-9_-]{1,32}$/.test(s) ? s : "default";
 }
 
-let cachedStoryWriterPrompt: string | null = null;
-
 /** Load the Story Writer system prompt from the bundled `prompt/` file. */
 function storyWriterSystemPrompt(): string {
-  if (cachedStoryWriterPrompt !== null) return cachedStoryWriterPrompt;
-
-  const candidates = [
-    join(process.cwd(), "prompt", STORY_WRITER_PROMPT_FILE),
-    join(
-      dirname(import.meta.path),
-      "..",
-      "..",
-      "prompt",
-      STORY_WRITER_PROMPT_FILE,
-    ),
-    join(
-      dirname(import.meta.path),
-      "..",
-      "..",
-      "..",
-      "prompt",
-      STORY_WRITER_PROMPT_FILE,
-    ),
-  ];
-  for (const p of candidates) {
-    try {
-      if (existsSync(p)) {
-        const text = readFileSync(p, "utf-8").trim();
-        if (text) {
-          cachedStoryWriterPrompt = text;
-          return cachedStoryWriterPrompt;
-        }
-      }
-    } catch {
-      // try the next candidate
-    }
-  }
-
-  // Fallback so the tab still works when the prompt file is unavailable.
-  cachedStoryWriterPrompt = [
-    "You are a short-form video planner and AI prompt specialist.",
-    "Convert the user's topic into CSV with columns: id,duration,t2i,i2v.",
-    "Each row is one single camera-shot moment; break large scenes into many small moments.",
-    "Output the result as a clean CSV code block.",
-  ].join(" ");
-  return cachedStoryWriterPrompt;
+  return `${story}`;
 }
 
 /** Build a sanitized trace of the conversation for the client (no secrets/system). */

@@ -2604,6 +2604,8 @@ export async function renderMediaRoutes({
         modelName,
         "--port",
         String(portNum),
+        "--max-tokens",
+        "256000",
       ];
 
       // const draftModel = DRAFT_MODELS[modelName];
