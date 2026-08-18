@@ -42,7 +42,8 @@ const PROJECTS_FILE = join(JSON_DIR, "projects.json");
 const CHARACTERS_FILE = join(JSON_DIR, "characters.json");
 
 const MLXGEN_MODEL = "AbstractFramework/qwen-image-edit-2511-4bit";
-const Z_IMAGE_MODEL = "AbstractFramework/z-image-turbo-4bit";
+const Z_IMAGE_MODEL = "AbstractFramework/z-image-turbo-8bit";
+const Z_IMAGE_MODEL4Bit = "AbstractFramework/z-image-turbo-4bit";
 const MLX_VLM_MODEL = "mlx-community/gemma-4-e2b-it-4bit";
 const H3_MODEL = "appautomaton/minimax-h3-base-8bit-mlx";
 
