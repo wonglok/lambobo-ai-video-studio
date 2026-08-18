@@ -200,13 +200,9 @@ function StatusBadge({ status }: { status: BatchVoiceRowStatus }) {
         </span>
       );
     case "error":
-      return (
-        <span className="text-xs font-medium text-red-600">Error</span>
-      );
+      return <span className="text-xs font-medium text-red-600">Error</span>;
     default:
-      return (
-        <span className="text-xs font-medium text-tiffany-400">—</span>
-      );
+      return <span className="text-xs font-medium text-tiffany-400">—</span>;
   }
 }
 
@@ -272,9 +268,7 @@ export default function BatchVoiceVideoTab({ projectId }: Props) {
     e.target.value = "";
   };
 
-  const handleVoiceSelect = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleVoiceSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
