@@ -118,6 +118,24 @@ const FilmIcon = (
   </svg>
 );
 
+const ExpandIcon = (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="15 3 21 3 21 9" />
+    <polyline points="9 21 3 21 3 15" />
+    <line x1="21" y1="3" x2="14" y2="10" />
+    <line x1="3" y1="21" x2="10" y2="14" />
+  </svg>
+);
+
 const FolderIcon = (
   <svg
     width="16"
@@ -226,6 +244,11 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
   const logRef = useRef<HTMLDivElement | null>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
   const [csvFilename, setCsvFilename] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{
+    url: string;
+    filename: string;
+    type: "image" | "video";
+  } | null>(null);
 
   useEffect(() => {
     store.hydrate(projectId);
@@ -237,6 +260,16 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
       logRef.current.scrollTop = logRef.current.scrollHeight;
     }
   }, [store.logs]);
+
+  // Close the preview modal on Escape.
+  useEffect(() => {
+    if (!preview) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPreview(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [preview]);
 
   const handleCsvSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -510,7 +543,14 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
                         <img
                           src={row.imageUrl}
                           alt={row.imageFilename || "Generated image"}
-                          className="w-20 h-20 object-cover rounded-lg border border-tiffany-200"
+                          onClick={() =>
+                            setPreview({
+                              url: row.imageUrl!,
+                              filename: row.imageFilename || "Image",
+                              type: "image",
+                            })
+                          }
+                          className="w-20 h-20 object-cover rounded-lg border border-tiffany-200 cursor-zoom-in hover:opacity-80 transition-opacity"
                         />
                       ) : (
                         <span className="text-[10px] text-tiffany-400 italic">
@@ -522,11 +562,26 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
                     {/* Generated video */}
                     <td className="px-3 py-2">
                       {row.videoResult ? (
-                        <video
-                          src={row.videoResult}
-                          controls
-                          className="w-full max-w-[160px] h-auto rounded-lg bg-black"
-                        />
+                        <div className="relative inline-block">
+                          <video
+                            src={row.videoResult}
+                            controls
+                            className="w-full max-w-[160px] h-auto rounded-lg bg-black"
+                          />
+                          <button
+                            onClick={() =>
+                              setPreview({
+                                url: row.videoResult!,
+                                filename: "Video",
+                                type: "video",
+                              })
+                            }
+                            className="absolute top-1.5 right-1.5 flex items-center justify-center w-6 h-6 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                            title="Preview"
+                          >
+                            {ExpandIcon}
+                          </button>
+                        </div>
                       ) : (
                         <span className="text-[10px] text-tiffany-400 italic">
                           —
@@ -660,6 +715,44 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
             >
               {FilmIcon}
               Generate All Videos ({videoCount})
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Preview Modal ===== */}
+      {preview && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-6"
+          onClick={() => setPreview(null)}
+        >
+          <div
+            className="relative max-w-[90vw] max-h-[90vh] flex flex-col items-center gap-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {preview.type === "image" ? (
+              <img
+                src={preview.url}
+                alt={preview.filename}
+                className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl"
+              />
+            ) : (
+              <video
+                src={preview.url}
+                controls
+                autoPlay
+                className="max-w-full max-h-[80vh] rounded-xl shadow-2xl bg-black"
+              />
+            )}
+            <span className="text-xs text-white/70 truncate max-w-full">
+              {preview.filename}
+            </span>
+            <button
+              onClick={() => setPreview(null)}
+              className="absolute -top-3 -right-3 flex items-center justify-center w-9 h-9 bg-white text-tiffany-700 rounded-full shadow-lg hover:bg-tiffany-100 transition-colors"
+              title="Close (Esc)"
+            >
+              {CloseIcon}
             </button>
           </div>
         </div>
