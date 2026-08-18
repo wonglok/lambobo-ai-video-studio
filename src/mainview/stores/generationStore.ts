@@ -28,6 +28,7 @@ export type Resolution =
   | "720p"
   | "1080p"
   | "2048p";
+export type ZImageQuality = "4bit" | "8bit";
 export type VideoMode = "distilled" | "one-stage" | "two-stage";
 
 function getDimensions(
@@ -106,6 +107,7 @@ interface TextToImageState {
   prompt: string;
   aspectRatio: AspectRatio;
   resolution: Resolution;
+  quality: ZImageQuality;
   steps: number;
   installing: boolean;
   installingLogs: string[];
@@ -119,6 +121,7 @@ interface TextToImageState {
   logs: string[];
   mlxgenInstalled: boolean | null;
   zModelDownloaded: boolean | null;
+  zModel4BitDownloaded: boolean | null;
 }
 
 interface AgentState {
@@ -184,6 +187,7 @@ interface GenerationStore {
   setTextToImagePrompt: (v: string) => void;
   setTextToImageAspectRatio: (v: AspectRatio) => void;
   setTextToImageResolution: (v: Resolution) => void;
+  setTextToImageQuality: (v: ZImageQuality) => void;
   setTextToImageSteps: (v: number) => void;
   clearTextToImageResult: () => void;
   checkTextToImageStatus: () => Promise<void>;
@@ -518,6 +522,7 @@ const initialTextToImage: TextToImageState = {
   prompt: "",
   aspectRatio: "1:1",
   resolution: "480p",
+  quality: "8bit",
   steps: 4,
   installing: false,
   installingLogs: [],
@@ -531,6 +536,7 @@ const initialTextToImage: TextToImageState = {
   logs: [],
   mlxgenInstalled: null,
   zModelDownloaded: null,
+  zModel4BitDownloaded: null,
 };
 
 const initialAgent: AgentState = {
@@ -1614,6 +1620,9 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
   setTextToImageSteps: (steps) =>
     set((s) => ({ textToImage: { ...s.textToImage, steps } })),
 
+  setTextToImageQuality: (quality) =>
+    set((s) => ({ textToImage: { ...s.textToImage, quality } })),
+
   clearTextToImageResult: () =>
     set((s) => ({
       textToImage: { ...s.textToImage, result: null, error: null, logs: [] },
@@ -1629,6 +1638,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
           ...s.textToImage,
           mlxgenInstalled: Boolean(data.installed),
           zModelDownloaded: Boolean(data.zModelDownloaded),
+          zModel4BitDownloaded: Boolean(data.zModel4BitDownloaded),
         },
       }));
     } catch {
@@ -1723,6 +1733,8 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     try {
       const res = await fetch(`${API_BASE}/api/mlxgen/download-z-model`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quality: textToImage.quality }),
       });
 
       if (!res.ok) {
@@ -1811,6 +1823,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
           width,
           height,
           steps: textToImage.steps,
+          quality: textToImage.quality,
         }),
         signal,
       });

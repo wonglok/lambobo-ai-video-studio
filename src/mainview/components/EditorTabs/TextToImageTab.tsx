@@ -241,7 +241,7 @@ export default function TextToImageTab({ projectId }: Props) {
             className="flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50"
           >
             {store.textToImage.downloading ? SpinnerIcon : DownloadIcon}
-            Download z-image Model
+            {`Download z-image Model (${store.textToImage.quality === "8bit" ? "8-bit" : "4-bit"})`}
           </button>
         </div>
 
@@ -253,8 +253,13 @@ export default function TextToImageTab({ projectId }: Props) {
           )}
           {renderStatus(
             store.textToImage.zModelDownloaded,
-            "z-image model downloaded",
-            "z-image model not downloaded",
+            "z-image 8-bit model downloaded",
+            "z-image 8-bit model not downloaded",
+          )}
+          {renderStatus(
+            store.textToImage.zModel4BitDownloaded,
+            "z-image 4-bit model downloaded",
+            "z-image 4-bit model not downloaded",
           )}
         </div>
 
@@ -366,6 +371,34 @@ export default function TextToImageTab({ projectId }: Props) {
               } disabled:opacity-50`}
             >
               {s} steps
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ===== Model Quality ===== */}
+      <div>
+        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+          Model Quality
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              { label: "Faster · Low Quality", value: "4bit" },
+              { label: "Slower · High Quality", value: "8bit" },
+            ] as const
+          ).map((q) => (
+            <button
+              key={q.value}
+              onClick={() => store.setTextToImageQuality(q.value)}
+              disabled={busy}
+              className={`px-4 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                store.textToImage.quality === q.value
+                  ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
+                  : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+              } disabled:opacity-50`}
+            >
+              {q.label}
             </button>
           ))}
         </div>
