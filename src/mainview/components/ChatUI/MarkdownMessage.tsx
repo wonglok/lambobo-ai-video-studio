@@ -1,8 +1,93 @@
+import { isValidElement, useState, type ReactNode } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 interface Props {
   content: string;
+}
+
+/** Recursively extract plain text from rendered markdown children. */
+function extractText(node: ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(extractText).join("");
+  if (isValidElement(node)) {
+    const props = node.props as { children?: ReactNode };
+    return extractText(props.children);
+  }
+  return "";
+}
+
+const CopyIcon = (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+  </svg>
+);
+
+const CheckIcon = (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
+interface CodeBlockProps {
+  code: string;
+  children: ReactNode;
+}
+
+function CodeBlock({ code, children }: CodeBlockProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = code;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div className="group relative my-2">
+      <button
+        onClick={handleCopy}
+        className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-md border border-tiffany-700 bg-tiffany-800/80 px-1.5 py-1 text-[10px] font-medium text-tiffany-100 opacity-0 transition-opacity hover:bg-tiffany-700 focus:opacity-100 group-hover:opacity-100"
+        title={copied ? "Copied" : "Copy code"}
+      >
+        {copied ? CheckIcon : CopyIcon}
+        {copied ? "Copied" : "Copy"}
+      </button>
+      <pre className="overflow-x-auto rounded-lg bg-tiffany-900/95 p-3 pr-16 text-xs leading-relaxed text-tiffany-50">
+        {children}
+      </pre>
+    </div>
+  );
 }
 
 const components: Components = {
@@ -82,9 +167,7 @@ const components: Components = {
     </td>
   ),
   pre: ({ children }) => (
-    <pre className="my-2 overflow-x-auto rounded-lg bg-tiffany-900/95 p-3 text-xs leading-relaxed text-tiffany-50">
-      {children}
-    </pre>
+    <CodeBlock code={extractText(children)}>{children}</CodeBlock>
   ),
   code: ({ className, children }) => {
     const isBlock = /language-/.test(className ?? "");
