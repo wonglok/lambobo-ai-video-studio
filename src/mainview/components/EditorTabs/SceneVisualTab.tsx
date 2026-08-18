@@ -101,7 +101,7 @@ export default function SceneVisualTab({ projectId }: Props) {
 
   const SpinnerIcon = (
     <svg
-      className="animate-spin text-tiffany-500"
+      className="animate-spin text-ink-400"
       width="14"
       height="14"
       viewBox="0 0 24 24"
@@ -140,8 +140,8 @@ export default function SceneVisualTab({ projectId }: Props) {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-2">
-        <span className="text-tiffany-500">{SceneIcon}</span>
-        <h2 className="text-base font-semibold text-tiffany-900">
+        <span className="text-ink-400">{SceneIcon}</span>
+        <h2 className="text-base font-semibold text-ink-50">
           Scene Visual
         </h2>
       </div>
@@ -150,7 +150,7 @@ export default function SceneVisualTab({ projectId }: Props) {
       {anyGenerating && (
         <button
           onClick={() => sceneStore.haltAll()}
-          className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 text-sm font-semibold rounded-xl border border-red-200 transition-colors"
+          className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-300 text-sm font-semibold rounded-xl border border-red-500/30 transition-colors"
         >
           {StopIcon}
           Stop Generation
@@ -160,7 +160,7 @@ export default function SceneVisualTab({ projectId }: Props) {
       {/* Add scene */}
       <button
         onClick={() => sceneStore.addItem()}
-        className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-tiffany-50 hover:bg-tiffany-100 text-tiffany-700 text-sm font-medium rounded-xl border border-tiffany-200 transition-colors"
+        className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-ink-900 hover:bg-ink-600 text-ink-200 text-sm font-medium rounded-xl border border-ink-600 transition-colors"
       >
         {PlusIcon}
         Add Scene
@@ -176,7 +176,7 @@ export default function SceneVisualTab({ projectId }: Props) {
 
       {/* Scene items */}
       {sceneStore.items.length === 0 ? (
-        <p className="text-xs text-tiffany-400 italic text-center py-8 border border-dashed border-tiffany-200 rounded-xl">
+        <p className="text-xs text-ink-400 italic text-center py-8 border border-dashed border-ink-600 rounded-xl">
           No scenes yet. Add one to generate a scene visual.
         </p>
       ) : (
@@ -184,16 +184,16 @@ export default function SceneVisualTab({ projectId }: Props) {
           {sceneStore.items.map((item, index) => (
             <div
               key={item.id}
-              className="border border-tiffany-200 rounded-xl p-4 flex flex-col gap-3 bg-tiffany-50/40"
+              className="border border-ink-600 rounded-xl p-4 flex flex-col gap-3 bg-ink-900/40"
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider">
+                <span className="text-xs font-semibold text-ink-200 uppercase tracking-wider">
                   Scene {index + 1}
                 </span>
                 <button
                   onClick={() => sceneStore.removeItem(item.id)}
                   disabled={item.generating}
-                  className="flex items-center justify-center w-6 h-6 rounded-full text-tiffany-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 transition-colors"
+                  className="flex items-center justify-center w-6 h-6 rounded-full text-ink-400 hover:bg-red-500/10 hover:text-red-300 disabled:opacity-50 transition-colors"
                   title="Remove scene"
                 >
                   {TrashIcon}
@@ -206,11 +206,11 @@ export default function SceneVisualTab({ projectId }: Props) {
                 placeholder="Describe the scene, e.g. a little lamb standing in a sunny meadow."
                 rows={2}
                 disabled={item.generating}
-                className="w-full px-3 py-2 bg-white border border-tiffany-200 rounded-lg text-tiffany-900 text-sm placeholder-tiffany-400 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
+                className="w-full px-3 py-2 bg-ink-800 border border-ink-600 rounded-lg text-ink-50 text-sm placeholder-ink-400 focus:outline-none focus:border-tiffany-400 focus:ring-2 focus:ring-tiffany-400/30 transition-all resize-none disabled:opacity-50"
               />
 
               {item.generating || item.uploading ? (
-                <div className="flex items-center gap-2 px-3 py-2 bg-tiffany-50 border border-tiffany-200 rounded-lg text-xs text-tiffany-700">
+                <div className="flex items-center gap-2 px-3 py-2 bg-ink-900 border border-ink-600 rounded-lg text-xs text-ink-200">
                   {SpinnerIcon}
                   {item.generating ? "Generating..." : "Uploading..."}
                 </div>
@@ -219,7 +219,7 @@ export default function SceneVisualTab({ projectId }: Props) {
                   <button
                     onClick={() => sceneStore.generateItem(projectId, item.id)}
                     disabled={!item.prompt.trim()}
-                    className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium rounded-lg bg-tiffany-500 hover:bg-tiffany-600 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white transition-colors"
+                    className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium rounded-lg bg-tiffany-500 hover:bg-tiffany-400 disabled:bg-ink-600 disabled:text-ink-400 text-ink-950 transition-colors"
                   >
                     {SparkleIcon}
                     Generate
@@ -229,7 +229,7 @@ export default function SceneVisualTab({ projectId }: Props) {
                       uploadTargetRef.current = item.id;
                       uploadFileInputRef.current?.click();
                     }}
-                    className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium rounded-lg border border-tiffany-200 bg-white text-tiffany-600 hover:border-tiffany-300 transition-colors"
+                    className="flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium rounded-lg border border-ink-600 bg-ink-800 text-ink-300 hover:border-ink-400 transition-colors"
                   >
                     {UploadIcon}
                     Upload Image
@@ -238,19 +238,19 @@ export default function SceneVisualTab({ projectId }: Props) {
               )}
 
               {item.error && (
-                <p className="text-xs text-red-600">{item.error}</p>
+                <p className="text-xs text-red-300">{item.error}</p>
               )}
 
               {item.logs.length > 0 && (
-                <div className="p-2 bg-tiffany-50 border border-tiffany-200 rounded-lg max-h-24 overflow-y-auto">
-                  <pre className="text-[10px] text-tiffany-600 font-mono whitespace-pre-wrap">
+                <div className="p-2 bg-ink-900 border border-ink-600 rounded-lg max-h-24 overflow-y-auto">
+                  <pre className="text-[10px] text-ink-300 font-mono whitespace-pre-wrap">
                     {item.logs.join("")}
                   </pre>
                 </div>
               )}
 
               {item.result && (
-                <div className="rounded-lg overflow-hidden border border-tiffany-200 inline-block">
+                <div className="rounded-lg overflow-hidden border border-ink-600 inline-block">
                   <img
                     src={item.result}
                     alt={`Scene ${index + 1}`}

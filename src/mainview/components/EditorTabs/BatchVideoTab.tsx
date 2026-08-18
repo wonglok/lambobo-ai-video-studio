@@ -19,7 +19,7 @@ const TableIcon = (
     strokeWidth="2"
     strokeLinecap="round"
     strokeLinejoin="round"
-    className="text-tiffany-500"
+    className="text-ink-400"
   >
     <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
     <line x1="3" y1="9" x2="21" y2="9" />
@@ -181,25 +181,25 @@ function StatusBadge({ status }: { status: BatchRowStatus }) {
     case "uploading":
     case "generating":
       return (
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-tiffany-600">
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-300">
           {SpinnerIcon}
           {status === "uploading" ? "Uploading" : "Generating"}
         </span>
       );
     case "done":
       return (
-        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600">
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400">
           {CheckIcon}
           Done
         </span>
       );
     case "error":
       return (
-        <span className="text-xs font-medium text-red-600">Error</span>
+        <span className="text-xs font-medium text-red-300">Error</span>
       );
     default:
       return (
-        <span className="text-xs font-medium text-tiffany-400">—</span>
+        <span className="text-xs font-medium text-ink-400">—</span>
       );
   }
 }
@@ -283,7 +283,7 @@ export default function BatchVideoTab({ projectId }: Props) {
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-2">
         {TableIcon}
-        <h2 className="text-base font-semibold text-tiffany-900">
+        <h2 className="text-base font-semibold text-ink-50">
           Batch Video Creation
         </h2>
       </div>
@@ -292,7 +292,7 @@ export default function BatchVideoTab({ projectId }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {/* Duration */}
         <div>
-          <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+          <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
             Duration (seconds)
           </label>
           <div className="flex flex-wrap gap-1.5">
@@ -303,8 +303,8 @@ export default function BatchVideoTab({ projectId }: Props) {
                 disabled={store.running}
                 className={`px-3 py-1 text-xs font-medium rounded-lg border transition-all ${
                   store.duration === d
-                    ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
-                    : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+                    ? "bg-ink-700 border-ink-500 text-ink-100"
+                    : "bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400"
                 } disabled:opacity-50`}
               >
                 {d}s
@@ -315,7 +315,7 @@ export default function BatchVideoTab({ projectId }: Props) {
 
         {/* Aspect ratio */}
         <div>
-          <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+          <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
             Aspect Ratio
           </label>
           <div className="flex flex-wrap gap-1.5">
@@ -326,8 +326,8 @@ export default function BatchVideoTab({ projectId }: Props) {
                 disabled={store.running}
                 className={`px-3 py-1 text-xs font-medium rounded-lg border transition-all ${
                   store.aspectRatio === ratio
-                    ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
-                    : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+                    ? "bg-ink-700 border-ink-500 text-ink-100"
+                    : "bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400"
                 } disabled:opacity-50`}
               >
                 {ratio}
@@ -338,7 +338,7 @@ export default function BatchVideoTab({ projectId }: Props) {
 
         {/* Resolution */}
         <div>
-          <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+          <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
             Resolution
           </label>
           <div className="flex flex-wrap gap-1.5">
@@ -350,8 +350,8 @@ export default function BatchVideoTab({ projectId }: Props) {
                   disabled={store.running}
                   className={`px-3 py-1 text-xs font-medium rounded-lg border transition-all ${
                     store.resolution === res
-                      ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
-                      : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+                      ? "bg-ink-700 border-ink-500 text-ink-100"
+                      : "bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400"
                   } disabled:opacity-50`}
                 >
                   {res}
@@ -363,7 +363,7 @@ export default function BatchVideoTab({ projectId }: Props) {
 
         {/* Quality */}
         <div>
-          <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+          <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
             Quality
           </label>
           <div className="flex flex-wrap gap-1.5">
@@ -380,8 +380,8 @@ export default function BatchVideoTab({ projectId }: Props) {
                 disabled={store.running}
                 className={`px-3 py-1 text-xs font-medium rounded-lg border transition-all ${
                   store.mode === q.value
-                    ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
-                    : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+                    ? "bg-ink-700 border-ink-500 text-ink-100"
+                    : "bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400"
                 } disabled:opacity-50`}
               >
                 {q.label}
@@ -394,7 +394,7 @@ export default function BatchVideoTab({ projectId }: Props) {
       {/* Table */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider">
+          <label className="text-xs font-semibold text-ink-200 uppercase tracking-wider">
             Batch Rows
           </label>
           <div className="flex items-center gap-1.5">
@@ -402,7 +402,7 @@ export default function BatchVideoTab({ projectId }: Props) {
               onClick={store.clear}
               disabled={store.running || store.stitching}
               title="Clear all rows and settings"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-red-500 hover:border-red-200 hover:bg-red-50 disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-ink-800 border-ink-600 text-red-300 hover:border-red-500/40 hover:bg-red-500/10 disabled:opacity-50"
             >
               {CloseIcon}
               Clear
@@ -410,7 +410,7 @@ export default function BatchVideoTab({ projectId }: Props) {
             <button
               onClick={store.addRow}
               disabled={store.running}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400 disabled:opacity-50"
             >
               {PlusIcon}
               Add Row
@@ -418,27 +418,27 @@ export default function BatchVideoTab({ projectId }: Props) {
           </div>
         </div>
 
-        <div className="border border-tiffany-200 rounded-xl overflow-hidden">
+        <div className="border border-ink-600 rounded-xl overflow-hidden">
           <div className="overflow-auto max-h-[480px]">
             <table className="w-full text-xs">
               <thead>
-                <tr className="bg-tiffany-50 border-b border-tiffany-200">
-                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-10">
+                <tr className="bg-ink-900 border-b border-ink-600">
+                  <th className="sticky top-0 bg-ink-900 px-3 py-2 text-left font-semibold text-ink-200 w-10">
                     #
                   </th>
-                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-36">
+                  <th className="sticky top-0 bg-ink-900 px-3 py-2 text-left font-semibold text-ink-200 w-36">
                     Starting Image
                   </th>
-                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 min-w-[260px]">
+                  <th className="sticky top-0 bg-ink-900 px-3 py-2 text-left font-semibold text-ink-200 min-w-[260px]">
                     Prompt
                   </th>
-                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-28">
+                  <th className="sticky top-0 bg-ink-900 px-3 py-2 text-left font-semibold text-ink-200 w-28">
                     Status
                   </th>
-                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-40">
+                  <th className="sticky top-0 bg-ink-900 px-3 py-2 text-left font-semibold text-ink-200 w-40">
                     Result
                   </th>
-                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-24">
+                  <th className="sticky top-0 bg-ink-900 px-3 py-2 text-left font-semibold text-ink-200 w-24">
                     Actions
                   </th>
                 </tr>
@@ -447,9 +447,9 @@ export default function BatchVideoTab({ projectId }: Props) {
                 {store.rows.map((row, idx) => (
                   <tr
                     key={row.id}
-                    className="border-b border-tiffany-100 last:border-b-0 align-top transition-colors hover:bg-tiffany-50/30"
+                    className="border-b border-ink-700 last:border-b-0 align-top transition-colors hover:bg-ink-700/30"
                   >
-                    <td className="px-3 py-2 text-tiffany-600/60 font-medium tabular-nums">
+                    <td className="px-3 py-2 text-ink-300/60 font-medium tabular-nums">
                       {idx + 1}
                     </td>
 
@@ -457,7 +457,7 @@ export default function BatchVideoTab({ projectId }: Props) {
                     <td className="px-3 py-2">
                       <div className="flex flex-col items-start gap-1.5">
                         <div className="flex items-center gap-1">
-                          <label className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-tiffany-200 bg-white text-tiffany-600 text-[11px] font-medium cursor-pointer hover:border-tiffany-300 hover:bg-tiffany-50 transition-colors">
+                          <label className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-ink-600 bg-ink-800 text-ink-300 text-[11px] font-medium cursor-pointer hover:border-ink-400 hover:bg-ink-700 transition-colors">
                             {UploadIcon}
                             {row.imageFilename ? "Replace" : "Upload"}
                             <input
@@ -472,7 +472,7 @@ export default function BatchVideoTab({ projectId }: Props) {
                             onClick={() => openPicker(row.id)}
                             disabled={store.running}
                             title="Pick from project images"
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-tiffany-200 bg-white text-tiffany-600 text-[11px] font-medium hover:border-tiffany-300 hover:bg-tiffany-50 transition-colors disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-ink-600 bg-ink-800 text-ink-300 text-[11px] font-medium hover:border-ink-400 hover:bg-ink-700 transition-colors disabled:opacity-50"
                           >
                             {ImageIcon}
                             Pick
@@ -482,15 +482,15 @@ export default function BatchVideoTab({ projectId }: Props) {
                           <img
                             src={row.imageUrl}
                             alt={row.imageFilename || "Starting image"}
-                            className="w-20 h-20 object-cover rounded-lg border border-tiffany-200"
+                            className="w-20 h-20 object-cover rounded-lg border border-ink-600"
                           />
                         ) : (
-                          <span className="text-[10px] text-tiffany-400 italic">
+                          <span className="text-[10px] text-ink-400 italic">
                             No image
                           </span>
                         )}
                         {row.imageFilename && (
-                          <span className="text-[10px] text-tiffany-600 truncate max-w-[120px]">
+                          <span className="text-[10px] text-ink-300 truncate max-w-[120px]">
                             {row.imageFilename}
                           </span>
                         )}
@@ -507,7 +507,7 @@ export default function BatchVideoTab({ projectId }: Props) {
                         placeholder="Describe the video scene..."
                         rows={3}
                         disabled={store.running}
-                        className="w-full px-2.5 py-1.5 bg-transparent border border-tiffany-200 rounded-lg text-tiffany-800 text-xs placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-1 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
+                        className="w-full px-2.5 py-1.5 bg-transparent border border-ink-600 rounded-lg text-ink-100 text-xs placeholder-ink-400/40 focus:outline-none focus:border-tiffany-400 focus:ring-1 focus:ring-tiffany-400/30 transition-all resize-none disabled:opacity-50"
                       />
                     </td>
 
@@ -515,7 +515,7 @@ export default function BatchVideoTab({ projectId }: Props) {
                     <td className="px-3 py-2">
                       <StatusBadge status={row.status} />
                       {row.status === "error" && row.error && (
-                        <p className="text-[10px] text-red-500 mt-1 break-words max-w-[120px]">
+                        <p className="text-[10px] text-red-300 mt-1 break-words max-w-[120px]">
                           {row.error}
                         </p>
                       )}
@@ -530,7 +530,7 @@ export default function BatchVideoTab({ projectId }: Props) {
                           className="w-full max-w-[160px] h-auto rounded-lg bg-black"
                         />
                       ) : (
-                        <span className="text-[10px] text-tiffany-400 italic">
+                        <span className="text-[10px] text-ink-400 italic">
                           —
                         </span>
                       )}
@@ -547,7 +547,7 @@ export default function BatchVideoTab({ projectId }: Props) {
                             !row.imagePath
                           }
                           title="Generate this row"
-                          className="flex items-center justify-center w-7 h-7 rounded-lg border border-tiffany-200 text-tiffany-600 hover:bg-tiffany-100 hover:border-tiffany-300 transition-colors disabled:opacity-40"
+                          className="flex items-center justify-center w-7 h-7 rounded-lg border border-ink-600 text-ink-300 hover:bg-ink-600 hover:border-ink-400 transition-colors disabled:opacity-40"
                         >
                           {SparkleIcon}
                         </button>
@@ -555,7 +555,7 @@ export default function BatchVideoTab({ projectId }: Props) {
                           onClick={() => store.removeRow(row.id)}
                           disabled={store.running}
                           title="Remove row"
-                          className="flex items-center justify-center w-7 h-7 rounded-lg border border-tiffany-200 text-tiffany-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors disabled:opacity-40"
+                          className="flex items-center justify-center w-7 h-7 rounded-lg border border-ink-600 text-ink-300 hover:bg-red-500/10 hover:text-red-300 hover:border-red-500/40 transition-colors disabled:opacity-40"
                         >
                           {CloseIcon}
                         </button>
@@ -569,7 +569,7 @@ export default function BatchVideoTab({ projectId }: Props) {
         </div>
 
         {store.rows.length === 0 && (
-          <p className="text-xs text-tiffany-400 italic py-6 text-center border border-dashed border-tiffany-200 rounded-xl mt-2">
+          <p className="text-xs text-ink-400 italic py-6 text-center border border-dashed border-ink-600 rounded-xl mt-2">
             No rows yet. Click "Add Row" to get started.
           </p>
         )}
@@ -578,7 +578,7 @@ export default function BatchVideoTab({ projectId }: Props) {
       {/* Open output folder */}
       <button
         onClick={() => openFolder(projectId, "output")}
-        className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-tiffany-50 hover:bg-tiffany-100 text-tiffany-700 text-sm font-medium rounded-xl border border-tiffany-200 transition-colors"
+        className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-ink-900 hover:bg-ink-600 text-ink-200 text-sm font-medium rounded-xl border border-ink-600 transition-colors"
       >
         {FolderIcon}
         Open Output Folder
@@ -586,11 +586,11 @@ export default function BatchVideoTab({ projectId }: Props) {
 
       {/* Progress */}
       {store.progress && (
-        <div className="flex items-center gap-3 p-3 bg-tiffany-50 border border-tiffany-200 rounded-xl">
-          <span className="text-xs font-medium text-tiffany-700">
+        <div className="flex items-center gap-3 p-3 bg-ink-900 border border-ink-600 rounded-xl">
+          <span className="text-xs font-medium text-ink-200">
             Batch Progress
           </span>
-          <div className="flex-1 h-2 bg-tiffany-200 rounded-full overflow-hidden">
+          <div className="flex-1 h-2 bg-ink-600 rounded-full overflow-hidden">
             <div
               className="h-full bg-tiffany-500 rounded-full transition-all duration-300"
               style={{
@@ -598,7 +598,7 @@ export default function BatchVideoTab({ projectId }: Props) {
               }}
             />
           </div>
-          <span className="text-xs font-semibold text-tiffany-700 tabular-nums">
+          <span className="text-xs font-semibold text-ink-200 tabular-nums">
             {store.progress.current}/{store.progress.total}
           </span>
         </div>
@@ -608,12 +608,12 @@ export default function BatchVideoTab({ projectId }: Props) {
       {store.logs.length > 0 && (
         <div
           ref={logRef}
-          className="p-4 bg-tiffany-50 border border-tiffany-200 rounded-xl max-h-40 overflow-y-auto"
+          className="p-4 bg-ink-900 border border-ink-600 rounded-xl max-h-40 overflow-y-auto"
         >
-          <p className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+          <p className="text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
             Progress Logs
           </p>
-          <pre className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap">
+          <pre className="text-xs text-ink-300 font-mono whitespace-pre-wrap">
             {store.logs.join("\n")}
           </pre>
         </div>
@@ -623,7 +623,7 @@ export default function BatchVideoTab({ projectId }: Props) {
       {store.running ? (
         <button
           onClick={store.cancel}
-          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-red-50 hover:bg-red-100 text-red-600 text-sm font-semibold rounded-xl border border-red-200 transition-colors"
+          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-300 text-sm font-semibold rounded-xl border border-red-500/30 transition-colors"
         >
           Cancel Batch
         </button>
@@ -631,7 +631,7 @@ export default function BatchVideoTab({ projectId }: Props) {
         <button
           onClick={() => store.generateAll(projectId)}
           disabled={readyCount === 0}
-          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-600 hover:bg-tiffany-700 active:bg-tiffany-800 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
+          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-500 hover:bg-tiffany-400 active:bg-tiffany-500 disabled:bg-ink-600 disabled:text-ink-400 text-ink-950 text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
         >
           {SparkleIcon}
           Generate All ({readyCount} videos)
@@ -639,22 +639,22 @@ export default function BatchVideoTab({ projectId }: Props) {
       )}
 
       {readyCount === 0 && !store.running && (
-        <p className="text-xs text-tiffany-500 -mt-2">
+        <p className="text-xs text-ink-400 -mt-2">
           Each row needs both a prompt and a starting image before it can be
           generated.
         </p>
       )}
 
       {/* ===== Stitch Videos ===== */}
-      <div className="pt-3 border-t border-tiffany-100">
-        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+      <div className="pt-3 border-t border-ink-700">
+        <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
           Stitch Videos
         </label>
 
         {store.stitching ? (
-          <div className="flex items-center gap-2 w-full px-4 py-3 bg-tiffany-50 border border-tiffany-200 rounded-xl">
+          <div className="flex items-center gap-2 w-full px-4 py-3 bg-ink-900 border border-ink-600 rounded-xl">
             {SpinnerIcon}
-            <span className="text-sm font-medium text-tiffany-700">
+            <span className="text-sm font-medium text-ink-200">
               Stitching...
             </span>
           </div>
@@ -662,7 +662,7 @@ export default function BatchVideoTab({ projectId }: Props) {
           <button
             onClick={() => store.stitchVideos()}
             disabled={resultCount < 2}
-            className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-500 hover:bg-tiffany-600 active:bg-tiffany-700 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
+            className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-500 hover:bg-tiffany-400 active:bg-tiffany-500 disabled:bg-ink-600 disabled:text-ink-400 text-ink-950 text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
           >
             {FilmIcon}
             Stitch All Videos ({resultCount})
@@ -670,7 +670,7 @@ export default function BatchVideoTab({ projectId }: Props) {
         )}
 
         {store.stitchError && (
-          <div className="mt-2 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+          <div className="mt-2 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-sm">
             {store.stitchError}
           </div>
         )}
@@ -678,12 +678,12 @@ export default function BatchVideoTab({ projectId }: Props) {
         {store.stitchLogs.length > 0 && (
           <div
             ref={stitchLogRef}
-            className="mt-2 p-4 bg-tiffany-50 border border-tiffany-200 rounded-xl max-h-40 overflow-y-auto"
+            className="mt-2 p-4 bg-ink-900 border border-ink-600 rounded-xl max-h-40 overflow-y-auto"
           >
-            <p className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+            <p className="text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
               Stitch Logs
             </p>
-            <pre className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap">
+            <pre className="text-xs text-ink-300 font-mono whitespace-pre-wrap">
               {store.stitchLogs.join("\n")}
             </pre>
           </div>
@@ -691,10 +691,10 @@ export default function BatchVideoTab({ projectId }: Props) {
 
         {store.stitchResult && (
           <div className="mt-3">
-            <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
               Stitched Video
             </label>
-            <div className="relative rounded-xl overflow-hidden border border-tiffany-200 shadow-card bg-black w-full max-w-[500px]">
+            <div className="relative rounded-xl overflow-hidden border border-ink-600 shadow-card bg-black w-full max-w-[500px]">
               <video
                 src={store.stitchResult}
                 controls
@@ -704,7 +704,7 @@ export default function BatchVideoTab({ projectId }: Props) {
             <a
               href={store.stitchResult}
               download="stitched.mp4"
-              className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-tiffany-600 hover:text-tiffany-800 transition-colors"
+              className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-ink-300 hover:text-ink-50 transition-colors"
             >
               {UploadIcon}
               Download stitched.mp4
@@ -720,16 +720,16 @@ export default function BatchVideoTab({ projectId }: Props) {
           onClick={() => setPickRowId(null)}
         >
           <div
-            className="w-full max-w-3xl max-h-[80vh] flex flex-col bg-white rounded-2xl border border-tiffany-200 shadow-2xl overflow-hidden"
+            className="w-full max-w-3xl max-h-[80vh] flex flex-col bg-ink-800 rounded-2xl border border-ink-600 shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-5 py-3 border-b border-tiffany-200">
-              <span className="text-sm font-semibold text-tiffany-900">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-ink-600">
+              <span className="text-sm font-semibold text-ink-50">
                 Pick Starting Image
               </span>
               <button
                 onClick={() => setPickRowId(null)}
-                className="flex items-center justify-center w-7 h-7 rounded-lg text-tiffany-600 hover:bg-tiffany-100 transition-colors"
+                className="flex items-center justify-center w-7 h-7 rounded-lg text-ink-300 hover:bg-ink-600 transition-colors"
                 title="Close (Esc)"
               >
                 {CloseIcon}
@@ -738,11 +738,11 @@ export default function BatchVideoTab({ projectId }: Props) {
 
             <div className="p-5 overflow-y-auto">
               {genStore.projectImagesLoading ? (
-                <p className="text-xs text-tiffany-400 italic py-8 text-center">
+                <p className="text-xs text-ink-400 italic py-8 text-center">
                   Loading images...
                 </p>
               ) : genStore.projectImages.length === 0 ? (
-                <p className="text-xs text-tiffany-400 italic py-8 text-center border border-dashed border-tiffany-200 rounded-xl">
+                <p className="text-xs text-ink-400 italic py-8 text-center border border-dashed border-ink-600 rounded-xl">
                   No images yet. Upload one first.
                 </p>
               ) : (
@@ -754,14 +754,14 @@ export default function BatchVideoTab({ projectId }: Props) {
                         store.setRowImage(pickRowId, img);
                         setPickRowId(null);
                       }}
-                      className="relative rounded-lg border-2 border-tiffany-200 hover:border-tiffany-300 transition-all overflow-hidden"
+                      className="relative rounded-lg border-2 border-ink-600 hover:border-ink-400 transition-all overflow-hidden"
                     >
                       <img
                         src={img.url}
                         alt={img.filename}
                         className="aspect-square object-cover object-center w-full"
                       />
-                      <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-tiffany-700 truncate text-center">
+                      <span className="absolute bottom-0 left-0 right-0 bg-ink-800/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-ink-200 truncate text-center">
                         {img.filename}
                       </span>
                     </button>

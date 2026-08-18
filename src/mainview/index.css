@@ -2,10 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
-  background: #f4faf9;
-  color: #15524c;
+  background: #17191b;
+  color: #c9d0d6;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
     Cantarell, sans-serif;
@@ -13,17 +17,25 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Subtle scrollbar for the light theme */
+code,
+pre,
+.font-mono {
+  font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+/* Subtle dark scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #b8e7df;
-  border-radius: 3px;
+  background: #363c41;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #81d8d0;
+  background: #464d53;
 }

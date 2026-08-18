@@ -76,7 +76,7 @@ const AudioIcon = (
 
 const SpinnerIcon = (
   <svg
-    className="animate-spin text-tiffany-500"
+    className="animate-spin text-ink-400"
     width="16"
     height="16"
     viewBox="0 0 24 24"
@@ -197,17 +197,17 @@ export default function VoiceChatPanel({ projectId }: Props) {
     store.refAudioFilename != null;
 
   return (
-    <div className="border border-tiffany-200 rounded-xl p-4 flex flex-col gap-4">
+    <div className="border border-ink-600 rounded-xl p-4 flex flex-col gap-4">
       <div className="flex items-center gap-2">
         {AudioIcon}
-        <span className="text-sm font-semibold text-tiffany-900">
+        <span className="text-sm font-semibold text-ink-50">
           Voice Chat
         </span>
       </div>
 
       {/* Reference voice upload */}
       <div className="flex flex-col gap-2">
-        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider">
+        <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider">
           Reference Voice
         </label>
         <div className="flex flex-wrap items-center gap-2">
@@ -221,13 +221,13 @@ export default function VoiceChatPanel({ projectId }: Props) {
           <button
             onClick={() => fileRef.current?.click()}
             disabled={store.generating}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-tiffany-200 bg-white text-tiffany-600 text-xs font-medium cursor-pointer hover:border-tiffany-300 hover:bg-tiffany-50 transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-ink-600 bg-ink-800 text-ink-300 text-xs font-medium cursor-pointer hover:border-ink-400 hover:bg-ink-700 transition-colors disabled:opacity-50"
           >
             {UploadIcon}
             {store.refAudioFilename ? "Replace" : "Upload"}
           </button>
           {store.refAudioFilename && (
-            <span className="text-[11px] text-tiffany-600 truncate max-w-[200px]">
+            <span className="text-[11px] text-ink-300 truncate max-w-[200px]">
               {store.refAudioFilename}
             </span>
           )}
@@ -249,7 +249,7 @@ export default function VoiceChatPanel({ projectId }: Props) {
           rows={2}
           placeholder="Type or dictate what the cloned voice should say..."
           disabled={store.generating}
-          className="flex-1 px-3 py-2 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
+          className="flex-1 px-3 py-2 bg-ink-900 border border-ink-600 rounded-xl text-ink-50 text-sm placeholder-ink-400/40 focus:outline-none focus:border-tiffany-400 focus:ring-2 focus:ring-tiffany-400/30 transition-all resize-none disabled:opacity-50"
         />
         <button
           onClick={handleMic}
@@ -257,14 +257,14 @@ export default function VoiceChatPanel({ projectId }: Props) {
           className={`flex items-center justify-center w-10 h-10 shrink-0 rounded-xl border transition-all ${
             store.listening
               ? "bg-red-500 border-red-500 text-white animate-pulse"
-              : "border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 hover:bg-tiffany-50"
+              : "border-ink-600 text-ink-300 hover:border-ink-400 hover:bg-ink-700"
           } disabled:opacity-50`}
           title={store.listening ? "Stop listening" : "Speak"}
         >
           {MicIcon}
         </button>
         {store.generating ? (
-          <div className="flex items-center justify-center gap-2 px-4 py-2.5 bg-tiffany-100 text-tiffany-700 text-sm font-medium rounded-xl">
+          <div className="flex items-center justify-center gap-2 px-4 py-2.5 bg-ink-700 text-ink-200 text-sm font-medium rounded-xl">
             {SpinnerIcon}
             Speaking...
           </div>
@@ -272,7 +272,7 @@ export default function VoiceChatPanel({ projectId }: Props) {
           <button
             onClick={handleSend}
             disabled={!canSend}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-tiffany-500 hover:bg-tiffany-600 active:bg-tiffany-700 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-tiffany-500 hover:bg-tiffany-400 active:bg-tiffany-500 disabled:bg-ink-600 disabled:text-ink-400 text-ink-950 text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
           >
             {SendIcon}
             Send
@@ -281,14 +281,14 @@ export default function VoiceChatPanel({ projectId }: Props) {
       </div>
 
       {store.listening && (
-        <p className="text-xs text-red-500 -mt-1">Listening… speak now.</p>
+        <p className="text-xs text-red-300 -mt-1">Listening… speak now.</p>
       )}
-      {sttError && <p className="text-xs text-red-500">{sttError}</p>}
+      {sttError && <p className="text-xs text-red-300">{sttError}</p>}
 
       {/* Result */}
       {store.resultUrl && (
         <div>
-          <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+          <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
             Response
           </label>
           <audio
@@ -302,15 +302,15 @@ export default function VoiceChatPanel({ projectId }: Props) {
 
       {/* Error */}
       {store.error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs">
+        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-xs">
           {store.error}
         </div>
       )}
 
       {/* Logs */}
       {store.logs.length > 0 && (
-        <div className="p-3 bg-tiffany-50 border border-tiffany-200 rounded-xl max-h-32 overflow-y-auto">
-          <pre className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap">
+        <div className="p-3 bg-ink-900 border border-ink-600 rounded-xl max-h-32 overflow-y-auto">
+          <pre className="text-xs text-ink-300 font-mono whitespace-pre-wrap">
             {store.logs.join("")}
           </pre>
         </div>

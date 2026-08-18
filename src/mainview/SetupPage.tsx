@@ -223,13 +223,13 @@ function SetupPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen p-6 font-sans bg-tiffany-50 text-tiffany-800">
-      <h2 className="text-lg font-semibold mb-4 text-tiffany-900">Media Studio Setup</h2>
+    <div className="flex flex-col h-screen p-6 font-sans bg-ink-900 text-ink-100">
+      <h2 className="text-lg font-semibold mb-4 text-ink-50">Media Studio Setup</h2>
 
-      {error && <div className="text-red-500 mb-4">Error: {error}</div>}
+      {error && <div className="text-red-300 mb-4">Error: {error}</div>}
 
       {complete && !error && (
-        <div className="text-tiffany-600 mb-4 font-bold">
+        <div className="text-ink-300 mb-4 font-bold">
           Setup complete! Server running on port {PORT}
         </div>
       )}
@@ -248,33 +248,33 @@ function SetupPage() {
       </div>
 
       {/* Log display panel */}
-      <div className="flex-1 flex flex-col min-h-0 border border-tiffany-200 rounded-xl overflow-hidden bg-white shadow-card">
-        <div className="flex items-center justify-between px-4 py-2.5 bg-tiffany-50 border-b border-tiffany-100">
-          <span className="text-xs font-semibold text-tiffany-600/80 uppercase tracking-wider">
+      <div className="flex-1 flex flex-col min-h-0 border border-ink-600 rounded-xl overflow-hidden bg-ink-800 shadow-card">
+        <div className="flex items-center justify-between px-4 py-2.5 bg-ink-900 border-b border-ink-700">
+          <span className="text-xs font-semibold text-ink-300/80 uppercase tracking-wider">
             Logs
           </span>
-          <span className="text-xs text-tiffany-400">{logs.length} entries</span>
+          <span className="text-xs text-ink-400">{logs.length} entries</span>
         </div>
         <div className="flex-1 overflow-y-auto p-3 font-mono text-xs leading-relaxed">
           {logs.length === 0 ? (
-            <div className="text-tiffany-400 italic">Waiting for logs...</div>
+            <div className="text-ink-400 italic">Waiting for logs...</div>
           ) : (
             logs.map((entry) => (
               <div
                 key={entry.id}
-                className="flex items-start gap-2 py-0.5 hover:bg-tiffany-50 rounded px-1"
+                className="flex items-start gap-2 py-0.5 hover:bg-ink-700 rounded px-1"
               >
                 <LogIcon level={entry.level} />
-                <span className="text-tiffany-400 shrink-0 select-none">
+                <span className="text-ink-400 shrink-0 select-none">
                   {formatTime(entry.timestamp)}
                 </span>
                 <span
                   className={
                     entry.level === "error"
-                      ? "text-red-500"
+                      ? "text-red-300"
                       : entry.level === "warn"
-                        ? "text-amber-600"
-                        : "text-tiffany-700"
+                        ? "text-amber-400"
+                        : "text-ink-200"
                   }
                 >
                   {entry.message}
