@@ -9,20 +9,7 @@ interface Props {
   projectId: string;
 }
 
-// ========== Video thumbnail with inline play/pause + preview ==========
-
-const PlayIcon = (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-    <polygon points="6 3 20 12 6 21 6 3" />
-  </svg>
-);
-
-const PauseIcon = (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-    <rect x="5" y="4" width="5" height="16" rx="1" />
-    <rect x="14" y="4" width="5" height="16" rx="1" />
-  </svg>
-);
+// ========== Video thumbnail with hover-to-play + preview ==========
 
 const ExpandIcon = (
   <svg
@@ -52,17 +39,19 @@ function VideoThumb({
   onPreview: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [playing, setPlaying] = useState(false);
 
-  const togglePlay = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleMouseEnter = () => {
     const v = videoRef.current;
     if (!v) return;
-    if (v.paused) {
-      v.play();
-    } else {
-      v.pause();
-    }
+    v.currentTime = 0;
+    v.play().catch(() => {});
+  };
+
+  const handleMouseLeave = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.pause();
+    v.currentTime = 0;
   };
 
   const handlePreview = (e: React.MouseEvent) => {
@@ -71,26 +60,21 @@ function VideoThumb({
   };
 
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       <video
         ref={videoRef}
         src={src}
         muted
         preload="metadata"
         playsInline
+        loop
         onClick={onSelect}
-        onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
-        onEnded={() => setPlaying(false)}
         className="aspect-video object-cover w-full bg-black cursor-pointer"
       />
-      <button
-        onClick={togglePlay}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
-        title={playing ? "Pause" : "Play"}
-      >
-        {playing ? PauseIcon : PlayIcon}
-      </button>
       <button
         onClick={handlePreview}
         className="absolute top-1.5 right-1.5 flex items-center justify-center w-7 h-7 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
@@ -117,6 +101,7 @@ export default function ReferencesToVideoTab({ projectId }: Props) {
   const logRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    store.hydrate(projectId);
     store.checkStatus();
     genStore.fetchProjectImages(projectId);
     genStore.fetchProjectVideos(projectId);

@@ -329,7 +329,7 @@ export default function TextToImageTab({ projectId }: Props) {
           Resolution
         </label>
         <div className="flex flex-wrap gap-2">
-          {(["320p", "480p", "640p", "720p", "1080p"] as const).map((res) => (
+          {(["320p", "480p", "512p", "640p", "720p", "1080p"] as const).map((res) => (
             <button
               key={res}
               onClick={() => store.setTextToImageResolution(res)}
@@ -387,6 +387,15 @@ export default function TextToImageTab({ projectId }: Props) {
           Generate Image
         </button>
       )}
+
+      {/* ===== Open output folder ===== */}
+      <button
+        onClick={() => openFolder(projectId, "output")}
+        className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-tiffany-50 hover:bg-tiffany-100 text-tiffany-700 text-sm font-medium rounded-xl border border-tiffany-200 transition-colors"
+      >
+        {FolderIcon}
+        Open Output Folder
+      </button>
 
       {/* ===== Error ===== */}
       {store.textToImage.error && (

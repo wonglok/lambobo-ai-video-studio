@@ -1,4 +1,10 @@
 import { create } from "zustand";
+import {
+  clearReferencesToVideoState,
+  loadReferencesToVideoState,
+  saveReferencesToVideoState,
+  type PersistedReferencesToVideoState,
+} from "../lib/referencesToVideoStorage";
 
 const API_BASE = `http://localhost:${(window as any).PORT}`;
 
@@ -36,6 +42,12 @@ interface ReferencesToVideoStore {
   genError: string | null;
   genLogs: string[];
 
+  // Persistence
+  projectId: string | null;
+  hydrated: boolean;
+  hydrate: (projectId: string) => Promise<void>;
+  clear: () => void;
+
   checkStatus: () => Promise<void>;
   downloadModel: () => Promise<void>;
 
@@ -62,6 +74,8 @@ interface ReferencesToVideoStore {
 
   generate: (projectId: string) => Promise<void>;
   cancelGenerate: () => void;
+
+  reset: () => void;
 }
 
 async function readSSEStream(
@@ -102,6 +116,40 @@ async function readSSEStream(
   }
 }
 
+function makeDefaultRefs(): ReferenceRef[] {
+  return [
+    { kind: "image", filename: null },
+    { kind: "image", filename: null },
+  ];
+}
+
+function toPersistedState(
+  s: Pick<
+    ReferencesToVideoStore,
+    "prompt" | "steps" | "width" | "height" | "seconds" | "seed" | "refs"
+  >,
+): PersistedReferencesToVideoState {
+  return {
+    prompt: s.prompt,
+    steps: s.steps,
+    width: s.width,
+    height: s.height,
+    seconds: s.seconds,
+    seed: s.seed,
+    refs: s.refs.map((r) => ({ kind: r.kind, filename: r.filename })),
+  };
+}
+
+// Fire-and-forget save of the current editable UI state.
+function persistReferencesState() {
+  const { projectId } = useReferencesToVideoStore.getState();
+  if (!projectId) return;
+  void saveReferencesToVideoState(
+    projectId,
+    toPersistedState(useReferencesToVideoStore.getState()),
+  );
+}
+
 export const useReferencesToVideoStore = create<ReferencesToVideoStore>(
   (set, get) => ({
     // Model download
@@ -111,7 +159,8 @@ export const useReferencesToVideoStore = create<ReferencesToVideoStore>(
     logs: [],
 
     // Generation parameters
-    prompt: "[image1] is dancing at [image2]",
+    prompt:
+      "[image1] is standing at [image2], with a voice [audio1] saying: ghost reporting, ready for combat.",
     steps: 10,
     width: 320,
     height: 320,
@@ -129,6 +178,46 @@ export const useReferencesToVideoStore = create<ReferencesToVideoStore>(
     result: null,
     genError: null,
     genLogs: [],
+
+    projectId: null,
+    hydrated: false,
+
+    hydrate: async (projectId) => {
+      // No-op if we've already hydrated for this project.
+      if (get().hydrated && get().projectId === projectId) return;
+
+      // Switching to a different project: reset to defaults so refs and
+      // settings from the previous project don't leak through.
+      const previous = get().projectId;
+      if (previous !== null && previous !== projectId) {
+        get().reset();
+      }
+      set({ hydrated: true, projectId });
+
+      const stored = await loadReferencesToVideoState(projectId);
+      if (!stored) return;
+
+      set((s) => ({
+        prompt: stored.prompt ?? s.prompt,
+        steps: stored.steps ?? s.steps,
+        width: stored.width ?? s.width,
+        height: stored.height ?? s.height,
+        seconds: stored.seconds ?? s.seconds,
+        seed: stored.seed ?? s.seed,
+        refs: stored.refs?.length
+          ? stored.refs.map((r) => ({
+              kind: r.kind,
+              filename: r.filename ?? null,
+            }))
+          : s.refs,
+      }));
+    },
+
+    clear: () => {
+      const { projectId } = get();
+      get().reset();
+      if (projectId) void clearReferencesToVideoState(projectId);
+    },
 
     checkStatus: async () => {
       try {
@@ -178,23 +267,47 @@ export const useReferencesToVideoStore = create<ReferencesToVideoStore>(
       }
     },
 
-    setPrompt: (v) => set({ prompt: v }),
-    setSteps: (v) => set({ steps: v }),
-    setWidth: (v) => set({ width: v }),
-    setHeight: (v) => set({ height: v }),
-    setSeconds: (v) => set({ seconds: v }),
-    setSeed: (v) => set({ seed: v }),
+    setPrompt: (prompt) => {
+      set({ prompt });
+      persistReferencesState();
+    },
+    setSteps: (steps) => {
+      set({ steps });
+      persistReferencesState();
+    },
+    setWidth: (width) => {
+      set({ width });
+      persistReferencesState();
+    },
+    setHeight: (height) => {
+      set({ height });
+      persistReferencesState();
+    },
+    setSeconds: (seconds) => {
+      set({ seconds });
+      persistReferencesState();
+    },
+    setSeed: (seed) => {
+      set({ seed });
+      persistReferencesState();
+    },
 
-    addRef: (kind) =>
-      set((s) => ({ refs: [...s.refs, { kind, filename: null }] })),
+    addRef: (kind) => {
+      set((s) => ({ refs: [...s.refs, { kind, filename: null }] }));
+      persistReferencesState();
+    },
 
-    removeRef: (index) =>
-      set((s) => ({ refs: s.refs.filter((_, i) => i !== index) })),
+    removeRef: (index) => {
+      set((s) => ({ refs: s.refs.filter((_, i) => i !== index) }));
+      persistReferencesState();
+    },
 
-    setRefFilename: (index, filename) =>
+    setRefFilename: (index, filename) => {
       set((s) => ({
         refs: s.refs.map((r, i) => (i === index ? { ...r, filename } : r)),
-      })),
+      }));
+      persistReferencesState();
+    },
 
     uploadVideo: async (base64, filename, projectId) => {
       try {
@@ -335,5 +448,20 @@ export const useReferencesToVideoStore = create<ReferencesToVideoStore>(
         () => {},
       );
     },
+
+    reset: () =>
+      set({
+        prompt: "[image1] is dancing at [image2]",
+        steps: 10,
+        width: 320,
+        height: 320,
+        seconds: 3,
+        seed: 42,
+        refs: makeDefaultRefs(),
+        generating: false,
+        result: null,
+        genError: null,
+        genLogs: [],
+      }),
   }),
 );

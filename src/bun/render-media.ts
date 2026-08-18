@@ -2021,6 +2021,7 @@ export async function renderMediaRoutes({
               : "--ref-audio";
         args.push(flag, ref.path);
       }
+
       args.push(
         "--steps",
         String(stepCount),
