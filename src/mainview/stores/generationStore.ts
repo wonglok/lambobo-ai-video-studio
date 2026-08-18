@@ -113,6 +113,7 @@ interface TextToImageState {
   installingLogs: string[];
   installingError: string | null;
   downloading: boolean;
+  downloadingQuality: ZImageQuality | null;
   downloadingLogs: string[];
   downloadingError: string | null;
   generating: boolean;
@@ -192,7 +193,7 @@ interface GenerationStore {
   clearTextToImageResult: () => void;
   checkTextToImageStatus: () => Promise<void>;
   installTextToImage: () => Promise<void>;
-  downloadTextToImageModel: () => Promise<void>;
+  downloadTextToImageModel: (quality: ZImageQuality) => Promise<void>;
   generateTextToImage: (projectId: string) => Promise<void>;
 
   // Agent (mlx-vlm)
@@ -528,6 +529,7 @@ const initialTextToImage: TextToImageState = {
   installingLogs: [],
   installingError: null,
   downloading: false,
+  downloadingQuality: null,
   downloadingLogs: [],
   downloadingError: null,
   generating: false,
@@ -1717,14 +1719,14 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     }
   },
 
-  downloadTextToImageModel: async () => {
-    const { textToImage } = get();
-    if (textToImage.downloading) return;
+  downloadTextToImageModel: async (quality) => {
+    if (get().textToImage.downloading) return;
 
     set((s) => ({
       textToImage: {
         ...s.textToImage,
         downloading: true,
+        downloadingQuality: quality,
         downloadingError: null,
         downloadingLogs: [],
       },
@@ -1734,7 +1736,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       const res = await fetch(`${API_BASE}/api/mlxgen/download-z-model`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quality: textToImage.quality }),
+        body: JSON.stringify({ quality }),
       });
 
       if (!res.ok) {
@@ -1743,6 +1745,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
           textToImage: {
             ...s.textToImage,
             downloading: false,
+            downloadingQuality: null,
             downloadingError: err,
           },
         }));
@@ -1764,7 +1767,11 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
             break;
           case "complete":
             set((s) => ({
-              textToImage: { ...s.textToImage, downloading: false },
+              textToImage: {
+                ...s.textToImage,
+                downloading: false,
+                downloadingQuality: null,
+              },
             }));
             get().checkTextToImageStatus();
             break;
@@ -1773,6 +1780,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
               textToImage: {
                 ...s.textToImage,
                 downloading: false,
+                downloadingQuality: null,
                 downloadingError: data.error || "Download failed",
               },
             }));
@@ -1784,6 +1792,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
         textToImage: {
           ...s.textToImage,
           downloading: false,
+          downloadingQuality: null,
           downloadingError: String(e),
         },
       }));

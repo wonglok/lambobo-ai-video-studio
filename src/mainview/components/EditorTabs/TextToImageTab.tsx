@@ -236,12 +236,26 @@ export default function TextToImageTab({ projectId }: Props) {
             Install mlx-gen
           </button>
           <button
-            onClick={() => store.downloadTextToImageModel()}
+            onClick={() => store.downloadTextToImageModel("8bit")}
             disabled={store.textToImage.downloading}
             className="flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50"
           >
-            {store.textToImage.downloading ? SpinnerIcon : DownloadIcon}
-            {`Download z-image Model (${store.textToImage.quality === "8bit" ? "8-bit" : "4-bit"})`}
+            {store.textToImage.downloading &&
+            store.textToImage.downloadingQuality === "8bit"
+              ? SpinnerIcon
+              : DownloadIcon}
+            Download z-image Model (8-bit)
+          </button>
+          <button
+            onClick={() => store.downloadTextToImageModel("4bit")}
+            disabled={store.textToImage.downloading}
+            className="flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50"
+          >
+            {store.textToImage.downloading &&
+            store.textToImage.downloadingQuality === "4bit"
+              ? SpinnerIcon
+              : DownloadIcon}
+            Download z-image Model (4-bit)
           </button>
         </div>
 
