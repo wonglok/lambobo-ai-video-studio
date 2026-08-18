@@ -282,17 +282,6 @@ export default function TextToImageTab({ projectId }: Props) {
               : DownloadIcon}
             Download z-image Model (8-bit)
           </button>
-          <button
-            onClick={() => store.downloadTextToImageModel("4bit")}
-            disabled={store.textToImage.downloading}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-xl border transition-all bg-white border-ink-200 text-ink-600 hover:border-ink-300 disabled:opacity-50"
-          >
-            {store.textToImage.downloading &&
-            store.textToImage.downloadingQuality === "4bit"
-              ? SpinnerIcon
-              : DownloadIcon}
-            Download z-image Model (4-bit)
-          </button>
         </div>
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-2 text-xs font-medium">
@@ -305,11 +294,6 @@ export default function TextToImageTab({ projectId }: Props) {
             store.textToImage.zModelDownloaded,
             "z-image 8-bit model downloaded",
             "z-image 8-bit model not downloaded",
-          )}
-          {renderStatus(
-            store.textToImage.zModel4BitDownloaded,
-            "z-image 4-bit model downloaded",
-            "z-image 4-bit model not downloaded",
           )}
         </div>
 

@@ -35,7 +35,6 @@ export type Resolution =
   | "720p"
   | "1080p"
   | "2048p";
-export type ZImageQuality = "4bit" | "8bit";
 export type TextToImagePreset = "prototype" | "medium" | "optimal";
 export type VideoMode = "distilled" | "one-stage" | "two-stage";
 
