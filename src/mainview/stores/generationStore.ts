@@ -192,13 +192,12 @@ interface GenerationStore {
   setTextToImagePrompt: (v: string) => void;
   setTextToImageAspectRatio: (v: AspectRatio) => void;
   setTextToImageResolution: (v: Resolution) => void;
-  setTextToImageQuality: (v: ZImageQuality) => void;
   setTextToImageSteps: (v: number) => void;
   applyTextToImagePreset: (preset: TextToImagePreset) => void;
   clearTextToImageResult: () => void;
   checkTextToImageStatus: () => Promise<void>;
   installTextToImage: () => Promise<void>;
-  downloadTextToImageModel: (quality: ZImageQuality) => Promise<void>;
+  downloadTextToImageModel: () => Promise<void>;
   generateTextToImage: (projectId: string) => Promise<void>;
 
   // Text-to-image persistence
