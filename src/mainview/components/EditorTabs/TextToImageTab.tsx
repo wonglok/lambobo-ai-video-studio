@@ -515,9 +515,18 @@ export default function TextToImageTab({ projectId }: Props) {
       {/* ===== Result ===== */}
       {store.textToImage.result && (
         <div>
-          <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
-            Generated Image
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider">
+              Generated Image
+            </label>
+            <button
+              onClick={() => store.clearTextToImageResult()}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-tiffany-200 text-red-500 hover:border-red-200 hover:bg-red-50 transition-colors"
+            >
+              {CloseIcon}
+              Remove
+            </button>
+          </div>
           <div className="rounded-xl overflow-hidden border border-tiffany-200 shadow-card inline-block">
             <img
               src={store.textToImage.result}
