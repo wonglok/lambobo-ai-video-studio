@@ -221,6 +221,33 @@ export default function TextToImageTab({ projectId }: Props) {
         </h2>
       </div>
 
+      {/* ===== Presets ===== */}
+      <div>
+        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+          Presets
+        </label>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => store.applyTextToImagePreset("prototype")}
+            disabled={busy}
+            className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50"
+          >
+            Prototype
+          </button>
+          <button
+            onClick={() => store.applyTextToImagePreset("optimal")}
+            disabled={busy}
+            className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50"
+          >
+            Optimal
+          </button>
+        </div>
+        <p className="text-xs text-tiffany-500 mt-1.5">
+          Prototype: 1:1 · 320p · 4 steps · faster model. Optimal: 1:1 · 1080p
+          · 8 steps · high quality model.
+        </p>
+      </div>
+
       {/* ===== Setup: install + download model ===== */}
       <div>
         <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
