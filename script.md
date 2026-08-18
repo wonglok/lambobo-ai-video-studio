@@ -20,4 +20,13 @@ uv run mlx_audio.tts.generate \
  --ref_audio ./reference_voice.wav \
  --play --output ./out --audio_format mp3 --stream --save --instruct "slow down"
 
+
+
+uv run mlx_audio.tts.generate \
+ --model Qwen/Qwen3-TTS-12Hz-0.6B-Base \
+ --text "example hi how are you?" \
+ --ref_audio ./reference_voice.wav \
+ --play --output ./out --audio_format mp3 --stream --save --instruct "slow down"
+
+
 ```
