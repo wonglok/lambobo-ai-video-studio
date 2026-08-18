@@ -329,7 +329,9 @@ export default function TextToImageTab({ projectId }: Props) {
           Resolution
         </label>
         <div className="flex flex-wrap gap-2">
-          {(["320p", "480p", "512p", "640p", "720p", "1080p"] as const).map((res) => (
+          {(
+            ["320p", "480p", "512p", "640p", "720p", "1080p", "2048p"] as const
+          ).map((res) => (
             <button
               key={res}
               onClick={() => store.setTextToImageResolution(res)}
@@ -371,11 +373,22 @@ export default function TextToImageTab({ projectId }: Props) {
 
       {/* ===== Generate ===== */}
       {store.textToImage.generating ? (
-        <div className="flex items-center gap-2 px-4 py-3 bg-tiffany-50 border border-tiffany-200 rounded-xl">
-          {SpinnerIcon}
-          <span className="text-sm font-medium text-tiffany-700">
-            Generating...
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-1 px-4 py-3 bg-tiffany-50 border border-tiffany-200 rounded-xl">
+            {SpinnerIcon}
+            <span className="text-sm font-medium text-tiffany-700">
+              Generating...
+            </span>
+          </div>
+          <button
+            onClick={() => store.cancelGenerate()}
+            className="flex items-center justify-center gap-1.5 px-5 py-3 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="4" y="4" width="16" height="16" rx="2" />
+            </svg>
+            Stop
+          </button>
         </div>
       ) : (
         <button

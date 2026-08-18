@@ -20,7 +20,14 @@ export type GenerationTab =
   | "batchVoice"
   | "llmServer";
 export type AspectRatio = "1:1" | "16:9" | "9:16" | "4:3" | "3:4";
-export type Resolution = "320p" | "480p" | "512p" | "640p" | "720p" | "1080p";
+export type Resolution =
+  | "320p"
+  | "480p"
+  | "512p"
+  | "640p"
+  | "720p"
+  | "1080p"
+  | "2048p";
 export type VideoMode = "distilled" | "one-stage" | "two-stage";
 
 function getDimensions(
@@ -1780,6 +1787,10 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       textToImage.resolution,
     );
 
+    // Create a fresh AbortController so this run can be cancelled independently.
+    generateAbortController = new AbortController();
+    const signal = generateAbortController.signal;
+
     set((s) => ({
       textToImage: {
         ...s.textToImage,
@@ -1801,6 +1812,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
           height,
           steps: textToImage.steps,
         }),
+        signal,
       });
 
       if (!res.ok) {
@@ -1842,10 +1854,21 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
             break;
         }
       });
-    } catch (e) {
-      set((s) => ({
-        textToImage: { ...s.textToImage, generating: false, error: String(e) },
-      }));
+    } catch (e: any) {
+      // If the request was aborted, just stop silently.
+      if (e?.name === "AbortError") {
+        set((s) => ({ textToImage: { ...s.textToImage, generating: false } }));
+      } else {
+        set((s) => ({
+          textToImage: {
+            ...s.textToImage,
+            generating: false,
+            error: String(e),
+          },
+        }));
+      }
+    } finally {
+      generateAbortController = null;
     }
   },
 
@@ -2119,6 +2142,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     set((s) => ({
       video: { ...s.video, generating: false },
       extend: { ...s.extend, generating: false },
+      textToImage: { ...s.textToImage, generating: false },
     }));
     // Also kill the backend spawn process
     fetch(`${API_BASE}/api/render/cancel`, { method: "POST" }).catch(() => {});
