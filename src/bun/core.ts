@@ -156,7 +156,9 @@ export async function runSetup({}: {}): Promise<SetupState> {
   const FFMPEG_CORE_FILES = ["ffmpeg-core.js", "ffmpeg-core.wasm"] as const;
   app.get("/ffmpeg/:file", (req, res) => {
     const file = req.params.file as string;
-    if (!FFMPEG_CORE_FILES.includes(file as (typeof FFMPEG_CORE_FILES)[number])) {
+    if (
+      !FFMPEG_CORE_FILES.includes(file as (typeof FFMPEG_CORE_FILES)[number])
+    ) {
       return res.status(404).end();
     }
 
@@ -622,7 +624,8 @@ async function installUv(): Promise<boolean> {
 export async function getUvPath(): Promise<string> {
   // Fall back to which
   if (await checkCommand("uv")) {
-    return "uv";
+    const result = await runCommand("which", ["uv"]);
+    return result.output;
   }
 
   // Check known paths first — always return absolute path so child processes
@@ -765,6 +768,54 @@ async function installPythonDependencies(): Promise<boolean> {
         );
         return false;
       }
+    }
+  }
+
+  {
+    const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
+    if (!existsSync(pythonAppSrcDir)) {
+      mkdirSync(pythonAppSrcDir, { recursive: true });
+    }
+
+    const featureFolder = join(pythonAppSrcDir, "mlx-audio");
+
+    if (!existsSync(featureFolder)) {
+      let cloneCMD = await runCommand(
+        "git",
+        [
+          `clone`,
+          `git clone https://github.com/Blaizzy/mlx-audio.git`,
+          "mlx-audio",
+        ],
+        { cwd: pythonAppSrcDir },
+      );
+
+      console.log(cloneCMD.success, cloneCMD.output);
+    }
+
+    const uvPath = await getUvPath();
+
+    const uvSyncResult = await runCommand(
+      uvPath,
+      [
+        //
+        "tool",
+        "install",
+        "--force",
+        "mlx-audio",
+        "--prerelease=allow",
+      ],
+      {
+        cwd: homedir(),
+      },
+    );
+    if (!uvSyncResult.success) {
+      console.error(
+        "Failed to install uv mlx-audio global:",
+        uvSyncResult.error,
+      );
+
+      return false;
     }
   }
 
