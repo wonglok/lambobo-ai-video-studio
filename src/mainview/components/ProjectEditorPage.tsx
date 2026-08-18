@@ -466,7 +466,7 @@ export default function ProjectEditorPage() {
               }`}
             >
               {BatchVoiceIcon}
-              Batch Voice Video
+              Batch Videos with Voice Over
             </button>
             <button
               onClick={() => store.setActiveTab("llmServer")}

@@ -324,7 +324,7 @@ export default function BatchVoiceVideoTab({ projectId }: Props) {
       <div className="flex items-center gap-2">
         {TableIcon}
         <h2 className="text-base font-semibold text-tiffany-900">
-          Batch Custom Voice Video
+          Batch Videos with Voice Over
         </h2>
       </div>
 
