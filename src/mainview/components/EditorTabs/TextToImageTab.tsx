@@ -236,6 +236,13 @@ export default function TextToImageTab({ projectId }: Props) {
             Prototype
           </button>
           <button
+            onClick={() => store.applyTextToImagePreset("medium")}
+            disabled={busy}
+            className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50"
+          >
+            Medium
+          </button>
+          <button
             onClick={() => store.applyTextToImagePreset("optimal")}
             disabled={busy}
             className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50"
@@ -244,8 +251,9 @@ export default function TextToImageTab({ projectId }: Props) {
           </button>
         </div>
         <p className="text-xs text-tiffany-500 mt-1.5">
-          Prototype: 1:1 · 320p · 4 steps · faster model. Optimal: 1:1 · 1080p
-          · 8 steps · high quality model.
+          Prototype: 1:1 · 320p · 4 steps · faster model. Medium: 1:1 · 720p · 7
+          steps · high quality model. Optimal: 1:1 · 1080p · 6 steps · high
+          quality model.
         </p>
       </div>
 
@@ -401,7 +409,7 @@ export default function TextToImageTab({ projectId }: Props) {
           Steps
         </label>
         <div className="flex flex-wrap gap-2">
-          {[4, 5, 6, 8, 9, 10].map((s) => (
+          {[4, 5, 6, 7, 8, 9, 10, 11, 12].map((s) => (
             <button
               key={s}
               onClick={() => store.setTextToImageSteps(s)}

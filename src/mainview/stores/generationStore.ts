@@ -34,7 +34,7 @@ export type Resolution =
   | "1080p"
   | "2048p";
 export type ZImageQuality = "4bit" | "8bit";
-export type TextToImagePreset = "prototype" | "optimal";
+export type TextToImagePreset = "prototype" | "medium" | "optimal";
 export type VideoMode = "distilled" | "one-stage" | "two-stage";
 
 function getDimensions(
@@ -546,6 +546,12 @@ const TEXT_TO_IMAGE_PRESETS: Record<
     resolution: "320p",
     steps: 4,
     quality: "4bit",
+  },
+  medium: {
+    aspectRatio: "1:1",
+    resolution: "720p",
+    steps: 7,
+    quality: "8bit",
   },
   optimal: {
     aspectRatio: "1:1",
