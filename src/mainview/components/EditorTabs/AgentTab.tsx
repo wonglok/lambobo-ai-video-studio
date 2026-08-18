@@ -34,8 +34,8 @@ export default function AgentTab({ projectId }: Props) {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-2">
-        <span className="text-ink-400">{AgentIcon}</span>
-        <h2 className="text-base font-semibold text-ink-50">Agent</h2>
+        <span className="text-tiffany-500">{AgentIcon}</span>
+        <h2 className="text-base font-semibold text-tiffany-900">Agent</h2>
       </div>
 
       {store.agent.serverRunning && store.agent.serverOnline ? null : (
@@ -49,9 +49,9 @@ export default function AgentTab({ projectId }: Props) {
           <AgentWorkspace projectId={projectId} />
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center gap-2 p-8 border border-dashed border-ink-600 rounded-xl">
-          <span className="text-ink-400">{AgentIcon}</span>
-          <p className="text-xs text-ink-400 italic">
+        <div className="flex flex-col items-center justify-center gap-2 p-8 border border-dashed border-tiffany-200 rounded-xl">
+          <span className="text-tiffany-400">{AgentIcon}</span>
+          <p className="text-xs text-tiffany-400 italic">
             Start the LLM server to chat with the agent.{" "}
           </p>
         </div>

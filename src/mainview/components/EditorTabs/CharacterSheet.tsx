@@ -197,14 +197,14 @@ export default function CharacterSheet({ items, projectId }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-ink-300/60">
+        <p className="text-xs text-tiffany-600/60">
           {items.length} character{items.length === 1 ? "" : "s"}
         </p>
         <div className="flex items-center gap-2">
           <button
             onClick={saveSheet}
             disabled={saving || items.length === 0}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-tiffany-500 hover:bg-tiffany-400 disabled:bg-ink-600 disabled:text-ink-400 text-ink-950 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-tiffany-500 hover:bg-tiffany-600 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white transition-colors"
           >
             {SaveIcon}
             {saving ? "Saving..." : "Save Sheet"}
@@ -212,7 +212,7 @@ export default function CharacterSheet({ items, projectId }: Props) {
           <button
             onClick={downloadSheet}
             disabled={items.length === 0}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-ink-600 bg-ink-800 text-ink-300 hover:border-ink-400 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-tiffany-200 bg-white text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50 transition-colors"
           >
             {DownloadIcon}
             Download Sheet
@@ -221,13 +221,13 @@ export default function CharacterSheet({ items, projectId }: Props) {
       </div>
 
       {saveInfo && (
-        <p className="text-xs text-emerald-400">{saveInfo}</p>
+        <p className="text-xs text-emerald-600">{saveInfo}</p>
       )}
-      {saveError && <p className="text-xs text-red-300">{saveError}</p>}
+      {saveError && <p className="text-xs text-red-600">{saveError}</p>}
 
       <canvas
         ref={canvasRef}
-        className="rounded-xl border border-ink-600 max-w-full h-auto"
+        className="rounded-xl border border-tiffany-200 max-w-full h-auto"
       />
     </div>
   );

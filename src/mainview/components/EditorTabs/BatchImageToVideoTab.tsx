@@ -21,7 +21,7 @@ const TableIcon = (
     strokeWidth="2"
     strokeLinecap="round"
     strokeLinejoin="round"
-    className="text-ink-400"
+    className="text-tiffany-500"
   >
     <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
     <line x1="3" y1="9" x2="21" y2="9" />
@@ -249,22 +249,22 @@ function StatusBadge({ status }: { status: BatchI2VRowStatus }) {
   switch (status) {
     case "generating":
       return (
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-300">
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-tiffany-600">
           {SpinnerIcon}
           Generating
         </span>
       );
     case "done":
       return (
-        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400">
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600">
           {CheckIcon}
           Done
         </span>
       );
     case "error":
-      return <span className="text-xs font-medium text-red-300">Error</span>;
+      return <span className="text-xs font-medium text-red-600">Error</span>;
     default:
-      return <span className="text-xs font-medium text-ink-400">—</span>;
+      return <span className="text-xs font-medium text-tiffany-400">—</span>;
   }
 }
 
@@ -314,7 +314,7 @@ function DurationCell({
       placeholder={`Default (${shared}s)`}
       disabled={disabled}
       title="Override video duration in seconds (empty = shared default)"
-      className="w-full px-2 py-1.5 bg-ink-800 border border-ink-600 rounded-lg text-ink-100 text-xs placeholder-ink-400/40 focus:outline-none focus:border-tiffany-400 focus:ring-1 focus:ring-tiffany-400/30 transition-all disabled:opacity-50"
+      className="w-full px-2 py-1.5 bg-white border border-tiffany-200 rounded-lg text-tiffany-800 text-xs placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-1 focus:ring-tiffany-300/30 transition-all disabled:opacity-50"
     />
   );
 }
@@ -389,16 +389,16 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-2">
         {TableIcon}
-        <h2 className="text-base font-semibold text-ink-50">
+        <h2 className="text-base font-semibold text-tiffany-900">
           Batch Image to Video
         </h2>
       </div>
 
       {/* CSV upload */}
-      <div className="border border-ink-600 rounded-xl p-4 flex flex-col gap-3">
+      <div className="border border-tiffany-200 rounded-xl p-4 flex flex-col gap-3">
         <div className="flex items-center gap-2">
           {FileIcon}
-          <span className="text-sm font-semibold text-ink-50">
+          <span className="text-sm font-semibold text-tiffany-900">
             Import Scenes (CSV)
           </span>
         </div>
@@ -414,13 +414,13 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
           <button
             onClick={() => csvInputRef.current?.click()}
             disabled={store.running}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-ink-600 bg-ink-800 text-ink-300 text-xs font-medium cursor-pointer hover:border-ink-400 hover:bg-ink-700 transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-tiffany-200 bg-white text-tiffany-600 text-xs font-medium cursor-pointer hover:border-tiffany-300 hover:bg-tiffany-50 transition-colors disabled:opacity-50"
           >
             {UploadIcon}
             Upload CSV
           </button>
           {csvFilename && (
-            <span className="text-[11px] text-ink-300 truncate max-w-[240px]">
+            <span className="text-[11px] text-tiffany-600 truncate max-w-[240px]">
               {csvFilename}
             </span>
           )}
@@ -433,24 +433,24 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
             placeholder={`Paste CSV here, e.g.\nt2i,i2v,duration\nA student sleeping in class...,Slow pan across the classroom...,5`}
             rows={4}
             disabled={store.running}
-            className="flex-1 px-2.5 py-1.5 bg-ink-800 border border-ink-600 rounded-lg text-ink-100 text-xs placeholder-ink-400/40 focus:outline-none focus:border-tiffany-400 focus:ring-1 focus:ring-tiffany-400/30 transition-all resize-y disabled:opacity-50 font-mono"
+            className="flex-1 px-2.5 py-1.5 bg-white border border-tiffany-200 rounded-lg text-tiffany-800 text-xs placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-1 focus:ring-tiffany-300/30 transition-all resize-y disabled:opacity-50 font-mono"
           />
           <button
             onClick={handlePasteCsv}
             disabled={store.running || !csvText.trim()}
-            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-ink-600 bg-ink-800 text-ink-300 text-xs font-medium cursor-pointer hover:border-ink-400 hover:bg-ink-700 transition-colors disabled:opacity-50"
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-tiffany-200 bg-white text-tiffany-600 text-xs font-medium cursor-pointer hover:border-tiffany-300 hover:bg-tiffany-50 transition-colors disabled:opacity-50"
           >
             {ClipboardIcon}
             Parse CSV
           </button>
         </div>
 
-        <p className="text-xs text-ink-400 italic">
-          CSV must contain columns <code className="text-[11px] bg-ink-700 px-1 rounded">t2i</code>{" "}
+        <p className="text-xs text-tiffany-500 italic">
+          CSV must contain columns <code className="text-[11px] bg-tiffany-100 px-1 rounded">t2i</code>{" "}
           (text-to-image prompt) and{" "}
-          <code className="text-[11px] bg-ink-700 px-1 rounded">i2v</code>{" "}
+          <code className="text-[11px] bg-tiffany-100 px-1 rounded">i2v</code>{" "}
           (image-to-video prompt). An optional{" "}
-          <code className="text-[11px] bg-ink-700 px-1 rounded">duration</code>{" "}
+          <code className="text-[11px] bg-tiffany-100 px-1 rounded">duration</code>{" "}
           column (seconds) overrides the shared duration for that row.
         </p>
       </div>
@@ -459,7 +459,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {/* Duration */}
         <div>
-          <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+          <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
             Duration (seconds)
           </label>
           <div className="flex flex-wrap gap-1.5">
@@ -470,8 +470,8 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
                 disabled={store.running}
                 className={`px-3 py-1 text-xs font-medium rounded-lg border transition-all ${
                   store.duration === d
-                    ? "bg-ink-700 border-ink-500 text-ink-100"
-                    : "bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400"
+                    ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
+                    : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
                 } disabled:opacity-50`}
               >
                 {d}s
@@ -482,7 +482,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
 
         {/* Aspect ratio */}
         <div>
-          <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+          <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
             Aspect Ratio
           </label>
           <div className="flex flex-wrap gap-1.5">
@@ -493,8 +493,8 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
                 disabled={store.running}
                 className={`px-3 py-1 text-xs font-medium rounded-lg border transition-all ${
                   store.aspectRatio === ratio
-                    ? "bg-ink-700 border-ink-500 text-ink-100"
-                    : "bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400"
+                    ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
+                    : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
                 } disabled:opacity-50`}
               >
                 {ratio}
@@ -505,7 +505,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
 
         {/* Resolution */}
         <div>
-          <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+          <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
             Resolution
           </label>
           <div className="flex flex-wrap gap-1.5">
@@ -517,8 +517,8 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
                   disabled={store.running}
                   className={`px-3 py-1 text-xs font-medium rounded-lg border transition-all ${
                     store.resolution === res
-                      ? "bg-ink-700 border-ink-500 text-ink-100"
-                      : "bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400"
+                      ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
+                      : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
                   } disabled:opacity-50`}
                 >
                   {res}
@@ -530,7 +530,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
 
         {/* Video mode */}
         <div>
-          <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+          <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
             Mode
           </label>
           <div className="flex flex-wrap gap-1.5">
@@ -547,8 +547,8 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
                 disabled={store.running}
                 className={`px-3 py-1 text-xs font-medium rounded-lg border transition-all ${
                   store.mode === q.value
-                    ? "bg-ink-700 border-ink-500 text-ink-100"
-                    : "bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400"
+                    ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
+                    : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
                 } disabled:opacity-50`}
               >
                 {q.label}
@@ -561,7 +561,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
       {/* Table */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="text-xs font-semibold text-ink-200 uppercase tracking-wider">
+          <label className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider">
             Scenes
           </label>
           <div className="flex items-center gap-1.5">
@@ -569,7 +569,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
               onClick={store.clear}
               disabled={store.running}
               title="Clear all rows and settings"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-ink-800 border-ink-600 text-red-300 hover:border-red-500/40 hover:bg-red-500/10 disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-red-500 hover:border-red-200 hover:bg-red-50 disabled:opacity-50"
             >
               {CloseIcon}
               Clear
@@ -577,7 +577,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
             <button
               onClick={store.addRow}
               disabled={store.running}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400 disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50"
             >
               {PlusIcon}
               Add Row
@@ -585,33 +585,33 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
           </div>
         </div>
 
-        <div className="border border-ink-600 rounded-xl overflow-hidden">
+        <div className="border border-tiffany-200 rounded-xl overflow-hidden">
           <div className="overflow-auto max-h-[480px]">
             <table className="w-full text-xs">
               <thead>
-                <tr className="bg-ink-900 border-b border-ink-600">
-                  <th className="sticky top-0 bg-ink-900 px-3 py-2 text-left font-semibold text-ink-200 w-10">
+                <tr className="bg-tiffany-50 border-b border-tiffany-200">
+                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-10">
                     #
                   </th>
-                  <th className="sticky top-0 bg-ink-900 px-3 py-2 text-left font-semibold text-ink-200 min-w-[220px]">
+                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 min-w-[220px]">
                     Text-to-Image Prompt
                   </th>
-                  <th className="sticky top-0 bg-ink-900 px-3 py-2 text-left font-semibold text-ink-200 min-w-[220px]">
+                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 min-w-[220px]">
                     Image-to-Video Prompt
                   </th>
-                  <th className="sticky top-0 bg-ink-900 px-3 py-2 text-left font-semibold text-ink-200 w-28">
+                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-28">
                     Duration
                   </th>
-                  <th className="sticky top-0 bg-ink-900 px-3 py-2 text-left font-semibold text-ink-200 w-32">
+                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-32">
                     Image
                   </th>
-                  <th className="sticky top-0 bg-ink-900 px-3 py-2 text-left font-semibold text-ink-200 w-40">
+                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-40">
                     Video
                   </th>
-                  <th className="sticky top-0 bg-ink-900 px-3 py-2 text-left font-semibold text-ink-200 w-32">
+                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-32">
                     Status
                   </th>
-                  <th className="sticky top-0 bg-ink-900 px-3 py-2 text-left font-semibold text-ink-200 w-36">
+                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-36">
                     Actions
                   </th>
                 </tr>
@@ -620,9 +620,9 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
                 {store.rows.map((row, idx) => (
                   <tr
                     key={row.id}
-                    className="border-b border-ink-700 last:border-b-0 align-top transition-colors hover:bg-ink-700/30"
+                    className="border-b border-tiffany-100 last:border-b-0 align-top transition-colors hover:bg-tiffany-50/30"
                   >
-                    <td className="px-3 py-2 text-ink-300/60 font-medium tabular-nums">
+                    <td className="px-3 py-2 text-tiffany-600/60 font-medium tabular-nums">
                       {idx + 1}
                     </td>
 
@@ -636,7 +636,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
                         placeholder="Describe the starting image..."
                         rows={3}
                         disabled={store.running}
-                        className="w-full px-2.5 py-1.5 bg-transparent border border-ink-600 rounded-lg text-ink-100 text-xs placeholder-ink-400/40 focus:outline-none focus:border-tiffany-400 focus:ring-1 focus:ring-tiffany-400/30 transition-all resize-none disabled:opacity-50"
+                        className="w-full px-2.5 py-1.5 bg-transparent border border-tiffany-200 rounded-lg text-tiffany-800 text-xs placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-1 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
                       />
                     </td>
 
@@ -650,7 +650,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
                         placeholder="Describe the motion..."
                         rows={3}
                         disabled={store.running}
-                        className="w-full px-2.5 py-1.5 bg-transparent border border-ink-600 rounded-lg text-ink-100 text-xs placeholder-ink-400/40 focus:outline-none focus:border-tiffany-400 focus:ring-1 focus:ring-tiffany-400/30 transition-all resize-none disabled:opacity-50"
+                        className="w-full px-2.5 py-1.5 bg-transparent border border-tiffany-200 rounded-lg text-tiffany-800 text-xs placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-1 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
                       />
                     </td>
 
@@ -677,10 +677,10 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
                               type: "image",
                             })
                           }
-                          className="w-20 h-20 object-cover rounded-lg border border-ink-600 cursor-zoom-in hover:opacity-80 transition-opacity"
+                          className="w-20 h-20 object-cover rounded-lg border border-tiffany-200 cursor-zoom-in hover:opacity-80 transition-opacity"
                         />
                       ) : (
-                        <span className="text-[10px] text-ink-400 italic">
+                        <span className="text-[10px] text-tiffany-400 italic">
                           —
                         </span>
                       )}
@@ -710,7 +710,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
                           </button>
                         </div>
                       ) : (
-                        <span className="text-[10px] text-ink-400 italic">
+                        <span className="text-[10px] text-tiffany-400 italic">
                           —
                         </span>
                       )}
@@ -720,20 +720,20 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
                     <td className="px-3 py-2">
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-1">
-                          <span className="text-[10px] text-ink-400 w-10">
+                          <span className="text-[10px] text-tiffany-500 w-10">
                             Img:
                           </span>
                           <StatusBadge status={row.imageStatus} />
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="text-[10px] text-ink-400 w-10">
+                          <span className="text-[10px] text-tiffany-500 w-10">
                             Vid:
                           </span>
                           <StatusBadge status={row.videoStatus} />
                         </div>
                       </div>
                       {row.error && (
-                        <p className="text-[10px] text-red-300 mt-1 break-words max-w-[120px]">
+                        <p className="text-[10px] text-red-500 mt-1 break-words max-w-[120px]">
                           {row.error}
                         </p>
                       )}
@@ -748,7 +748,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
                           }
                           disabled={store.running || !row.t2iPrompt.trim()}
                           title="Regenerate image"
-                          className="flex items-center justify-center w-7 h-7 rounded-lg border border-ink-600 text-ink-300 hover:bg-ink-700 hover:text-ink-100 hover:border-ink-400 transition-colors disabled:opacity-40"
+                          className="flex items-center justify-center w-7 h-7 rounded-lg border border-tiffany-200 text-tiffany-600 hover:bg-tiffany-50 hover:text-tiffany-700 hover:border-tiffany-300 transition-colors disabled:opacity-40"
                         >
                           {ImageIcon}
                         </button>
@@ -762,7 +762,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
                             !row.i2vPrompt.trim()
                           }
                           title="Regenerate video"
-                          className="flex items-center justify-center w-7 h-7 rounded-lg border border-ink-600 text-ink-300 hover:bg-ink-700 hover:text-ink-100 hover:border-ink-400 transition-colors disabled:opacity-40"
+                          className="flex items-center justify-center w-7 h-7 rounded-lg border border-tiffany-200 text-tiffany-600 hover:bg-tiffany-50 hover:text-tiffany-700 hover:border-tiffany-300 transition-colors disabled:opacity-40"
                         >
                           {FilmIcon}
                         </button>
@@ -774,7 +774,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
                             !row.i2vPrompt.trim()
                           }
                           title="Regenerate image + video"
-                          className="flex items-center justify-center w-7 h-7 rounded-lg border border-ink-600 text-ink-300 hover:bg-ink-700 hover:text-ink-100 hover:border-ink-400 transition-colors disabled:opacity-40"
+                          className="flex items-center justify-center w-7 h-7 rounded-lg border border-tiffany-200 text-tiffany-600 hover:bg-tiffany-50 hover:text-tiffany-700 hover:border-tiffany-300 transition-colors disabled:opacity-40"
                         >
                           {RefreshCwIcon}
                         </button>
@@ -782,7 +782,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
                           onClick={() => store.removeRow(row.id)}
                           disabled={store.running}
                           title="Remove row"
-                          className="flex items-center justify-center w-7 h-7 rounded-lg border border-ink-600 text-ink-300 hover:bg-red-500/10 hover:text-red-300 hover:border-red-500/40 transition-colors disabled:opacity-40"
+                          className="flex items-center justify-center w-7 h-7 rounded-lg border border-tiffany-200 text-tiffany-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors disabled:opacity-40"
                         >
                           {CloseIcon}
                         </button>
@@ -796,7 +796,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
         </div>
 
         {store.rows.length === 0 && (
-          <p className="text-xs text-ink-400 italic py-6 text-center border border-dashed border-ink-600 rounded-xl mt-2">
+          <p className="text-xs text-tiffany-400 italic py-6 text-center border border-dashed border-tiffany-200 rounded-xl mt-2">
             No scenes yet. Click "Add Row" or upload a CSV.
           </p>
         )}
@@ -805,7 +805,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
       {/* Open output folder */}
       <button
         onClick={() => openFolder(projectId, "output")}
-        className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-ink-900 hover:bg-ink-600 text-ink-200 text-sm font-medium rounded-xl border border-ink-600 transition-colors"
+        className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-tiffany-50 hover:bg-tiffany-100 text-tiffany-700 text-sm font-medium rounded-xl border border-tiffany-200 transition-colors"
       >
         {FolderIcon}
         Open Output Folder
@@ -813,11 +813,11 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
 
       {/* Progress */}
       {store.progress && (
-        <div className="flex items-center gap-3 p-3 bg-ink-900 border border-ink-600 rounded-xl">
-          <span className="text-xs font-medium text-ink-200">
+        <div className="flex items-center gap-3 p-3 bg-tiffany-50 border border-tiffany-200 rounded-xl">
+          <span className="text-xs font-medium text-tiffany-700">
             Batch Progress
           </span>
-          <div className="flex-1 h-2 bg-ink-600 rounded-full overflow-hidden">
+          <div className="flex-1 h-2 bg-tiffany-200 rounded-full overflow-hidden">
             <div
               className="h-full bg-tiffany-500 rounded-full transition-all duration-300"
               style={{
@@ -825,7 +825,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
               }}
             />
           </div>
-          <span className="text-xs font-semibold text-ink-200 tabular-nums">
+          <span className="text-xs font-semibold text-tiffany-700 tabular-nums">
             {store.progress.current}/{store.progress.total}
           </span>
         </div>
@@ -835,12 +835,12 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
       {store.logs.length > 0 && (
         <div
           ref={logRef}
-          className="p-4 bg-ink-900 border border-ink-600 rounded-xl max-h-40 overflow-y-auto"
+          className="p-4 bg-tiffany-50 border border-tiffany-200 rounded-xl max-h-40 overflow-y-auto"
         >
-          <p className="text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+          <p className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
             Progress Logs
           </p>
-          <pre className="text-xs text-ink-300 font-mono whitespace-pre-wrap">
+          <pre className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap">
             {store.logs.join("\n")}
           </pre>
         </div>
@@ -850,7 +850,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
       {store.running ? (
         <button
           onClick={store.cancel}
-          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-300 text-sm font-semibold rounded-xl border border-red-500/30 transition-colors"
+          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-red-50 hover:bg-red-100 text-red-600 text-sm font-semibold rounded-xl border border-red-200 transition-colors"
         >
           Cancel Batch
         </button>
@@ -859,7 +859,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
           <button
             onClick={() => store.generateAll(projectId)}
             disabled={bothCount === 0}
-            className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-500 hover:bg-tiffany-400 active:bg-tiffany-500 disabled:bg-ink-600 disabled:text-ink-400 text-ink-950 text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
+            className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-600 hover:bg-tiffany-700 active:bg-tiffany-800 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
           >
             {SparkleIcon}
             Generate All Images &amp; Videos ({bothCount})
@@ -868,7 +868,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
             <button
               onClick={() => store.generateAllImages(projectId)}
               disabled={imageCount === 0}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-ink-800 hover:bg-ink-700 disabled:bg-ink-900 disabled:text-ink-400 text-ink-200 text-sm font-medium rounded-xl border border-ink-600 transition-colors disabled:border-ink-700"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white hover:bg-tiffany-50 disabled:bg-tiffany-50 disabled:text-tiffany-400 text-tiffany-700 text-sm font-medium rounded-xl border border-tiffany-200 transition-colors disabled:border-tiffany-100"
             >
               {ImageIcon}
               Generate All Images ({imageCount})
@@ -876,7 +876,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
             <button
               onClick={() => store.generateAllVideos(projectId)}
               disabled={videoCount === 0}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-ink-800 hover:bg-ink-700 disabled:bg-ink-900 disabled:text-ink-400 text-ink-200 text-sm font-medium rounded-xl border border-ink-600 transition-colors disabled:border-ink-700"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white hover:bg-tiffany-50 disabled:bg-tiffany-50 disabled:text-tiffany-400 text-tiffany-700 text-sm font-medium rounded-xl border border-tiffany-200 transition-colors disabled:border-tiffany-100"
             >
               {FilmIcon}
               Generate All Videos ({videoCount})
@@ -914,7 +914,7 @@ export default function BatchImageToVideoTab({ projectId }: Props) {
             </span>
             <button
               onClick={() => setPreview(null)}
-              className="absolute -top-3 -right-3 flex items-center justify-center w-9 h-9 bg-ink-800 text-ink-200 rounded-full shadow-lg hover:bg-ink-600 transition-colors"
+              className="absolute -top-3 -right-3 flex items-center justify-center w-9 h-9 bg-white text-tiffany-700 rounded-full shadow-lg hover:bg-tiffany-100 transition-colors"
               title="Close (Esc)"
             >
               {CloseIcon}

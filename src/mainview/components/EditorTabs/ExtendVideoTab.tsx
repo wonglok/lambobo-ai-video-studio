@@ -68,8 +68,8 @@ export default function ExtendVideoTab({ projectId }: Props) {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-2">
-        <span className="text-ink-400">{ExtendIcon}</span>
-        <h2 className="text-base font-semibold text-ink-50">
+        <span className="text-tiffany-500">{ExtendIcon}</span>
+        <h2 className="text-base font-semibold text-tiffany-900">
           Extend Video
         </h2>
       </div>
@@ -78,13 +78,13 @@ export default function ExtendVideoTab({ projectId }: Props) {
       <div className="flex gap-4">
         {/* Video list */}
         <div className="flex-1 min-w-0">
-          <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+          <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
             Source Video
           </label>
           {store.projectVideos.length > 0 && (
             <div className="relative mb-2">
               <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-tiffany-400"
                 width="14"
                 height="14"
                 viewBox="0 0 24 24"
@@ -102,24 +102,24 @@ export default function ExtendVideoTab({ projectId }: Props) {
                 placeholder="Filter videos..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-ink-900 border border-ink-600 rounded-xl text-ink-50 text-sm placeholder-ink-400 focus:outline-none focus:border-tiffany-400 focus:ring-2 focus:ring-tiffany-400/30 transition-all"
+                className="w-full pl-9 pr-3 py-2 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm placeholder-tiffany-400 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all"
               />
             </div>
           )}
           {store.projectVideosLoading ? (
-            <p className="text-xs text-ink-400 italic py-4">
+            <p className="text-xs text-tiffany-400 italic py-4">
               Loading videos...
             </p>
           ) : store.projectVideos.length === 0 ? (
-            <p className="text-xs text-ink-400 italic py-4 border border-dashed border-ink-600 rounded-xl text-center">
+            <p className="text-xs text-tiffany-400 italic py-4 border border-dashed border-tiffany-200 rounded-xl text-center">
               No videos yet. Generate a video in the "Generate Video" tab.
             </p>
           ) : filteredVideos.length === 0 ? (
-            <p className="text-xs text-ink-400 italic py-4 border border-dashed border-ink-600 rounded-xl text-center">
+            <p className="text-xs text-tiffany-400 italic py-4 border border-dashed border-tiffany-200 rounded-xl text-center">
               No videos match "{search}".
             </p>
           ) : (
-            <div className="border border-ink-600 rounded-xl overflow-hidden max-h-64 overflow-y-auto">
+            <div className="border border-tiffany-200 rounded-xl overflow-hidden max-h-64 overflow-y-auto">
               {filteredVideos.map((v) => {
                 const isSelected = store.selectedVideo?.filename === v.filename;
                 return (
@@ -127,10 +127,10 @@ export default function ExtendVideoTab({ projectId }: Props) {
                     key={v.filename}
                     onClick={() => store.selectVideo(v)}
                     disabled={store.extend.generating}
-                    className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition-colors border-b border-ink-700 last:border-b-0 ${
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition-colors border-b border-tiffany-100 last:border-b-0 ${
                       isSelected
-                        ? "bg-ink-700 text-ink-50 font-medium"
-                        : "text-ink-200 hover:bg-ink-700"
+                        ? "bg-tiffany-100 text-tiffany-900 font-medium"
+                        : "text-tiffany-700 hover:bg-tiffany-50"
                     } disabled:opacity-50`}
                   >
                     <svg
@@ -140,7 +140,7 @@ export default function ExtendVideoTab({ projectId }: Props) {
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="2"
-                      className="shrink-0 text-ink-400"
+                      className="shrink-0 text-tiffany-400"
                     >
                       <polygon points="23 7 16 12 23 17 23 7" />
                       <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
@@ -156,10 +156,10 @@ export default function ExtendVideoTab({ projectId }: Props) {
         {/* Preview box */}
         {store.selectedVideo && (
           <div className="w-1/2 shrink-0">
-            <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
               Preview
             </label>
-            <div className="relative rounded-xl overflow-hidden border border-ink-600 bg-black aspect-video">
+            <div className="relative rounded-xl overflow-hidden border border-tiffany-200 bg-black aspect-video">
               <video
                 src={
                   store.selectedVideo.url.startsWith("/")
@@ -172,7 +172,7 @@ export default function ExtendVideoTab({ projectId }: Props) {
                 className="w-full h-full object-contain"
               />
             </div>
-            <p className="text-[10px] text-ink-400 mt-1 truncate">
+            <p className="text-[10px] text-tiffany-500 mt-1 truncate">
               {store.selectedVideo.filename}
             </p>
           </div>
@@ -181,7 +181,7 @@ export default function ExtendVideoTab({ projectId }: Props) {
 
       {/* Prompt */}
       <div>
-        <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
           Continue the Scene Prompt
         </label>
         <textarea
@@ -190,13 +190,13 @@ export default function ExtendVideoTab({ projectId }: Props) {
           placeholder="Describe how the video should continue, e.g. the camera holds, the motion continues naturally..."
           rows={4}
           disabled={store.extend.generating}
-          className="w-full px-4 py-3 bg-ink-900 border border-ink-600 rounded-xl text-ink-50 text-sm placeholder-ink-400/40 focus:outline-none focus:border-tiffany-400 focus:ring-2 focus:ring-tiffany-400/30 transition-all resize-none disabled:opacity-50"
+          className="w-full px-4 py-3 bg-tiffany-50 border border-tiffany-200 rounded-xl text-tiffany-900 text-sm placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-2 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
         />
       </div>
 
       {/* Duration (seconds) */}
       <div>
-        <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+        <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
           Duration (seconds)
         </label>
         <div className="flex flex-wrap gap-2">
@@ -207,15 +207,15 @@ export default function ExtendVideoTab({ projectId }: Props) {
               disabled={store.extend.generating}
               className={`px-4 py-1.5 text-xs font-medium rounded-lg border transition-all ${
                 store.extend.extendDuration === d
-                  ? "bg-ink-700 border-ink-500 text-ink-100"
-                  : "bg-ink-800 border-ink-600 text-ink-300 hover:border-ink-400"
+                  ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
+                  : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
               } disabled:opacity-50`}
             >
               {d}s
             </button>
           ))}
         </div>
-        <p className="text-xs text-ink-300/50 mt-1.5">
+        <p className="text-xs text-tiffany-600/50 mt-1.5">
           {store.extend.extendFrames} frames ({store.extend.extendDuration}s ×
           24 fps + 1)
         </p>
@@ -224,9 +224,9 @@ export default function ExtendVideoTab({ projectId }: Props) {
       {/* Generate / Stop button */}
       {store.extend.generating ? (
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 flex-1 px-4 py-3 bg-ink-900 border border-ink-600 rounded-xl">
+          <div className="flex items-center gap-2 flex-1 px-4 py-3 bg-tiffany-50 border border-tiffany-200 rounded-xl">
             <svg
-              className="animate-spin text-ink-400"
+              className="animate-spin text-tiffany-500"
               width="16"
               height="16"
               viewBox="0 0 24 24"
@@ -237,13 +237,13 @@ export default function ExtendVideoTab({ projectId }: Props) {
               <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
               <path d="M12 2a10 10 0 0 1 10 10" strokeOpacity="0.75" />
             </svg>
-            <span className="text-sm font-medium text-ink-200">
+            <span className="text-sm font-medium text-tiffany-700">
               Extending...
             </span>
           </div>
           <button
             onClick={() => store.cancelGenerate()}
-            className="flex items-center justify-center gap-1.5 px-5 py-3 bg-red-500 hover:bg-red-500 active:bg-red-600 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
+            className="flex items-center justify-center gap-1.5 px-5 py-3 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <rect x="4" y="4" width="16" height="16" rx="2" />
@@ -255,7 +255,7 @@ export default function ExtendVideoTab({ projectId }: Props) {
         <button
           onClick={handleGenerateExtend}
           disabled={!store.selectedVideo || !store.extend.prompt.trim()}
-          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-500 hover:bg-tiffany-400 active:bg-tiffany-500 disabled:bg-ink-600 disabled:text-ink-400 text-ink-950 text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
+          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-600 hover:bg-tiffany-700 active:bg-tiffany-800 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
         >
           {SparkleIcon}
           Extend Video
@@ -264,7 +264,7 @@ export default function ExtendVideoTab({ projectId }: Props) {
 
       {/* Error */}
       {store.extend.error && (
-        <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-sm">
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
           {store.extend.error}
         </div>
       )}
@@ -274,12 +274,12 @@ export default function ExtendVideoTab({ projectId }: Props) {
         <div
           ref={extendLogRef}
           id="extend-logs"
-          className="p-4 bg-ink-900 border border-ink-600 rounded-xl max-h-40 overflow-y-auto"
+          className="p-4 bg-tiffany-50 border border-tiffany-200 rounded-xl max-h-40 overflow-y-auto"
         >
-          <p className="text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+          <p className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
             Logs
           </p>
-          <pre className="text-xs text-ink-300 font-mono whitespace-pre-wrap">
+          <pre className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap">
             {store.extend.logs.join("\n")}
           </pre>
         </div>
@@ -288,10 +288,10 @@ export default function ExtendVideoTab({ projectId }: Props) {
       {/* Result */}
       {store.extend.result && (
         <div>
-          <label className="block text-xs font-semibold text-ink-200 uppercase tracking-wider mb-2">
+          <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
             Extended Video
           </label>
-          <div className="relative rounded-xl overflow-hidden border border-ink-600 shadow-card bg-black w-[500px]">
+          <div className="relative rounded-xl overflow-hidden border border-tiffany-200 shadow-card bg-black w-[500px]">
             <video
               src={store.extend.result}
               controls
