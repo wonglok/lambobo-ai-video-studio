@@ -1,0 +1,669 @@
+import { useEffect, useRef, useState } from "react";
+import {
+  useBatchImageToVideoStore,
+  type BatchI2VRowStatus,
+} from "../../stores/batchImageToVideoStore";
+import { useProjectStore } from "../../stores/projectStore";
+
+interface Props {
+  projectId: string;
+}
+
+// ========== SVG Icons ==========
+
+const TableIcon = (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="text-tiffany-500"
+  >
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <line x1="3" y1="9" x2="21" y2="9" />
+    <line x1="3" y1="15" x2="21" y2="15" />
+    <line x1="9" y1="3" x2="9" y2="21" />
+  </svg>
+);
+
+const PlusIcon = (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+);
+
+const UploadIcon = (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="17 8 12 3 7 8" />
+    <line x1="12" y1="3" x2="12" y2="15" />
+  </svg>
+);
+
+const FileIcon = (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
+  </svg>
+);
+
+const ImageIcon = (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <polyline points="21 15 16 10 5 21" />
+  </svg>
+);
+
+const FilmIcon = (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" />
+    <line x1="7" y1="2" x2="7" y2="22" />
+    <line x1="17" y1="2" x2="17" y2="22" />
+    <line x1="2" y1="12" x2="22" y2="12" />
+    <line x1="2" y1="7" x2="7" y2="7" />
+    <line x1="2" y1="17" x2="7" y2="17" />
+    <line x1="17" y1="17" x2="22" y2="17" />
+    <line x1="17" y1="7" x2="22" y2="7" />
+  </svg>
+);
+
+const FolderIcon = (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
+const CloseIcon = (
+  <svg
+    width="12"
+    height="12"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
+
+const SparkleIcon = (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  </svg>
+);
+
+const CheckIcon = (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
+const SpinnerIcon = (
+  <svg
+    className="animate-spin"
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+    <path d="M12 2a10 10 0 0 1 10 10" strokeOpacity="0.75" />
+  </svg>
+);
+
+// ========== Status badge ==========
+
+function StatusBadge({ status }: { status: BatchI2VRowStatus }) {
+  switch (status) {
+    case "generating":
+      return (
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-tiffany-600">
+          {SpinnerIcon}
+          Generating
+        </span>
+      );
+    case "done":
+      return (
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600">
+          {CheckIcon}
+          Done
+        </span>
+      );
+    case "error":
+      return <span className="text-xs font-medium text-red-600">Error</span>;
+    default:
+      return <span className="text-xs font-medium text-tiffany-400">—</span>;
+  }
+}
+
+// ========== Component ==========
+
+export default function BatchImageToVideoTab({ projectId }: Props) {
+  const store = useBatchImageToVideoStore();
+  const { openFolder } = useProjectStore();
+
+  const logRef = useRef<HTMLDivElement | null>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
+  const [csvFilename, setCsvFilename] = useState<string | null>(null);
+
+  useEffect(() => {
+    store.hydrate(projectId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
+
+  useEffect(() => {
+    if (logRef.current) {
+      logRef.current.scrollTop = logRef.current.scrollHeight;
+    }
+  }, [store.logs]);
+
+  const handleCsvSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      store.uploadCsv(base64, file.name);
+      setCsvFilename(file.name);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const imageCount = store.rows.filter((r) => r.t2iPrompt.trim()).length;
+  const videoCount = store.rows.filter(
+    (r) => r.imagePath && r.i2vPrompt.trim(),
+  ).length;
+  const bothCount = store.rows.filter(
+    (r) => r.t2iPrompt.trim() && r.i2vPrompt.trim(),
+  ).length;
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center gap-2">
+        {TableIcon}
+        <h2 className="text-base font-semibold text-tiffany-900">
+          Batch Image to Video
+        </h2>
+      </div>
+
+      {/* CSV upload */}
+      <div className="border border-tiffany-200 rounded-xl p-4 flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          {FileIcon}
+          <span className="text-sm font-semibold text-tiffany-900">
+            Import Scenes (CSV)
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            ref={csvInputRef}
+            type="file"
+            accept=".csv"
+            onChange={handleCsvSelect}
+            disabled={store.running}
+            className="hidden"
+          />
+          <button
+            onClick={() => csvInputRef.current?.click()}
+            disabled={store.running}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-tiffany-200 bg-white text-tiffany-600 text-xs font-medium cursor-pointer hover:border-tiffany-300 hover:bg-tiffany-50 transition-colors disabled:opacity-50"
+          >
+            {UploadIcon}
+            Upload CSV
+          </button>
+          {csvFilename && (
+            <span className="text-[11px] text-tiffany-600 truncate max-w-[240px]">
+              {csvFilename}
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-tiffany-500 italic">
+          CSV must contain columns <code className="text-[11px] bg-tiffany-100 px-1 rounded">t2i</code>{" "}
+          (text-to-image prompt) and{" "}
+          <code className="text-[11px] bg-tiffany-100 px-1 rounded">i2v</code>{" "}
+          (image-to-video prompt).
+        </p>
+      </div>
+
+      {/* Shared settings */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        {/* Duration */}
+        <div>
+          <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+            Duration (seconds)
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {[0.5, 3, 5, 7.5, 10, 15, 20].map((d) => (
+              <button
+                key={d}
+                onClick={() => store.setDuration(d)}
+                disabled={store.running}
+                className={`px-3 py-1 text-xs font-medium rounded-lg border transition-all ${
+                  store.duration === d
+                    ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
+                    : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+                } disabled:opacity-50`}
+              >
+                {d}s
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Aspect ratio */}
+        <div>
+          <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+            Aspect Ratio
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {(["1:1", "16:9", "9:16", "4:3", "3:4"] as const).map((ratio) => (
+              <button
+                key={ratio}
+                onClick={() => store.setAspectRatio(ratio)}
+                disabled={store.running}
+                className={`px-3 py-1 text-xs font-medium rounded-lg border transition-all ${
+                  store.aspectRatio === ratio
+                    ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
+                    : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+                } disabled:opacity-50`}
+              >
+                {ratio}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Resolution */}
+        <div>
+          <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+            Resolution
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {(["320p", "480p", "576p", "640p", "720p", "1080p"] as const).map(
+              (res: any) => (
+                <button
+                  key={res}
+                  onClick={() => store.setResolution(res)}
+                  disabled={store.running}
+                  className={`px-3 py-1 text-xs font-medium rounded-lg border transition-all ${
+                    store.resolution === res
+                      ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
+                      : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+                  } disabled:opacity-50`}
+                >
+                  {res}
+                </button>
+              ),
+            )}
+          </div>
+        </div>
+
+        {/* Video mode */}
+        <div>
+          <label className="block text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+            Mode
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {(
+              [
+                { label: "Low", value: "distilled" },
+                { label: "Standard", value: "one-stage" },
+                { label: "High", value: "two-stage" },
+              ] as const
+            ).map((q) => (
+              <button
+                key={q.value}
+                onClick={() => store.setMode(q.value)}
+                disabled={store.running}
+                className={`px-3 py-1 text-xs font-medium rounded-lg border transition-all ${
+                  store.mode === q.value
+                    ? "bg-tiffany-100 border-tiffany-300 text-tiffany-800"
+                    : "bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300"
+                } disabled:opacity-50`}
+              >
+                {q.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider">
+            Scenes
+          </label>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={store.clear}
+              disabled={store.running}
+              title="Clear all rows and settings"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-red-500 hover:border-red-200 hover:bg-red-50 disabled:opacity-50"
+            >
+              {CloseIcon}
+              Clear
+            </button>
+            <button
+              onClick={store.addRow}
+              disabled={store.running}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all bg-white border-tiffany-200 text-tiffany-600 hover:border-tiffany-300 disabled:opacity-50"
+            >
+              {PlusIcon}
+              Add Row
+            </button>
+          </div>
+        </div>
+
+        <div className="border border-tiffany-200 rounded-xl overflow-hidden">
+          <div className="overflow-auto max-h-[480px]">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-tiffany-50 border-b border-tiffany-200">
+                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-10">
+                    #
+                  </th>
+                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 min-w-[220px]">
+                    Text-to-Image Prompt
+                  </th>
+                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 min-w-[220px]">
+                    Image-to-Video Prompt
+                  </th>
+                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-32">
+                    Image
+                  </th>
+                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-40">
+                    Video
+                  </th>
+                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-32">
+                    Status
+                  </th>
+                  <th className="sticky top-0 bg-tiffany-50 px-3 py-2 text-left font-semibold text-tiffany-700 w-16">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {store.rows.map((row, idx) => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-tiffany-100 last:border-b-0 align-top transition-colors hover:bg-tiffany-50/30"
+                  >
+                    <td className="px-3 py-2 text-tiffany-600/60 font-medium tabular-nums">
+                      {idx + 1}
+                    </td>
+
+                    {/* Text-to-image prompt */}
+                    <td className="px-3 py-2">
+                      <textarea
+                        value={row.t2iPrompt}
+                        onChange={(e) =>
+                          store.updateT2IPrompt(row.id, e.target.value)
+                        }
+                        placeholder="Describe the starting image..."
+                        rows={3}
+                        disabled={store.running}
+                        className="w-full px-2.5 py-1.5 bg-transparent border border-tiffany-200 rounded-lg text-tiffany-800 text-xs placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-1 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
+                      />
+                    </td>
+
+                    {/* Image-to-video prompt */}
+                    <td className="px-3 py-2">
+                      <textarea
+                        value={row.i2vPrompt}
+                        onChange={(e) =>
+                          store.updateI2VPrompt(row.id, e.target.value)
+                        }
+                        placeholder="Describe the motion..."
+                        rows={3}
+                        disabled={store.running}
+                        className="w-full px-2.5 py-1.5 bg-transparent border border-tiffany-200 rounded-lg text-tiffany-800 text-xs placeholder-tiffany-600/40 focus:outline-none focus:border-tiffany-300 focus:ring-1 focus:ring-tiffany-300/30 transition-all resize-none disabled:opacity-50"
+                      />
+                    </td>
+
+                    {/* Generated image */}
+                    <td className="px-3 py-2">
+                      {row.imageUrl ? (
+                        <img
+                          src={row.imageUrl}
+                          alt={row.imageFilename || "Generated image"}
+                          className="w-20 h-20 object-cover rounded-lg border border-tiffany-200"
+                        />
+                      ) : (
+                        <span className="text-[10px] text-tiffany-400 italic">
+                          —
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Generated video */}
+                    <td className="px-3 py-2">
+                      {row.videoResult ? (
+                        <video
+                          src={row.videoResult}
+                          controls
+                          className="w-full max-w-[160px] h-auto rounded-lg bg-black"
+                        />
+                      ) : (
+                        <span className="text-[10px] text-tiffany-400 italic">
+                          —
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Status */}
+                    <td className="px-3 py-2">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-tiffany-500 w-10">
+                            Img:
+                          </span>
+                          <StatusBadge status={row.imageStatus} />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-tiffany-500 w-10">
+                            Vid:
+                          </span>
+                          <StatusBadge status={row.videoStatus} />
+                        </div>
+                      </div>
+                      {row.error && (
+                        <p className="text-[10px] text-red-500 mt-1 break-words max-w-[120px]">
+                          {row.error}
+                        </p>
+                      )}
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-3 py-2">
+                      <button
+                        onClick={() => store.removeRow(row.id)}
+                        disabled={store.running}
+                        title="Remove row"
+                        className="flex items-center justify-center w-7 h-7 rounded-lg border border-tiffany-200 text-tiffany-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors disabled:opacity-40"
+                      >
+                        {CloseIcon}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {store.rows.length === 0 && (
+          <p className="text-xs text-tiffany-400 italic py-6 text-center border border-dashed border-tiffany-200 rounded-xl mt-2">
+            No scenes yet. Click "Add Row" or upload a CSV.
+          </p>
+        )}
+      </div>
+
+      {/* Open output folder */}
+      <button
+        onClick={() => openFolder(projectId, "output")}
+        className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-tiffany-50 hover:bg-tiffany-100 text-tiffany-700 text-sm font-medium rounded-xl border border-tiffany-200 transition-colors"
+      >
+        {FolderIcon}
+        Open Output Folder
+      </button>
+
+      {/* Progress */}
+      {store.progress && (
+        <div className="flex items-center gap-3 p-3 bg-tiffany-50 border border-tiffany-200 rounded-xl">
+          <span className="text-xs font-medium text-tiffany-700">
+            Batch Progress
+          </span>
+          <div className="flex-1 h-2 bg-tiffany-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-tiffany-500 rounded-full transition-all duration-300"
+              style={{
+                width: `${(store.progress.current / store.progress.total) * 100}%`,
+              }}
+            />
+          </div>
+          <span className="text-xs font-semibold text-tiffany-700 tabular-nums">
+            {store.progress.current}/{store.progress.total}
+          </span>
+        </div>
+      )}
+
+      {/* Logs */}
+      {store.logs.length > 0 && (
+        <div
+          ref={logRef}
+          className="p-4 bg-tiffany-50 border border-tiffany-200 rounded-xl max-h-40 overflow-y-auto"
+        >
+          <p className="text-xs font-semibold text-tiffany-700 uppercase tracking-wider mb-2">
+            Progress Logs
+          </p>
+          <pre className="text-xs text-tiffany-600 font-mono whitespace-pre-wrap">
+            {store.logs.join("\n")}
+          </pre>
+        </div>
+      )}
+
+      {/* Generate buttons */}
+      {store.running ? (
+        <button
+          onClick={store.cancel}
+          className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-red-50 hover:bg-red-100 text-red-600 text-sm font-semibold rounded-xl border border-red-200 transition-colors"
+        >
+          Cancel Batch
+        </button>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => store.generateAll(projectId)}
+            disabled={bothCount === 0}
+            className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-600 hover:bg-tiffany-700 active:bg-tiffany-800 disabled:bg-tiffany-200 disabled:text-tiffany-400 text-white text-sm font-semibold rounded-xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
+          >
+            {SparkleIcon}
+            Generate All Images &amp; Videos ({bothCount})
+          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => store.generateAllImages(projectId)}
+              disabled={imageCount === 0}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white hover:bg-tiffany-50 disabled:bg-tiffany-50 disabled:text-tiffany-400 text-tiffany-700 text-sm font-medium rounded-xl border border-tiffany-200 transition-colors disabled:border-tiffany-100"
+            >
+              {ImageIcon}
+              Generate All Images ({imageCount})
+            </button>
+            <button
+              onClick={() => store.generateAllVideos(projectId)}
+              disabled={videoCount === 0}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white hover:bg-tiffany-50 disabled:bg-tiffany-50 disabled:text-tiffany-400 text-tiffany-700 text-sm font-medium rounded-xl border border-tiffany-200 transition-colors disabled:border-tiffany-100"
+            >
+              {FilmIcon}
+              Generate All Videos ({videoCount})
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

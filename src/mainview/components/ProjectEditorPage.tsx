@@ -12,6 +12,7 @@ import SceneVisualTab from "./EditorTabs/SceneVisualTab";
 import TextToImageTab from "./EditorTabs/TextToImageTab";
 import ReferencesToVideoTab from "./EditorTabs/ReferencesToVideoTab";
 import BatchVideoTab from "./EditorTabs/BatchVideoTab";
+import BatchImageToVideoTab from "./EditorTabs/BatchImageToVideoTab";
 import BatchVoiceVideoTab from "./EditorTabs/BatchVoiceVideoTab";
 import LlmServerTab from "./EditorTabs/LlmServerTab";
 
@@ -255,6 +256,23 @@ export default function ProjectEditorPage() {
     </svg>
   );
 
+  const BatchImageToVideoIcon = (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polygon points="12 2 2 7 12 12 22 7 12 2" />
+      <polyline points="2 17 12 22 22 17" />
+      <polyline points="2 12 12 17 22 12" />
+    </svg>
+  );
+
   const ServerIcon = (
     <svg
       width="18"
@@ -458,6 +476,17 @@ export default function ProjectEditorPage() {
               Batch Video
             </button>
             <button
+              onClick={() => store.setActiveTab("batchImageToVideo")}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
+                store.activeTab === "batchImageToVideo"
+                  ? "bg-tiffany-100 text-tiffany-800"
+                  : "text-tiffany-600 hover:bg-tiffany-50 hover:text-tiffany-700"
+              }`}
+            >
+              {BatchImageToVideoIcon}
+              Batch Image to Video
+            </button>
+            <button
               onClick={() => store.setActiveTab("batchVoice")}
               className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-all ${
                 store.activeTab === "batchVoice"
@@ -520,6 +549,11 @@ export default function ProjectEditorPage() {
           {/* ========== BATCH VIDEO PANEL ========== */}
           {store.activeTab === "batchVideo" && (
             <BatchVideoTab projectId={id!} />
+          )}
+
+          {/* ========== BATCH IMAGE TO VIDEO PANEL ========== */}
+          {store.activeTab === "batchImageToVideo" && (
+            <BatchImageToVideoTab projectId={id!} />
           )}
 
           {/* ========== BATCH VOICE VIDEO PANEL ========== */}
