@@ -20,6 +20,18 @@ export default function MovieStudioTab({ projectId }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
+  // List output-folder images so the tables can show generated thumbnails.
+  useEffect(() => {
+    gen.fetchProjectImages(projectId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    projectId,
+    store.assets.length,
+    store.sceneImages.length,
+    store.videos.length,
+    store.renderedScenes.length,
+  ]);
+
   // ========== SVG Icons ==========
 
   const ClapperIcon = (
@@ -132,6 +144,32 @@ export default function MovieStudioTab({ projectId }: Props) {
     </span>
   );
 
+  const slugify = (v: string): string =>
+    (v || "").trim().replace(/[^a-zA-Z0-9_-]/g, "_");
+  const resolveUrl = (url?: string): string | null =>
+    url
+      ? url.startsWith("http")
+        ? url
+        : `http://localhost:${(window as any).PORT}${url}`
+      : null;
+  const imageUrlFor = (prefix: string, slug: string): string | null => {
+    const img = gen.projectImages.find(
+      (i) => i.filename === `${prefix}-${slugify(slug)}.png`,
+    );
+    return img ? resolveUrl(img.url) : null;
+  };
+
+  const Thumb = ({ url }: { url: string | null }) =>
+    url ? (
+      <img
+        src={url}
+        alt=""
+        className="w-14 h-14 object-cover rounded-lg border border-ink-200"
+      />
+    ) : (
+      <span className="text-ink-300 text-xs">—</span>
+    );
+
   return (
     <div className="flex flex-col gap-7">
       <div className="flex items-center gap-2">
@@ -217,6 +255,7 @@ export default function MovieStudioTab({ projectId }: Props) {
                         columns={[
                           { key: "slug", label: "Slug", className: "w-32" },
                           { key: "name", label: "Name", className: "w-40" },
+                          { key: "image", label: "Image", className: "w-16" },
                           { key: "prompt", label: "Image Prompt" },
                         ]}
                       />
@@ -228,6 +267,9 @@ export default function MovieStudioTab({ projectId }: Props) {
                             </td>
                             <td className="border border-ink-200 px-2 py-1.5 align-top font-medium text-ink-800">
                               {c.name}
+                            </td>
+                            <td className="border border-ink-200 px-2 py-1.5 align-middle">
+                              <Thumb url={imageUrlFor("character", c.slug)} />
                             </td>
                             <td className="border border-ink-200 px-2 py-1.5 align-top">
                               <PromptCell text={c.imagePrompt} />
@@ -256,6 +298,7 @@ export default function MovieStudioTab({ projectId }: Props) {
                         columns={[
                           { key: "slug", label: "Slug", className: "w-32" },
                           { key: "name", label: "Name", className: "w-40" },
+                          { key: "image", label: "Image", className: "w-16" },
                           { key: "prompt", label: "Image Prompt" },
                         ]}
                       />
@@ -267,6 +310,9 @@ export default function MovieStudioTab({ projectId }: Props) {
                             </td>
                             <td className="border border-ink-200 px-2 py-1.5 align-top font-medium text-ink-800">
                               {p.name}
+                            </td>
+                            <td className="border border-ink-200 px-2 py-1.5 align-middle">
+                              <Thumb url={imageUrlFor("place", p.slug)} />
                             </td>
                             <td className="border border-ink-200 px-2 py-1.5 align-top">
                               <PromptCell text={p.imagePrompt} />
@@ -310,6 +356,7 @@ export default function MovieStudioTab({ projectId }: Props) {
                             className: "w-28",
                           },
                           { key: "place", label: "Place", className: "w-24" },
+                          { key: "image", label: "Image", className: "w-16" },
                           { key: "script", label: "Script", className: "w-60" },
                           {
                             key: "voiceover",
@@ -336,6 +383,9 @@ export default function MovieStudioTab({ projectId }: Props) {
                             </td>
                             <td className="border border-ink-200 px-2 py-1.5 align-top font-mono text-[11px] text-ink-600">
                               {s.placeSlug}
+                            </td>
+                            <td className="border border-ink-200 px-2 py-1.5 align-middle">
+                              <Thumb url={imageUrlFor("scene", s.slug)} />
                             </td>
                             <td className="border border-ink-200 px-2 py-1.5 align-top">
                               {s.scriptLines.length === 0 ? (
