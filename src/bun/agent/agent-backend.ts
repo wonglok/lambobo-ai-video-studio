@@ -186,6 +186,37 @@ function sanitizeTrace(messages: ChatMessage[]): any[] {
     });
 }
 
+// ========== Movie Studio ==========
+
+const MOVIE_STUDIO_SYSTEM_PROMPT = [
+  "You are a movie pre-production planner. Given a movie or story idea, produce a structured production bible.",
+  "",
+  "Return ONLY valid JSON (no markdown fences, no commentary) matching this exact shape:",
+  "",
+  '{"characters":[{"slug":"string","name":"string","imagePrompt":"string"}],"places":[{"slug":"string","name":"string","imagePrompt":"string"}],"scenes":[{"slug":"string","description":"string","characterSlugs":["string"],"placeSlug":"string","imagePrompt":"string"}]}',
+  "",
+  "Rules:",
+  '- "slug" is a short lowercase hyphenated identifier (e.g. "the-lamb", "sunny-meadow").',
+  "- A character's imagePrompt is a standalone text-to-image prompt that fully describes the character's appearance (face, build, outfit, distinctive features) so it can be generated consistently.",
+  "- A place's imagePrompt is a standalone text-to-image prompt that fully describes the location/environment (time of day, lighting, atmosphere, visual style).",
+  "- Each scene references the characters and the place involved via their slugs (characterSlugs is a list; placeSlug is a single slug).",
+  "- A scene's imagePrompt is ONE coherent shot that combines the referenced characters AND the place together.",
+  "- Write prompts as natural-language English sentences, never comma-separated keyword tags.",
+].join("\n");
+
+/** Extract the first JSON object from a model response (handles code fences). */
+function extractJsonObject(text: string): any {
+  let t = text.trim();
+  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) t = fence[1].trim();
+  const start = t.indexOf("{");
+  const end = t.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error("Model did not return valid JSON");
+  }
+  return JSON.parse(t.slice(start, end + 1));
+}
+
 // ========== Routes ==========
 
 export async function agentBackend({
@@ -627,6 +658,68 @@ export async function agentBackend({
       send("error", { error: String(e) });
     } finally {
       res.end();
+    }
+  });
+
+  // ===== Movie Studio: idea → characters / places / scenes =====
+
+  app.post("/api/movie-studio/generate", async (req, res) => {
+    const { idea, model } = req.body || {};
+    if (typeof idea !== "string" || !idea.trim()) {
+      res.status(400).json({ error: "Idea is required" });
+      return;
+    }
+    const resolvedModel =
+      typeof model === "string" && model.trim() ? model.trim() : DEFAULT_MODEL;
+
+    try {
+      const client = new OpenAI({
+        baseURL: "http://localhost:8881/v1",
+        apiKey: "local",
+      });
+      const completion = await client.chat.completions.create({
+        model: resolvedModel,
+        messages: [
+          { role: "system", content: MOVIE_STUDIO_SYSTEM_PROMPT },
+          { role: "user", content: idea.trim() },
+        ],
+        temperature: 0.7,
+      });
+
+      const text = completion.choices?.[0]?.message?.content ?? "";
+      const data = extractJsonObject(text);
+
+      const toStr = (v: unknown): string => (typeof v === "string" ? v : "");
+
+      const characters = (Array.isArray(data.characters) ? data.characters : []).map(
+        (c: any) => ({
+          slug: toStr(c?.slug),
+          name: toStr(c?.name),
+          imagePrompt: toStr(c?.imagePrompt),
+        }),
+      );
+      const places = (Array.isArray(data.places) ? data.places : []).map(
+        (p: any) => ({
+          slug: toStr(p?.slug),
+          name: toStr(p?.name),
+          imagePrompt: toStr(p?.imagePrompt),
+        }),
+      );
+      const scenes = (Array.isArray(data.scenes) ? data.scenes : []).map(
+        (s: any) => ({
+          slug: toStr(s?.slug),
+          description: toStr(s?.description),
+          characterSlugs: Array.isArray(s?.characterSlugs)
+            ? s.characterSlugs.map(toStr).filter(Boolean)
+            : [],
+          placeSlug: toStr(s?.placeSlug),
+          imagePrompt: toStr(s?.imagePrompt),
+        }),
+      );
+
+      res.json({ characters, places, scenes });
+    } catch (e) {
+      res.status(500).json({ error: String(e) });
     }
   });
 }

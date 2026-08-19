@@ -12,6 +12,7 @@ const API_BASE = `http://localhost:${(window as any).PORT}`;
 // ========== Types ==========
 
 export type GenerationTab =
+  | "movieStudio"
   | "fastImageEdit"
   | "video"
   | "extend"

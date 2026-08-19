@@ -4,6 +4,7 @@ import { useProjectStore, type Project } from "../stores/projectStore";
 import { useGenerationStore } from "../stores/generationStore";
 import ExtendVideoTab from "./EditorTabs/ExtendVideoTab";
 import FastImageEditTab from "./EditorTabs/FastImageEditTab";
+import MovieStudioTab from "./EditorTabs/MovieStudioTab";
 import GenerateVideoTab from "./EditorTabs/GenerateVideoTab";
 import AgentTab from "./EditorTabs/AgentTab";
 import StoryWriterTab from "./EditorTabs/StoryWriterTab";
@@ -117,6 +118,24 @@ export default function ProjectEditorPage() {
       strokeLinejoin="round"
     >
       <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  );
+
+  const MovieStudioIcon = (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z" />
+      <path d="m6.2 5.3 3.1 3.9" />
+      <path d="m12.4 3.4 3.1 4" />
+      <path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
     </svg>
   );
 
@@ -379,6 +398,17 @@ export default function ProjectEditorPage() {
           {/* ========== TAB BAR ========== */}
           <div className="flex items-center gap-1.5 border-b border-ink-200 pb-5 mb-4 flex-wrap">
             <button
+              onClick={() => store.setActiveTab("movieStudio")}
+              className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-2xl transition-all ${
+                store.activeTab === "movieStudio"
+                  ? "bg-tiffany-500/10 text-tiffany-700 shadow-glow-sm"
+                  : "text-ink-600 hover:bg-ink-100 hover:text-ink-800"
+              }`}
+            >
+              {MovieStudioIcon}
+              Movie Studio
+            </button>
+            <button
               onClick={() => store.setActiveTab("video")}
               className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-2xl transition-all ${
                 store.activeTab === "video"
@@ -534,6 +564,11 @@ export default function ProjectEditorPage() {
               <ServerStatusLight />
             </button>
           </div>
+
+          {/* ========== MOVIE STUDIO PANEL ========== */}
+          {store.activeTab === "movieStudio" && (
+            <MovieStudioTab projectId={id!} />
+          )}
 
           {/* ========== FAST IMAGE EDIT PANEL ========== */}
           {store.activeTab === "fastImageEdit" && (
