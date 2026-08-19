@@ -586,7 +586,7 @@ function persistTextToImageState() {
 }
 
 export const useGenerationStore = create<GenerationStore>((set, get) => ({
-  activeTab: "video",
+  activeTab: "movieStudio",
   setActiveTab: (tab) => set({ activeTab: tab }),
 
   // ---- Image ----
@@ -2101,7 +2101,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
   // ---- Reset ----
   resetAll: () =>
     set({
-      activeTab: "video",
+      activeTab: "movieStudio",
       image: { ...initialImage },
       video: { ...initialVideo },
       extend: { ...initialExtend },
