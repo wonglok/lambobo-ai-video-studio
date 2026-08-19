@@ -8,6 +8,7 @@ import {
   statSync,
   unlinkSync,
   rmSync,
+  copyFileSync,
 } from "node:fs";
 import { type Application } from "express";
 import { randomUUID } from "node:crypto";
