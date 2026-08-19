@@ -17,6 +17,7 @@ import {
   classifyFile,
   ensureDir,
   movieStudioDataDir,
+  movieStudioStateFile,
 } from "./workspace";
 import { TOOLS, toolDefinitions, runTool } from "./tools";
 import story from "./prompt/story-writer.txt" with { type: "txt" };
@@ -814,5 +815,45 @@ export async function agentBackend({
     } catch (e) {
       res.status(500).json({ error: String(e) });
     }
+  });
+
+  // ===== Movie Studio: persisted UI state (JSON on disk) =====
+
+  app.get("/api/movie-studio/state", (req, res) => {
+    const projectId = String(req.query.projectId ?? "");
+    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(projectId)) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    const file = movieStudioStateFile(projectId);
+    if (!existsSync(file)) {
+      res.json(null);
+      return;
+    }
+    try {
+      res.json(JSON.parse(readFileSync(file, "utf-8")));
+    } catch {
+      res.json(null);
+    }
+  });
+
+  app.post("/api/movie-studio/state", (req, res) => {
+    const { projectId, idea, result } = req.body || {};
+    if (!projectId || !/^[a-zA-Z0-9_-]{1,64}$/.test(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    const file = movieStudioStateFile(String(projectId));
+    ensureDir(dirname(file));
+    writeFileSync(
+      file,
+      JSON.stringify(
+        { idea: String(idea ?? ""), result: result ?? null },
+        null,
+        2,
+      ),
+      "utf-8",
+    );
+    res.json({ ok: true });
   });
 }

@@ -73,11 +73,11 @@ mlxgen upscale \
 
 ```bash
 
- mlxgen download --model ByteDance/Bernini-R-1.3B-Diffusers
+ mlxgen download --model Wan-AI/Wan2.1-VACE-1.3B-diffusers
 
 
 mlxgen generate \
-  --model ByteDance/Bernini-R-1.3B-Diffusers \
+  --model Wan-AI/Wan2.1-VACE-1.3B-diffusers \
   --reference-image input.jpeg \
   --prompt "image0 look at a lady walking in a fashion show catwalk." \
   --width 480 --height 480 --frames 121 --fps 24 \

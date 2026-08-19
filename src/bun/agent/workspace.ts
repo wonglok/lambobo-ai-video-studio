@@ -30,6 +30,10 @@ export function movieStudioDataDir(projectId: string): string {
   return join(STUDIO_DIR, projectId, "data");
 }
 
+export function movieStudioStateFile(projectId: string): string {
+  return join(STUDIO_DIR, projectId, "state.json");
+}
+
 export function memoriesDir(projectId: string): string {
   return join(AGENTS_DIR, projectId, MEMORIES_DIR_NAME);
 }

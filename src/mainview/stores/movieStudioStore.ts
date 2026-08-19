@@ -1,8 +1,4 @@
 import { create } from "zustand";
-import {
-  loadMovieStudioState,
-  saveMovieStudioState,
-} from "../lib/movieStudioStorage";
 
 const API_BASE = `http://localhost:${(window as any).PORT}`;
 
@@ -191,13 +187,16 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
   setIdea: (idea) => {
     set({ idea, error: null });
     const { projectId, result } = get();
-    if (projectId) void saveMovieStudioState(projectId, { idea, result });
+    if (projectId) {
+      fetch(`${API_BASE}/api/movie-studio/state`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, idea, result }),
+      }).catch(() => {});
+    }
   },
 
   hydrate: async (projectId) => {
-    // No-op if already hydrated for this project.
-    if (get().hydrated && get().projectId === projectId) return;
-
     // Switching projects: reset to defaults so the previous project's idea
     // doesn't leak through, then load the stored state (if any) below.
     const previous = get().projectId;
@@ -206,9 +205,17 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
     }
     set({ hydrated: true, projectId });
 
-    const stored = await loadMovieStudioState(projectId);
-    if (!stored) return;
-    set({ idea: stored.idea ?? "", result: stored.result ?? null });
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/movie-studio/state?projectId=${encodeURIComponent(projectId)}`,
+      );
+      if (!res.ok) return;
+      const stored = await res.json();
+      if (!stored) return;
+      set({ idea: stored.idea ?? "", result: stored.result ?? null });
+    } catch {
+      // Ignore — keep in-memory defaults.
+    }
   },
 
   generate: async (projectId, model) => {
@@ -229,7 +236,11 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
       if (!res.ok) throw new Error(await res.text());
       const data = (await res.json()) as MovieStudioResult;
       set({ result: data, generating: false });
-      void saveMovieStudioState(projectId, { idea: get().idea, result: data });
+      fetch(`${API_BASE}/api/movie-studio/state`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, idea: get().idea, result: data }),
+      }).catch(() => {});
     } catch (e) {
       if ((e as any)?.name !== "AbortError") {
         set({ error: String(e), generating: false });
