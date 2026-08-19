@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMovieStudioStore } from "../../stores/movieStudioStore";
 import { useGenerationStore } from "../../stores/generationStore";
 import { useProjectStore } from "../../stores/projectStore";
@@ -13,6 +13,11 @@ export default function MovieStudioTab({ projectId }: Props) {
   const gen = useGenerationStore();
   const { openFolder } = useProjectStore();
   const model = gen.agent.model;
+  const [preview, setPreview] = useState<{
+    url: string;
+    filename: string;
+    type: "image" | "video";
+  } | null>(null);
 
   // Hydrate the persisted idea for this project.
   useEffect(() => {
@@ -31,6 +36,16 @@ export default function MovieStudioTab({ projectId }: Props) {
     store.videos.length,
     store.renderedScenes.length,
   ]);
+
+  // Close the preview modal on Escape.
+  useEffect(() => {
+    if (!preview) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPreview(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [preview]);
 
   // ========== SVG Icons ==========
 
@@ -117,6 +132,22 @@ export default function MovieStudioTab({ projectId }: Props) {
     </svg>
   );
 
+  const CloseIcon = (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+
   const TableHead = ({
     columns,
   }: {
@@ -159,12 +190,19 @@ export default function MovieStudioTab({ projectId }: Props) {
     return img ? resolveUrl(img.url) : null;
   };
 
-  const Thumb = ({ url }: { url: string | null }) =>
+  const openPreview = (
+    url: string,
+    filename: string,
+    type: "image" | "video",
+  ) => setPreview({ url, filename, type });
+
+  const Thumb = ({ url, filename }: { url: string | null; filename?: string }) =>
     url ? (
       <img
         src={url}
-        alt=""
-        className="w-14 h-14 object-cover rounded-lg border border-ink-200"
+        alt={filename || ""}
+        onClick={() => openPreview(url, filename || "", "image")}
+        className="w-14 h-14 object-cover rounded-lg border border-ink-200 cursor-zoom-in hover:border-tiffany-500 transition-colors"
       />
     ) : (
       <span className="text-ink-300 text-xs">—</span>
@@ -269,7 +307,10 @@ export default function MovieStudioTab({ projectId }: Props) {
                               {c.name}
                             </td>
                             <td className="border border-ink-200 px-2 py-1.5 align-middle">
-                              <Thumb url={imageUrlFor("character", c.slug)} />
+                              <Thumb
+                                url={imageUrlFor("character", c.slug)}
+                                filename={c.slug}
+                              />
                             </td>
                             <td className="border border-ink-200 px-2 py-1.5 align-top">
                               <PromptCell text={c.imagePrompt} />
@@ -312,7 +353,10 @@ export default function MovieStudioTab({ projectId }: Props) {
                               {p.name}
                             </td>
                             <td className="border border-ink-200 px-2 py-1.5 align-middle">
-                              <Thumb url={imageUrlFor("place", p.slug)} />
+                              <Thumb
+                                url={imageUrlFor("place", p.slug)}
+                                filename={p.slug}
+                              />
                             </td>
                             <td className="border border-ink-200 px-2 py-1.5 align-top">
                               <PromptCell text={p.imagePrompt} />
@@ -385,7 +429,10 @@ export default function MovieStudioTab({ projectId }: Props) {
                               {s.placeSlug}
                             </td>
                             <td className="border border-ink-200 px-2 py-1.5 align-middle">
-                              <Thumb url={imageUrlFor("scene", s.slug)} />
+                              <Thumb
+                                url={imageUrlFor("scene", s.slug)}
+                                filename={s.slug}
+                              />
                             </td>
                             <td className="border border-ink-200 px-2 py-1.5 align-top">
                               {s.scriptLines.length === 0 ? (
@@ -483,7 +530,10 @@ export default function MovieStudioTab({ projectId }: Props) {
                           <img
                             src={`${fullUrl}&t=${asset.updatedAt}`}
                             alt={asset.slug}
-                            className="aspect-square object-cover object-center w-full"
+                            onClick={() =>
+                              openPreview(fullUrl, asset.slug, "image")
+                            }
+                            className="aspect-square object-cover object-center w-full cursor-zoom-in"
                           />
                           <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/50 text-white text-[10px] font-medium uppercase">
                             {asset.kind}
@@ -579,7 +629,10 @@ export default function MovieStudioTab({ projectId }: Props) {
                           <img
                             src={`${fullUrl}&t=${img.updatedAt}`}
                             alt={img.slug}
-                            className="aspect-[9/16] object-cover object-center w-full"
+                            onClick={() =>
+                              openPreview(fullUrl, img.slug, "image")
+                            }
+                            className="aspect-[9/16] object-cover object-center w-full cursor-zoom-in"
                           />
                         </div>
                         <div className="flex items-center justify-between gap-1">
@@ -667,7 +720,10 @@ export default function MovieStudioTab({ projectId }: Props) {
                         <video
                           src={`${fullUrl}&t=${video.updatedAt}`}
                           controls
-                          className="w-full rounded-lg border border-ink-200"
+                          onClick={() =>
+                            openPreview(fullUrl, video.slug, "video")
+                          }
+                          className="w-full rounded-lg border border-ink-200 cursor-pointer"
                         />
                         <div className="flex items-center justify-between gap-1">
                           <span className="text-[11px] font-mono text-ink-600 truncate">
@@ -781,14 +837,20 @@ export default function MovieStudioTab({ projectId }: Props) {
                           <img
                             src={imgUrl}
                             alt={scene.slug}
-                            className="w-full rounded-lg border border-ink-200"
+                            onClick={() =>
+                              openPreview(imgUrl, scene.slug, "image")
+                            }
+                            className="w-full rounded-lg border border-ink-200 cursor-zoom-in"
                           />
                         )}
                         {vidUrl && (
                           <video
                             src={vidUrl}
                             controls
-                            className="w-full rounded-lg border border-ink-200"
+                            onClick={() =>
+                              openPreview(vidUrl, scene.slug, "video")
+                            }
+                            className="w-full rounded-lg border border-ink-200 cursor-pointer"
                           />
                         )}
                       </div>
@@ -809,6 +871,44 @@ export default function MovieStudioTab({ projectId }: Props) {
             </p>
           </div>
         </>
+      )}
+
+      {/* ===== Preview modal ===== */}
+      {preview && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-8"
+          onClick={() => setPreview(null)}
+        >
+          <div
+            className="relative max-w-[90vw] max-h-[90vh] flex flex-col items-center gap-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {preview.type === "video" ? (
+              <video
+                src={preview.url}
+                controls
+                autoPlay
+                className="max-w-full max-h-[80vh] rounded-2xl shadow-2xl"
+              />
+            ) : (
+              <img
+                src={preview.url}
+                alt={preview.filename}
+                className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl"
+              />
+            )}
+            <span className="text-xs text-white/70 truncate max-w-full">
+              {preview.filename}
+            </span>
+            <button
+              onClick={() => setPreview(null)}
+              className="absolute -top-3 -right-3 flex items-center justify-center w-9 h-9 bg-white text-ink-700 rounded-full shadow-lg hover:bg-ink-200 transition-colors"
+              title="Close (Esc)"
+            >
+              {CloseIcon}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
