@@ -12,9 +12,9 @@ export default function MovieStudioTab({ projectId }: Props) {
   const gen = useGenerationStore();
   const model = gen.agent.model;
 
-  // Reset the idea/result when switching projects.
+  // Hydrate the persisted idea for this project.
   useEffect(() => {
-    store.reset();
+    store.hydrate(projectId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
@@ -280,14 +280,18 @@ export default function MovieStudioTab({ projectId }: Props) {
         </>
       )}
 
-      <div className="flex items-center gap-2">
-        <span className="text-tiffany-600">{SparkleIcon}</span>
-        <h2 className="text-base font-semibold text-ink-900">
-          LLM Server Config
-        </h2>
-      </div>
+      {!gen.agent.serverOnline && (
+        <>
+          <div className="flex items-center gap-2">
+            <span className="text-tiffany-600">{SparkleIcon}</span>
+            <h2 className="text-base font-semibold text-ink-900">
+              LLM Server Config
+            </h2>
+          </div>
 
-      <MlxVlmServerPanel />
+          <MlxVlmServerPanel />
+        </>
+      )}
     </div>
   );
 }

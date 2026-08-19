@@ -1,4 +1,8 @@
 import { create } from "zustand";
+import {
+  loadMovieStudioState,
+  saveMovieStudioState,
+} from "../lib/movieStudioStorage";
 
 const API_BASE = `http://localhost:${(window as any).PORT}`;
 
@@ -30,21 +34,47 @@ export interface MovieStudioResult {
 
 interface MovieStudioStore {
   idea: string;
+  projectId: string | null;
+  hydrated: boolean;
   generating: boolean;
   result: MovieStudioResult | null;
   error: string | null;
   setIdea: (v: string) => void;
+  hydrate: (projectId: string) => Promise<void>;
   generate: (projectId: string, model: string) => Promise<void>;
   reset: () => void;
 }
 
 export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
   idea: "",
+  projectId: null,
+  hydrated: false,
   generating: false,
   result: null,
   error: null,
 
-  setIdea: (idea) => set({ idea, error: null }),
+  setIdea: (idea) => {
+    set({ idea, error: null });
+    const { projectId } = get();
+    if (projectId) void saveMovieStudioState(projectId, { idea });
+  },
+
+  hydrate: async (projectId) => {
+    // No-op if already hydrated for this project.
+    if (get().hydrated && get().projectId === projectId) return;
+
+    // Switching projects: reset to defaults so the previous project's idea
+    // doesn't leak through, then load the stored state (if any) below.
+    const previous = get().projectId;
+    if (previous !== null && previous !== projectId) {
+      get().reset();
+    }
+    set({ hydrated: true, projectId });
+
+    const stored = await loadMovieStudioState(projectId);
+    if (!stored) return;
+    set({ idea: stored.idea ?? "" });
+  },
 
   generate: async (projectId, model) => {
     const idea = get().idea.trim();
