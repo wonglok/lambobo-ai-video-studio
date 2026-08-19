@@ -194,7 +194,7 @@ const MOVIE_STUDIO_SYSTEM_PROMPT = [
   "",
   "Return ONLY valid JSON (no markdown fences, no commentary) matching this exact shape:",
   "",
-  '{"characters":[{"slug":"string","name":"string","imagePrompt":"string"}],"places":[{"slug":"string","name":"string","imagePrompt":"string"}],"scenes":[{"slug":"string","description":"string","characterSlugs":["string"],"placeSlug":"string","imagePrompt":"string"}]}',
+  '{"characters":[{"slug":"string","name":"string","imagePrompt":"string"}],"places":[{"slug":"string","name":"string","imagePrompt":"string"}],"scenes":[{"slug":"string","description":"string","characterSlugs":["string"],"placeSlug":"string","scriptLines":[{"characterSlug":"string","line":"string"}],"voiceOver":"string","imagePrompt":"string"}]}',
   "",
   "Rules:",
   '- "slug" is a short lowercase hyphenated identifier (e.g. "the-lamb", "sunny-meadow").',
@@ -202,7 +202,9 @@ const MOVIE_STUDIO_SYSTEM_PROMPT = [
   "- A place's imagePrompt is a standalone text-to-image prompt that fully describes the location/environment (time of day, lighting, atmosphere, visual style).",
   "- Each scene references the characters and the place involved via their slugs (characterSlugs is a list; placeSlug is a single slug).",
   "- A scene's imagePrompt is ONE coherent shot that combines the referenced characters AND the place together.",
-  "- Write prompts as natural-language English sentences, never comma-separated keyword tags.",
+  "- Each scene also includes a full script: scriptLines is one entry per spoken line, each with the speaking character's slug and the exact spoken line. Include every single line of dialogue in the scene.",
+  "- voiceOver is the narration/voiceover for that scene (use an empty string when there is none).",
+  "- Write prompts and dialogue as natural-language English sentences, never comma-separated keyword tags.",
 ].join("\n");
 
 /** Extract the first JSON object from a model response (handles code fences). */
@@ -721,6 +723,13 @@ export async function agentBackend({
             ? s.characterSlugs.map(toStr).filter(Boolean)
             : [],
           placeSlug: toStr(s?.placeSlug),
+          scriptLines: Array.isArray(s?.scriptLines)
+            ? s.scriptLines.map((l: any) => ({
+                characterSlug: toStr(l?.characterSlug),
+                line: toStr(l?.line),
+              }))
+            : [],
+          voiceOver: toStr(s?.voiceOver),
           imagePrompt: toStr(s?.imagePrompt),
         }),
       );

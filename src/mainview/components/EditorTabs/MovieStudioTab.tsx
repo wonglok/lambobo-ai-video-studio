@@ -241,14 +241,20 @@ export default function MovieStudioTab({ projectId }: Props) {
                       {
                         key: "description",
                         label: "Description",
-                        className: "w-48",
+                        className: "w-44",
                       },
                       {
                         key: "characters",
                         label: "Characters",
-                        className: "w-32",
+                        className: "w-28",
                       },
-                      { key: "place", label: "Place", className: "w-28" },
+                      { key: "place", label: "Place", className: "w-24" },
+                      { key: "script", label: "Script", className: "w-60" },
+                      {
+                        key: "voiceover",
+                        label: "Voice Over",
+                        className: "w-60",
+                      },
                       { key: "prompt", label: "Image Prompt" },
                     ]}
                   />
@@ -266,6 +272,29 @@ export default function MovieStudioTab({ projectId }: Props) {
                         </td>
                         <td className="border border-ink-200 px-2 py-1.5 align-top font-mono text-[11px] text-ink-600">
                           {s.placeSlug}
+                        </td>
+                        <td className="border border-ink-200 px-2 py-1.5 align-top">
+                          {s.scriptLines.length === 0 ? (
+                            <span className="text-ink-400">—</span>
+                          ) : (
+                            <div className="flex flex-col gap-1">
+                              {s.scriptLines.map((line, i) => (
+                                <div key={i} className="text-ink-700">
+                                  <span className="font-mono text-[11px] font-medium text-tiffany-700">
+                                    {line.characterSlug}:
+                                  </span>{" "}
+                                  {line.line}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                        <td className="border border-ink-200 px-2 py-1.5 align-top">
+                          {s.voiceOver ? (
+                            <PromptCell text={s.voiceOver} />
+                          ) : (
+                            <span className="text-ink-400">—</span>
+                          )}
                         </td>
                         <td className="border border-ink-200 px-2 py-1.5 align-top">
                           <PromptCell text={s.imagePrompt} />

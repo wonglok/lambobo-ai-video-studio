@@ -18,11 +18,18 @@ export interface MoviePlace {
   imagePrompt: string;
 }
 
+export interface MovieScriptLine {
+  characterSlug: string;
+  line: string;
+}
+
 export interface MovieScene {
   slug: string;
   description: string;
   characterSlugs: string[];
   placeSlug: string;
+  scriptLines: MovieScriptLine[];
+  voiceOver: string;
   imagePrompt: string;
 }
 
