@@ -189,27 +189,53 @@ function sanitizeTrace(messages: ChatMessage[]): any[] {
 
 // ========== Movie Studio ==========
 
-const MOVIE_STUDIO_SYSTEM_PROMPT = [
-  "You are a movie pre-production planner. Given a movie or story idea, produce a structured production bible.",
+const MOVIE_STUDIO_CHARACTERS_PROMPT = [
+  "You are a movie pre-production planner. Given a movie or story idea, identify the characters.",
   "",
   "Return ONLY valid JSON (no markdown fences, no commentary) matching this exact shape:",
   "",
-  '{"characters":[{"slug":"string","name":"string","imagePrompt":"string"}],"places":[{"slug":"string","name":"string","imagePrompt":"string"}],"scenes":[{"slug":"string","duration":number,"description":"string","characterSlugs":["string"],"placeSlug":"string","scriptLines":[{"characterSlug":"string","line":"string"}],"voiceOver":"string","imagePrompt":"string"}]}',
+  '{"artStyle":"string","characters":[{"slug":"string","name":"string","imagePrompt":"string"}]}',
   "",
   "Rules:",
-  '- "slug" is a short lowercase hyphenated identifier (e.g. "the-lamb", "sunny-meadow").',
-  "- Establish ONE consistent art style for the entire idea (e.g. cinematic photorealistic, 3D animation, hand-painted watercolor, anime) and apply that exact same style to every character imagePrompt, place imagePrompt, and scene imagePrompt so all generated images look like they belong to the same film.",
+  '- "slug" is a short lowercase hyphenated identifier (e.g. "the-lamb").',
+  '- "artStyle" is ONE consistent art style for the entire film (e.g. cinematic photorealistic, 3D animation, hand-painted watercolor, anime).',
   "- A character's imagePrompt is a standalone text-to-image prompt that begins with the character's name and fully describes their appearance (age, face, build, outfit, distinctive features) together with their cultural background — the era/age, culture, ethnicity, and region the character belongs to — so the generated image is historically and culturally accurate and consistent.",
+  "- Apply the same artStyle to every character imagePrompt.",
+  "- Write prompts as natural-language English sentences, never comma-separated keyword tags.",
+].join("\n");
+
+const MOVIE_STUDIO_PLACES_PROMPT = [
+  "You are a movie pre-production planner. Given a movie idea, its art style, and its characters, identify the places/locations.",
+  "",
+  "Return ONLY valid JSON (no markdown fences, no commentary) matching this exact shape:",
+  "",
+  '{"places":[{"slug":"string","name":"string","imagePrompt":"string"}]}',
+  "",
+  "Rules:",
+  '- "slug" is a short lowercase hyphenated identifier (e.g. "sunny-meadow").',
   "- A place's imagePrompt is a standalone text-to-image prompt that fully describes the location/environment (time of day, lighting, atmosphere, visual style).",
-  "- Each scene references the characters and the place involved via their slugs (characterSlugs is a list; placeSlug is a single slug).",
-  "- A scene's imagePrompt is ONE coherent shot that combines the referenced characters AND the place together.",
-  "- Break the story into many small scenes: each scene is a single camera moment with one action beat. Never compress a large scene into one entry — decompose it into as many small scenes as possible.",
+  "- Apply the given artStyle to every place imagePrompt so it matches the characters.",
+  "- Write prompts as natural-language English sentences, never comma-separated keyword tags.",
+].join("\n");
+
+const MOVIE_STUDIO_SCENES_PROMPT = [
+  "You are a movie pre-production planner. Given a movie idea, its art style, its characters, and its places, break the story into scenes.",
+  "",
+  "Return ONLY valid JSON (no markdown fences, no commentary) matching this exact shape:",
+  "",
+  '{"scenes":[{"slug":"string","duration":number,"description":"string","characterSlugs":["string"],"placeSlug":"string","scriptLines":[{"characterSlug":"string","line":"string"}],"voiceOver":"string","imagePrompt":"string"}]}',
+  "",
+  "Rules:",
+  "- Break the story into many small scenes: each scene is a single camera moment with one action beat.",
   "- Generate as many scenes as possible: maximize the scene count. Every distinct beat, camera change, or exchange of dialogue should become its own scene — when in doubt, split into more scenes rather than fewer.",
-  "- Never reduce or summarize the dialogue: when splitting a large scene, distribute every single spoken line across the resulting small scenes so no line is lost.",
-  "- Preserve as much detail as possible in every description and imagePrompt — do not trim specifics to save space.",
-  "- Each scene also includes a full script: scriptLines is one entry per spoken line, each with the speaking character's slug and the exact spoken line. Include every single line of dialogue in the scene.",
+  "- Never reduce or summarize the dialogue: distribute every single spoken line across the resulting small scenes so no line is lost.",
+  "- Preserve as much detail as possible in every description and imagePrompt.",
+  "- Each scene references the characters and the place involved via their slugs (characterSlugs is a list; placeSlug is a single slug).",
+  "- A scene's imagePrompt is ONE coherent shot that combines the referenced characters AND the place together, using the given artStyle.",
+  "- scriptLines is one entry per spoken line, each with the speaking character's slug and the exact spoken line. Include every single line of dialogue in the scene.",
   "- voiceOver is the narration/voiceover for that scene (use an empty string when there is none).",
   "- Each scene has a duration in seconds (typically 3-20) matching how long the shot should last.",
+  "- Apply the same artStyle to every scene imagePrompt.",
   "- Write prompts and dialogue as natural-language English sentences, never comma-separated keyword tags.",
 ].join("\n");
 
@@ -693,17 +719,6 @@ export async function agentBackend({
         baseURL: "http://localhost:8881/v1",
         apiKey: "local",
       });
-      const completion = await client.chat.completions.create({
-        model: resolvedModel,
-        messages: [
-          { role: "system", content: MOVIE_STUDIO_SYSTEM_PROMPT },
-          { role: "user", content: idea.trim() },
-        ],
-        temperature: 0.7,
-      });
-
-      const text = completion.choices?.[0]?.message?.content ?? "";
-      const data = extractJsonObject(text);
 
       const toStr = (v: unknown): string => (typeof v === "string" ? v : "");
       const toNum = (v: unknown): number => {
@@ -711,21 +726,52 @@ export async function agentBackend({
         return Number.isFinite(n) ? n : 0;
       };
 
+      const ask = async (
+        systemPrompt: string,
+        userContent: string,
+      ): Promise<any> => {
+        const completion = await client.chat.completions.create({
+          model: resolvedModel,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userContent },
+          ],
+          temperature: 0.7,
+        });
+        const text = completion.choices?.[0]?.message?.content ?? "";
+        return extractJsonObject(text);
+      };
+
+      // 1. Characters + art style.
+      const charData = await ask(MOVIE_STUDIO_CHARACTERS_PROMPT, idea.trim());
+      const artStyle = toStr(charData?.artStyle);
       const characters = (
-        Array.isArray(data.characters) ? data.characters : []
+        Array.isArray(charData.characters) ? charData.characters : []
       ).map((c: any) => ({
         slug: toStr(c?.slug),
         name: toStr(c?.name),
         imagePrompt: toStr(c?.imagePrompt),
       }));
-      const places = (Array.isArray(data.places) ? data.places : []).map(
+
+      // 2. Places (with art style + characters as context).
+      const placeData = await ask(
+        MOVIE_STUDIO_PLACES_PROMPT,
+        `Art style: ${artStyle || "cinematic photorealistic"}\n\nIdea: ${idea.trim()}\n\nCharacters:\n${JSON.stringify(characters)}`,
+      );
+      const places = (Array.isArray(placeData.places) ? placeData.places : []).map(
         (p: any) => ({
           slug: toStr(p?.slug),
           name: toStr(p?.name),
           imagePrompt: toStr(p?.imagePrompt),
         }),
       );
-      const scenes = (Array.isArray(data.scenes) ? data.scenes : []).map(
+
+      // 3. Scenes (with art style + characters + places as context).
+      const sceneData = await ask(
+        MOVIE_STUDIO_SCENES_PROMPT,
+        `Art style: ${artStyle || "cinematic photorealistic"}\n\nIdea: ${idea.trim()}\n\nCharacters:\n${JSON.stringify(characters)}\n\nPlaces:\n${JSON.stringify(places)}`,
+      );
+      const scenes = (Array.isArray(sceneData.scenes) ? sceneData.scenes : []).map(
         (s: any) => ({
           slug: toStr(s?.slug),
           duration: toNum(s?.duration),
