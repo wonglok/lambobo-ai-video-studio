@@ -23,7 +23,7 @@ import story from "./prompt/story-writer.txt" with { type: "txt" };
 
 // ========== Constants ==========
 
-const DEFAULT_MODEL = "mlx-community/gemma-4-e2b-it-4bit";
+const DEFAULT_MODEL = "mlx-community/gemma-4-e4b-it-8bit";
 const MAX_ITERATIONS = 500;
 const STORY_WRITER_AGENT = "story-writer";
 // const STORY_WRITER_PROMPT_FILE = "vid-script-buidler.md";
@@ -198,7 +198,7 @@ const MOVIE_STUDIO_SYSTEM_PROMPT = [
   "",
   "Rules:",
   '- "slug" is a short lowercase hyphenated identifier (e.g. "the-lamb", "sunny-meadow").',
-  "- A character's imagePrompt is a standalone text-to-image prompt that fully describes the character's appearance (face, build, outfit, distinctive features) so it can be generated consistently.",
+  "- A character's imagePrompt is a standalone text-to-image prompt that begins with the character's name and fully describes their appearance (age, face, build, outfit, distinctive features) together with their cultural background — the era/age, culture, ethnicity, and region the character belongs to — so the generated image is historically and culturally accurate and consistent.",
   "- A place's imagePrompt is a standalone text-to-image prompt that fully describes the location/environment (time of day, lighting, atmosphere, visual style).",
   "- Each scene references the characters and the place involved via their slugs (characterSlugs is a list; placeSlug is a single slug).",
   "- A scene's imagePrompt is ONE coherent shot that combines the referenced characters AND the place together.",
@@ -710,13 +710,13 @@ export async function agentBackend({
         return Number.isFinite(n) ? n : 0;
       };
 
-      const characters = (Array.isArray(data.characters) ? data.characters : []).map(
-        (c: any) => ({
-          slug: toStr(c?.slug),
-          name: toStr(c?.name),
-          imagePrompt: toStr(c?.imagePrompt),
-        }),
-      );
+      const characters = (
+        Array.isArray(data.characters) ? data.characters : []
+      ).map((c: any) => ({
+        slug: toStr(c?.slug),
+        name: toStr(c?.name),
+        imagePrompt: toStr(c?.imagePrompt),
+      }));
       const places = (Array.isArray(data.places) ? data.places : []).map(
         (p: any) => ({
           slug: toStr(p?.slug),

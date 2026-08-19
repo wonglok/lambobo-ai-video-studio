@@ -549,7 +549,7 @@ const initialFastImageEdit: FastImageEditState = {
 };
 
 const initialAgent: AgentState = {
-  model: "mlx-community/gemma-4-e4b-it-4bit",
+  model: "mlx-community/gemma-4-e4b-it-8bit",
   port: 8881,
   installing: false,
   installingLogs: [],
@@ -1305,7 +1305,12 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
 
   clearFastImageEditResult: () =>
     set((s) => ({
-      fastImageEdit: { ...s.fastImageEdit, result: null, error: null, logs: [] },
+      fastImageEdit: {
+        ...s.fastImageEdit,
+        result: null,
+        error: null,
+        logs: [],
+      },
     })),
 
   checkFastImageEditStatus: async () => {

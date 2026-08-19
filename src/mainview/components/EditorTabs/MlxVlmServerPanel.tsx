@@ -2,9 +2,9 @@ import { useEffect, useRef } from "react";
 import { useGenerationStore } from "../../stores/generationStore";
 
 const MODEL_PRESETS = [
-  "mlx-community/gemma-4-e2b-it-4bit",
-  "mlx-community/gemma-4-e4b-it-4bit",
-  "mlx-community/gemma-4-26b-a4b-it-4bit",
+  "mlx-community/gemma-4-e2b-it-8bit",
+  "mlx-community/gemma-4-e4b-it-8bit",
+  "mlx-community/gemma-4-26b-a4b-it-8bit",
 ];
 
 /**
