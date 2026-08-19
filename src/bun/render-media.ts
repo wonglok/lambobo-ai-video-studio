@@ -636,6 +636,77 @@ async function generateSceneVideo(
   };
 }
 
+/** Normalize a value into a safe filesystem slug. */
+function slugify(v: unknown): string {
+  return String(v || "")
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+
+/**
+ * Generate a single scene image via fast-image-edit (FLUX.2 Klein), using the
+ * already-generated character/place images referenced by the scene's slugs.
+ */
+async function generateSceneImage(
+  projectId: string,
+  scene: any,
+): Promise<{ filename: string; url: string } | { error: string }> {
+  const s = slugify(scene?.slug);
+  if (!s) return { error: "Invalid scene slug" };
+
+  const outputDir = join(OUTPUT_DIR, projectId);
+  const mlxgen = await getMlxgenBin();
+
+  const refImages: string[] = [];
+  for (const cs of Array.isArray(scene?.characterSlugs)
+    ? scene.characterSlugs
+    : []) {
+    const f = join(outputDir, `character-${slugify(cs)}.png`);
+    if (existsSync(f)) refImages.push(f);
+  }
+  const placeFile = join(outputDir, `place-${slugify(scene?.placeSlug)}.png`);
+  if (existsSync(placeFile)) refImages.push(placeFile);
+
+  if (refImages.length === 0) {
+    return {
+      error: `Scene "${s}": no matching character/place images. Render assets first.`,
+    };
+  }
+
+  const sceneImageFile = `scene-${s}.png`;
+  const sceneImagePath = join(outputDir, sceneImageFile);
+
+  const fluxArgs = [mlxgen, "generate", "--model", FLUX_KLEIN_MODEL];
+  for (const p of refImages) fluxArgs.push("--image", p);
+  fluxArgs.push(
+    "--prompt",
+    String(scene?.imagePrompt || ""),
+    "--output",
+    sceneImagePath,
+    "--mlx-cache-limit-gb",
+    "20",
+    "--steps",
+    "5",
+    "--seed",
+    "42",
+    "--width",
+    "448",
+    "--height",
+    "796",
+  );
+
+  const result = await runCommand(fluxArgs, {});
+  if (!result.success || !existsSync(sceneImagePath)) {
+    return { error: result.output || `Failed to generate scene image ${s}` };
+  }
+
+  backupFile(sceneImagePath, projectId);
+  return {
+    filename: sceneImageFile,
+    url: `/api/files?path=${encodeURIComponent(sceneImagePath)}`,
+  };
+}
+
 // ========== Routes ==========
 
 export async function renderMediaRoutes({
@@ -1331,8 +1402,6 @@ export async function renderMediaRoutes({
 
     try {
       const mlxgen = await getMlxgenBin();
-      const characterPaths: Record<string, string> = {};
-      const placePaths: Record<string, string> = {};
 
       // 1. Character images (text-to-image).
       for (const c of characters) {
@@ -1365,7 +1434,6 @@ export async function renderMediaRoutes({
           send("error", { error: `Character "${s}" failed: ${result.stderr}` });
           return;
         }
-        characterPaths[s] = outputPath;
         send("image", {
           kind: "character",
           slug: s,
@@ -1405,7 +1473,6 @@ export async function renderMediaRoutes({
           send("error", { error: `Place "${s}" failed: ${result.stderr}` });
           return;
         }
-        placePaths[s] = outputPath;
         send("image", {
           kind: "place",
           slug: s,
@@ -1422,61 +1489,20 @@ export async function renderMediaRoutes({
         const s = slug(sc?.slug);
         if (!s) continue;
 
-        // Look up the corresponding character/place images by slug.
-        const refImages: string[] = [];
-        for (const cs of Array.isArray(sc?.characterSlugs)
-          ? sc.characterSlugs
-          : []) {
-          const f = characterPaths[slug(cs)];
-          if (f) refImages.push(f);
-        }
-        const placeFile = placePaths[slug(sc?.placeSlug)];
-        if (placeFile) refImages.push(placeFile);
-
-        if (refImages.length === 0) {
-          send("error", {
-            error: `Scene "${s}": no matching character/place images`,
-          });
-          continue;
-        }
-
         // 3a. Scene image via fast-image-edit (FLUX.2 Klein).
         progress(`Generating scene image: ${s}`);
-        const sceneImageFile = `scene-${s}.png`;
-        const sceneImagePath = join(outputDir, sceneImageFile);
-        const fluxArgs = [mlxgen, "generate", "--model", FLUX_KLEIN_MODEL];
-        for (const p of refImages) fluxArgs.push("--image", p);
-        fluxArgs.push(
-          "--prompt",
-          String(sc?.imagePrompt || ""),
-          "--output",
-          sceneImagePath,
-          "--mlx-cache-limit-gb",
-          "20",
-          "--steps",
-          "5",
-          "--seed",
-          "42",
-          "--width",
-          "448",
-          "--height",
-          "796",
-        );
-        const fluxResult = await runStep(fluxArgs, {
-          label: "Scene",
-          outputPath: sceneImagePath,
-        });
-        if (!fluxResult.success) {
+        const image = await generateSceneImage(String(projectId), sc);
+        if ("error" in image) {
           send("error", {
-            error: `Scene image "${s}" failed: ${fluxResult.stderr}`,
+            error: `Scene image "${s}" failed: ${image.error}`,
           });
           continue;
         }
         send("image", {
           kind: "scene",
           slug: s,
-          filename: sceneImageFile,
-          url: `/api/files?path=${encodeURIComponent(sceneImagePath)}`,
+          filename: image.filename,
+          url: image.url,
         });
 
         // 3b. Scene video via LTX-2.3 (320p, 9:16, distilled).
@@ -1500,7 +1526,7 @@ export async function renderMediaRoutes({
         });
         sceneResults.push({
           slug: s,
-          image: sceneImageFile,
+          image: image.filename,
           video: video.filename,
         });
       }
@@ -1724,6 +1750,91 @@ export async function renderMediaRoutes({
         scene,
         Array.isArray(characters) ? characters : [],
       );
+      if ("error" in r) {
+        res.status(500).json({ error: r.error });
+        return;
+      }
+      res.json(r);
+    } catch (e) {
+      res.status(500).json({ error: String(e) });
+    } finally {
+      activeProc = null;
+    }
+  });
+
+  // ========== Movie Studio: Render Scene Images (fast-image-edit) ==========
+
+  app.post("/api/movie-studio/render-scene-images", async (req, res) => {
+    const { projectId, scenes } = req.body || {};
+
+    if (!projectId || !isValidProjectId(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    if (!Array.isArray(scenes)) {
+      res.status(400).json({ error: "scenes are required" });
+      return;
+    }
+
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: string, data: object) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    const total = scenes.length;
+    let current = 0;
+
+    try {
+      const images: { slug: string; filename: string; url: string }[] = [];
+
+      for (const sc of scenes) {
+        const slug = slugify(sc?.slug);
+        if (!slug) continue;
+        current += 1;
+        send("progress", {
+          label: `Generating scene image: ${slug}`,
+          current,
+          total,
+        });
+        const r = await generateSceneImage(String(projectId), sc);
+        if ("error" in r) {
+          send("error", { error: r.error });
+          continue;
+        }
+        images.push({ slug, ...r });
+        send("image", { slug, ...r });
+      }
+
+      send("complete", { images });
+    } catch (e) {
+      send("error", { error: String(e) });
+    } finally {
+      activeProc = null;
+      res.end();
+    }
+  });
+
+  // Regenerate a single scene image.
+  app.post("/api/movie-studio/render-scene-image", async (req, res) => {
+    const { projectId, scene } = req.body || {};
+
+    if (!projectId || !isValidProjectId(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    if (!scene || typeof scene !== "object") {
+      res.status(400).json({ error: "scene is required" });
+      return;
+    }
+
+    try {
+      const r = await generateSceneImage(String(projectId), scene);
       if ("error" in r) {
         res.status(500).json({ error: r.error });
         return;

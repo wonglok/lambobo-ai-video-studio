@@ -467,6 +467,93 @@ export default function MovieStudioTab({ projectId }: Props) {
             </div>
           )}
 
+          {/* ===== Videos ===== */}
+          {store.result && (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold text-ink-900">Videos</h3>
+                {store.videosRendering ? (
+                  <span className="flex items-center gap-1.5 text-xs text-tiffany-600">
+                    {SpinnerIcon}
+                    {store.videoStatus ?? "Rendering..."}
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => store.renderVideos(projectId)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-tiffany-500 hover:bg-tiffany-600 text-ink-950 transition-colors"
+                  >
+                    {SparkleIcon}
+                    Render Videos
+                  </button>
+                )}
+              </div>
+
+              {store.videosRendering &&
+                store.videoProgress &&
+                store.videoProgress.total > 0 && (
+                  <div className="flex items-center gap-3 px-1">
+                    <div className="flex-1 h-2 bg-ink-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-tiffany-500 rounded-full transition-all duration-300"
+                        style={{
+                          width: `${(store.videoProgress.current / store.videoProgress.total) * 100}%`,
+                        }}
+                      />
+                    </div>
+                    <span className="text-xs font-semibold text-ink-700 tabular-nums whitespace-nowrap">
+                      {store.videoProgress.current}/{store.videoProgress.total}
+                    </span>
+                  </div>
+                )}
+
+              {store.videosError && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs">
+                  {store.videosError}
+                </div>
+              )}
+
+              {store.videos.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {store.videos.map((video) => {
+                    const isRegenerating = store.regeneratingVideos.includes(
+                      video.slug,
+                    );
+                    const fullUrl = video.url.startsWith("http")
+                      ? video.url
+                      : `http://localhost:${(window as any).PORT}${video.url}`;
+                    return (
+                      <div
+                        key={video.slug}
+                        className="flex flex-col gap-1.5 border border-ink-200 rounded-xl p-2 bg-white"
+                      >
+                        <video
+                          src={`${fullUrl}&t=${video.updatedAt}`}
+                          controls
+                          className="w-full rounded-lg border border-ink-200"
+                        />
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-[11px] font-mono text-ink-600 truncate">
+                            {video.slug}
+                          </span>
+                          <button
+                            onClick={() =>
+                              store.regenerateVideo(projectId, video.slug)
+                            }
+                            disabled={isRegenerating}
+                            className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-lg border border-ink-200 text-ink-600 hover:border-tiffany-400 hover:text-tiffany-600 transition-colors disabled:opacity-50"
+                          >
+                            {isRegenerating ? SpinnerIcon : RefreshIcon}
+                            Regenerate
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ===== Render ===== */}
           {store.result && (
             <div className="flex flex-col gap-3">
@@ -566,93 +653,6 @@ export default function MovieStudioTab({ projectId }: Props) {
                             className="w-full rounded-lg border border-ink-200"
                           />
                         )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ===== Videos ===== */}
-          {store.result && (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-sm font-semibold text-ink-900">Videos</h3>
-                {store.videosRendering ? (
-                  <span className="flex items-center gap-1.5 text-xs text-tiffany-600">
-                    {SpinnerIcon}
-                    {store.videoStatus ?? "Rendering..."}
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => store.renderVideos(projectId)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-tiffany-500 hover:bg-tiffany-600 text-ink-950 transition-colors"
-                  >
-                    {SparkleIcon}
-                    Render Videos
-                  </button>
-                )}
-              </div>
-
-              {store.videosRendering &&
-                store.videoProgress &&
-                store.videoProgress.total > 0 && (
-                  <div className="flex items-center gap-3 px-1">
-                    <div className="flex-1 h-2 bg-ink-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-tiffany-500 rounded-full transition-all duration-300"
-                        style={{
-                          width: `${(store.videoProgress.current / store.videoProgress.total) * 100}%`,
-                        }}
-                      />
-                    </div>
-                    <span className="text-xs font-semibold text-ink-700 tabular-nums whitespace-nowrap">
-                      {store.videoProgress.current}/{store.videoProgress.total}
-                    </span>
-                  </div>
-                )}
-
-              {store.videosError && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs">
-                  {store.videosError}
-                </div>
-              )}
-
-              {store.videos.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {store.videos.map((video) => {
-                    const isRegenerating = store.regeneratingVideos.includes(
-                      video.slug,
-                    );
-                    const fullUrl = video.url.startsWith("http")
-                      ? video.url
-                      : `http://localhost:${(window as any).PORT}${video.url}`;
-                    return (
-                      <div
-                        key={video.slug}
-                        className="flex flex-col gap-1.5 border border-ink-200 rounded-xl p-2 bg-white"
-                      >
-                        <video
-                          src={`${fullUrl}&t=${video.updatedAt}`}
-                          controls
-                          className="w-full rounded-lg border border-ink-200"
-                        />
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="text-[11px] font-mono text-ink-600 truncate">
-                            {video.slug}
-                          </span>
-                          <button
-                            onClick={() =>
-                              store.regenerateVideo(projectId, video.slug)
-                            }
-                            disabled={isRegenerating}
-                            className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-lg border border-ink-200 text-ink-600 hover:border-tiffany-400 hover:text-tiffany-600 transition-colors disabled:opacity-50"
-                          >
-                            {isRegenerating ? SpinnerIcon : RefreshIcon}
-                            Regenerate
-                          </button>
-                        </div>
                       </div>
                     );
                   })}
