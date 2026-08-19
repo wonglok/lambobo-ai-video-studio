@@ -248,7 +248,7 @@ export default function MovieStudioTab({ projectId }: Props) {
               </p>
             ) : (
               <div className="overflow-x-auto rounded-xl border border-ink-200">
-                <table className="w-full border-collapse text-xs">
+                <table className="w-full border-collapse text-xs min-w-[1000px]">
                   <TableHead
                     columns={[
                       { key: "slug", label: "Slug", className: "w-24" },
