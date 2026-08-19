@@ -13,6 +13,7 @@ const API_BASE = `http://localhost:${(window as any).PORT}`;
 
 export type GenerationTab =
   | "image"
+  | "fastImageEdit"
   | "video"
   | "extend"
   | "agent"
@@ -129,6 +130,19 @@ interface TextToImageState {
   zModelDownloaded: boolean | null;
 }
 
+interface FastImageEditState {
+  prompt: string;
+  referenceImages: ProjectImage[];
+  downloading: boolean;
+  downloadingLogs: string[];
+  downloadingError: string | null;
+  generating: boolean;
+  result: string | null;
+  error: string | null;
+  logs: string[];
+  modelDownloaded: boolean | null;
+}
+
 interface AgentState {
   model: string;
   port: number;
@@ -205,6 +219,16 @@ interface GenerationStore {
   textToImageHydrated: boolean;
   hydrateTextToImage: (projectId: string) => Promise<void>;
   resetTextToImage: () => void;
+
+  // Fast image edit (mlx-gen FLUX.2 Klein)
+  fastImageEdit: FastImageEditState;
+  setFastImageEditPrompt: (v: string) => void;
+  toggleFastImageEditImage: (img: ProjectImage) => void;
+  clearFastImageEditImages: () => void;
+  clearFastImageEditResult: () => void;
+  checkFastImageEditStatus: () => Promise<void>;
+  downloadFastImageEditModel: () => Promise<void>;
+  generateFastImageEdit: (projectId: string) => Promise<void>;
 
   // Agent (mlx-vlm)
   agent: AgentState;
@@ -450,6 +474,44 @@ async function requestMlxgenGenerate(
   return { ok: !error, error, result };
 }
 
+async function requestFastImageEdit(
+  body: {
+    prompt: string;
+    images: string[];
+    projectId: string;
+  },
+  onLog: (text: string) => void,
+): Promise<{ ok: boolean; error?: string; result?: string }> {
+  const res = await fetch(`${API_BASE}/api/mlxgen/fast-image-edit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    return { ok: false, error: await res.text() };
+  }
+
+  let result: string | undefined;
+  let error: string | undefined;
+
+  await readSSEStream(res, (event, data) => {
+    switch (event) {
+      case "log":
+        onLog(data.text as string);
+        break;
+      case "complete":
+        result = `http://localhost:${(window as any).PORT}/api/files?path=${encodeURIComponent(data.path)}`;
+        break;
+      case "error":
+        error = data.error || "Fast image edit failed";
+        break;
+    }
+  });
+
+  return { ok: !error, error, result };
+}
+
 // ========== Abort Controllers ==========
 
 let generateAbortController: AbortController | null = null;
@@ -571,6 +633,19 @@ const initialTextToImage: TextToImageState = {
   logs: [],
   mlxgenInstalled: null,
   zModelDownloaded: null,
+};
+
+const initialFastImageEdit: FastImageEditState = {
+  prompt: "",
+  referenceImages: [],
+  downloading: false,
+  downloadingLogs: [],
+  downloadingError: null,
+  generating: false,
+  result: null,
+  error: null,
+  logs: [],
+  modelDownloaded: null,
 };
 
 const initialAgent: AgentState = {
@@ -1659,6 +1734,199 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     }
   },
 
+  // ---- Fast Image Edit (FLUX.2 Klein) ----
+  fastImageEdit: { ...initialFastImageEdit },
+
+  setFastImageEditPrompt: (prompt) =>
+    set((s) => ({
+      fastImageEdit: { ...s.fastImageEdit, prompt, error: null },
+    })),
+
+  toggleFastImageEditImage: (img) =>
+    set((s) => {
+      const current = s.fastImageEdit.referenceImages;
+      const exists = current.some((r) => r.filename === img.filename);
+      const next = exists
+        ? current.filter((r) => r.filename !== img.filename)
+        : current.length >= 4
+          ? current
+          : [...current, img];
+      return { fastImageEdit: { ...s.fastImageEdit, referenceImages: next } };
+    }),
+
+  clearFastImageEditImages: () =>
+    set((s) => ({
+      fastImageEdit: { ...s.fastImageEdit, referenceImages: [] },
+    })),
+
+  clearFastImageEditResult: () =>
+    set((s) => ({
+      fastImageEdit: { ...s.fastImageEdit, result: null, error: null, logs: [] },
+    })),
+
+  checkFastImageEditStatus: async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/mlxgen/status`);
+      if (!res.ok) return;
+      const data = await res.json();
+      set((s) => ({
+        fastImageEdit: {
+          ...s.fastImageEdit,
+          modelDownloaded: Boolean(data.fluxModelDownloaded),
+        },
+      }));
+    } catch {
+      // Leave status unknown (null) if the check fails.
+    }
+  },
+
+  downloadFastImageEditModel: async () => {
+    const { fastImageEdit } = get();
+    if (fastImageEdit.downloading) return;
+
+    set((s) => ({
+      fastImageEdit: {
+        ...s.fastImageEdit,
+        downloading: true,
+        downloadingError: null,
+        downloadingLogs: [],
+      },
+    }));
+
+    try {
+      const res = await fetch(`${API_BASE}/api/mlxgen/download-flux-model`, {
+        method: "POST",
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        set((s) => ({
+          fastImageEdit: {
+            ...s.fastImageEdit,
+            downloading: false,
+            downloadingError: err,
+          },
+        }));
+        return;
+      }
+
+      await readSSEStream(res, (event, data) => {
+        switch (event) {
+          case "log":
+            set((s) => ({
+              fastImageEdit: {
+                ...s.fastImageEdit,
+                downloadingLogs: [
+                  ...s.fastImageEdit.downloadingLogs,
+                  data.text as string,
+                ],
+              },
+            }));
+            break;
+          case "complete":
+            set((s) => ({
+              fastImageEdit: { ...s.fastImageEdit, downloading: false },
+            }));
+            get().checkFastImageEditStatus();
+            break;
+          case "error":
+            set((s) => ({
+              fastImageEdit: {
+                ...s.fastImageEdit,
+                downloading: false,
+                downloadingError: data.error || "Download failed",
+              },
+            }));
+            break;
+        }
+      });
+    } catch (e) {
+      set((s) => ({
+        fastImageEdit: {
+          ...s.fastImageEdit,
+          downloading: false,
+          downloadingError: String(e),
+        },
+      }));
+    }
+  },
+
+  generateFastImageEdit: async (projectId) => {
+    const { fastImageEdit } = get();
+    if (fastImageEdit.generating) return;
+
+    if (!fastImageEdit.prompt.trim()) {
+      set((s) => ({
+        fastImageEdit: { ...s.fastImageEdit, error: "Prompt is required" },
+      }));
+      return;
+    }
+    if (fastImageEdit.referenceImages.length === 0) {
+      set((s) => ({
+        fastImageEdit: {
+          ...s.fastImageEdit,
+          error: "Select at least one reference image.",
+        },
+      }));
+      return;
+    }
+
+    set((s) => ({
+      fastImageEdit: {
+        ...s.fastImageEdit,
+        generating: true,
+        error: null,
+        result: null,
+        logs: [],
+      },
+    }));
+
+    // Preprocess each reference image (max 1024px PNG) and send as base64.
+    const images: string[] = [];
+    for (const img of fastImageEdit.referenceImages) {
+      const processed = await resizeImageToPng(resolveImageUrl(img.url), 1024);
+      if (!processed) {
+        set((s) => ({
+          fastImageEdit: {
+            ...s.fastImageEdit,
+            generating: false,
+            error: "Failed to process reference image.",
+          },
+        }));
+        return;
+      }
+      images.push(processed.dataUrl);
+    }
+
+    const result = await requestFastImageEdit(
+      {
+        prompt: fastImageEdit.prompt.trim(),
+        images,
+        projectId,
+      },
+      (text) =>
+        set((s) => ({
+          fastImageEdit: {
+            ...s.fastImageEdit,
+            logs: [...s.fastImageEdit.logs, text],
+          },
+        })),
+    );
+
+    set((s) => ({
+      fastImageEdit: {
+        ...s.fastImageEdit,
+        generating: false,
+        result: result.result ?? null,
+        error: result.error ?? null,
+      },
+    }));
+
+    if (result.ok) {
+      get().fetchProjectImages(projectId);
+    }
+  },
+
   // ---- Text-to-image (mlx-gen z-image-turbo) ----
   textToImage: { ...initialTextToImage },
   textToImageProjectId: null,
@@ -2294,6 +2562,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       video: { ...initialVideo },
       extend: { ...initialExtend },
       imageEdit: { ...initialImageEdit },
+      fastImageEdit: { ...initialFastImageEdit },
       textToImage: { ...initialTextToImage },
       textToImageProjectId: null,
       textToImageHydrated: false,

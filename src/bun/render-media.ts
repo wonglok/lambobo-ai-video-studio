@@ -43,6 +43,7 @@ const CHARACTERS_FILE = join(JSON_DIR, "characters.json");
 
 const MLXGEN_MODEL = "AbstractFramework/qwen-image-edit-2511-8bit";
 const Z_IMAGE_MODEL = "AbstractFramework/z-image-turbo-8bit";
+const FLUX_KLEIN_MODEL = "AbstractFramework/flux.2-klein-4b-8bit";
 const MLX_VLM_MODEL = "mlx-community/gemma-4-e2b-it-4bit";
 const H3_MODEL = "appautomaton/minimax-h3-base-8bit-mlx";
 
@@ -1799,6 +1800,7 @@ export async function renderMediaRoutes({
       installed: isMlxgenInstalled(),
       modelDownloaded: isModelDownloaded(),
       zModelDownloaded: isModelDownloaded(Z_IMAGE_MODEL),
+      fluxModelDownloaded: isModelDownloaded(FLUX_KLEIN_MODEL),
     });
   });
 
@@ -1940,6 +1942,63 @@ export async function renderMediaRoutes({
       });
 
       const proc = spawn([mlxgen, "download", "--model", model], {
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+
+      activeProc = proc;
+
+      const stdoutPromise = streamToSSE(
+        proc.stdout as ReadableStream<Uint8Array>,
+        "Download",
+        send,
+      );
+      const stderrText = await streamToSSE(
+        proc.stderr as ReadableStream<Uint8Array>,
+        "Download",
+        send,
+      );
+      await stdoutPromise;
+
+      const exitCode = await proc.exited;
+      if (exitCode === 0) {
+        send("complete", { success: true });
+      } else {
+        send("error", {
+          error: stderrText || `Process exited with code ${exitCode}`,
+          exitCode,
+        });
+      }
+    } catch (e) {
+      send("error", { error: String(e) });
+    } finally {
+      activeProc = null;
+      res.end();
+    }
+  });
+
+  // ========== MLX-Gen: Download FLUX.2 Klein Model ==========
+
+  app.post("/api/mlxgen/download-flux-model", async (_req, res) => {
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: string, data: object) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      const mlxgen = await getMlxgenBin();
+      send("progress", {
+        status: "starting",
+        label: `Downloading model ${FLUX_KLEIN_MODEL}...`,
+      });
+
+      const proc = spawn([mlxgen, "download", "--model", FLUX_KLEIN_MODEL], {
         stdout: "pipe",
         stderr: "pipe",
       });
@@ -2374,6 +2433,152 @@ export async function renderMediaRoutes({
         } catch {
           // ignore cleanup failures
         }
+      }
+      res.end();
+    }
+  });
+
+  // ========== MLX-Gen: Fast Image Edit (FLUX.2 Klein) ==========
+
+  app.post("/api/mlxgen/fast-image-edit", async (req, res) => {
+    const { prompt, images, projectId } = req.body || {};
+
+    if (!prompt) {
+      res.status(400).json({ error: "Prompt is required" });
+      return;
+    }
+    if (!projectId) {
+      res.status(400).json({ error: "Project ID is required" });
+      return;
+    }
+    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    if (!Array.isArray(images) || images.length === 0) {
+      res.status(400).json({ error: "At least one reference image is required" });
+      return;
+    }
+
+    // Decode each base64 reference image into a temp workspace file so the
+    // FLUX model receives them as separate `--image` inputs.
+    const tempDir = join(TEMP_DIR, String(projectId));
+    ensureDir(tempDir);
+    const tempImagePaths: string[] = [];
+    try {
+      images.forEach((image, i) => {
+        const base64 = String(image).replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64, "base64");
+        const path = join(tempDir, `flux-ref-${Date.now()}-${i}.png`);
+        writeFileSync(path, buffer);
+        tempImagePaths.push(path);
+      });
+    } catch {
+      res.status(400).json({ error: "Invalid reference image data" });
+      return;
+    }
+
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: string, data: object) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      const mlxgen = await getMlxgenBin();
+      const projectOutputDir = join(OUTPUT_DIR, projectId);
+      ensureDir(projectOutputDir);
+
+      const outputFile = `flux-edit-${Date.now()}.png`;
+      const outputPath = join(projectOutputDir, outputFile);
+
+      send("progress", {
+        status: "starting",
+        label: "Generating image...",
+        outputFile,
+      });
+
+      const args: string[] = [
+        mlxgen,
+        "generate",
+        "--model",
+        FLUX_KLEIN_MODEL,
+      ];
+      for (const path of tempImagePaths) {
+        args.push("--image", path);
+      }
+      args.push(
+        "--prompt",
+        prompt,
+        "--output",
+        outputPath,
+        "--mlx-cache-limit-gb",
+        "20",
+        "--steps",
+        "5",
+        "--seed",
+        "42",
+        "--width",
+        "1024",
+        "--height",
+        "1024",
+      );
+
+      const proc = spawn(args, {
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+
+      activeProc = proc;
+
+      const stdoutPromise = streamToSSE(
+        proc.stdout as ReadableStream<Uint8Array>,
+        "MLXGen",
+        send,
+      );
+      const stderrText = await streamToSSE(
+        proc.stderr as ReadableStream<Uint8Array>,
+        "MLXGen",
+        send,
+      );
+      await stdoutPromise;
+
+      const exitCode = await proc.exited;
+      const success = exitCode === 0 && existsSync(outputPath);
+
+      if (success) {
+        send("complete", {
+          success: true,
+          path: outputPath,
+          filename: outputFile,
+        });
+      } else {
+        send("error", {
+          error: stderrText || `Process exited with code ${exitCode}`,
+          exitCode,
+        });
+      }
+    } catch (e) {
+      send("error", { error: String(e) });
+    } finally {
+      activeProc = null;
+      // Clean up the temporary reference images.
+      for (const path of tempImagePaths) {
+        try {
+          unlinkSync(path);
+        } catch {
+          // already removed
+        }
+      }
+      try {
+        rmSync(tempDir, { force: true });
+      } catch {
+        // ignore cleanup failures
       }
       res.end();
     }

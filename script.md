@@ -31,11 +31,9 @@ uv run mlx_audio.tts.generate \
 
 ```
 
-#
-
 # Image editing
 
-## 4B OK FOR COMMERCAIL USE
+## 4B OK FOR COMMERCAIL USE APACHE LICENSE
 
 ```bash
 
@@ -45,8 +43,8 @@ mlxgen generate \
   --output result.png \
   --model AbstractFramework/flux.2-klein-4b-8bit \
   --image input.jpeg \
-  --image lamb2048.png \
-  --prompt "The lamb and The ninja standing next to each other. taking a photo in a photo shooting studio." \
+  --image person.png \
+  --prompt "The person and The ninja standing next to each other, in a studio, taking photo." \
   --mlx-cache-limit-gb 20 \
   --steps 5 --seed 42 --width 1024 --height 1024
 
