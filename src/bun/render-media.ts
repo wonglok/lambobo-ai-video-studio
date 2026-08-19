@@ -1209,6 +1209,16 @@ export async function renderMediaRoutes({
     const outputDir = join(OUTPUT_DIR, String(projectId));
     ensureDir(outputDir);
 
+    let stepCount = 0;
+    const totalSteps =
+      (Array.isArray(characters) ? characters.length : 0) +
+      (Array.isArray(places) ? places.length : 0) +
+      (Array.isArray(scenes) ? scenes.length : 0) * 2;
+    const progress = (label: string) => {
+      stepCount += 1;
+      send("progress", { label, current: stepCount, total: totalSteps });
+    };
+
     const runStep = async (
       args: string[],
       opts: { cwd?: string; label: string; outputPath?: string },
@@ -1267,7 +1277,7 @@ export async function renderMediaRoutes({
         const s = slug(c?.slug);
         const prompt = String(c?.imagePrompt || "").trim();
         if (!s || !prompt) continue;
-        send("progress", { label: `Generating character: ${c?.name || s}` });
+        progress(`Generating character: ${c?.name || s}`);
         const outputFile = `character-${s}.png`;
         const outputPath = join(outputDir, outputFile);
         const result = await runStep(
@@ -1294,7 +1304,12 @@ export async function renderMediaRoutes({
           return;
         }
         characterPaths[s] = outputPath;
-        send("image", { kind: "character", slug: s, filename: outputFile });
+        send("image", {
+          kind: "character",
+          slug: s,
+          filename: outputFile,
+          url: `/api/files?path=${encodeURIComponent(outputPath)}`,
+        });
       }
 
       // 2. Place images (text-to-image).
@@ -1302,7 +1317,7 @@ export async function renderMediaRoutes({
         const s = slug(p?.slug);
         const prompt = String(p?.imagePrompt || "").trim();
         if (!s || !prompt) continue;
-        send("progress", { label: `Generating place: ${p?.name || s}` });
+        progress(`Generating place: ${p?.name || s}`);
         const outputFile = `place-${s}.png`;
         const outputPath = join(outputDir, outputFile);
         const result = await runStep(
@@ -1329,7 +1344,12 @@ export async function renderMediaRoutes({
           return;
         }
         placePaths[s] = outputPath;
-        send("image", { kind: "place", slug: s, filename: outputFile });
+        send("image", {
+          kind: "place",
+          slug: s,
+          filename: outputFile,
+          url: `/api/files?path=${encodeURIComponent(outputPath)}`,
+        });
       }
 
       // 3. Scenes: image (fast-image-edit) then video (ltx-2.3).
@@ -1360,7 +1380,7 @@ export async function renderMediaRoutes({
         }
 
         // 3a. Scene image via fast-image-edit (FLUX.2 Klein).
-        send("progress", { label: `Generating scene image: ${s}` });
+        progress(`Generating scene image: ${s}`);
         const sceneImageFile = `scene-${s}.png`;
         const sceneImagePath = join(outputDir, sceneImageFile);
         const fluxArgs = [mlxgen, "generate", "--model", FLUX_KLEIN_MODEL];
@@ -1391,10 +1411,15 @@ export async function renderMediaRoutes({
           });
           continue;
         }
-        send("image", { kind: "scene", slug: s, filename: sceneImageFile });
+        send("image", {
+          kind: "scene",
+          slug: s,
+          filename: sceneImageFile,
+          url: `/api/files?path=${encodeURIComponent(sceneImagePath)}`,
+        });
 
         // 3b. Scene video via LTX-2.3 (320p, 1:1, distilled).
-        send("progress", { label: `Generating scene video: ${s}` });
+        progress(`Generating scene video: ${s}`);
         const videoFile = `scene-${s}.mp4`;
         const videoPath = join(outputDir, videoFile);
         const frames = Math.max(
@@ -1433,7 +1458,11 @@ export async function renderMediaRoutes({
           });
           continue;
         }
-        send("video", { slug: s, filename: videoFile });
+        send("video", {
+          slug: s,
+          filename: videoFile,
+          url: `/api/files?path=${encodeURIComponent(videoPath)}`,
+        });
         sceneResults.push({ slug: s, image: sceneImageFile, video: videoFile });
       }
 

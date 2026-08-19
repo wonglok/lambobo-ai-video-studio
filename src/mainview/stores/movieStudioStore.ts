@@ -85,6 +85,24 @@ export interface AssetImage {
   updatedAt: number;
 }
 
+export interface RenderedScene {
+  slug: string;
+  imageUrl: string | null;
+  videoUrl: string | null;
+}
+
+function upsertScene(
+  scenes: RenderedScene[],
+  slug: string,
+  patch: Partial<RenderedScene>,
+): RenderedScene[] {
+  const existing = scenes.find((s) => s.slug === slug);
+  if (existing) {
+    return scenes.map((s) => (s.slug === slug ? { ...s, ...patch } : s));
+  }
+  return [...scenes, { slug, imageUrl: null, videoUrl: null, ...patch }];
+}
+
 interface MovieStudioStore {
   idea: string;
   projectId: string | null;
@@ -96,11 +114,13 @@ interface MovieStudioStore {
   renderStatus: string | null;
   renderLogs: string[];
   renderError: string | null;
+  renderProgress: { current: number; total: number } | null;
   assets: AssetImage[];
   assetsRendering: boolean;
   assetStatus: string | null;
   assetsError: string | null;
   regenerating: string[];
+  renderedScenes: RenderedScene[];
   setIdea: (v: string) => void;
   hydrate: (projectId: string) => Promise<void>;
   generate: (projectId: string, model: string) => Promise<void>;
@@ -127,11 +147,13 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
   renderStatus: null,
   renderLogs: [],
   renderError: null,
+  renderProgress: null,
   assets: [],
   assetsRendering: false,
   assetStatus: null,
   assetsError: null,
   regenerating: [],
+  renderedScenes: [],
 
   setIdea: (idea) => {
     set({ idea, error: null });
@@ -193,6 +215,8 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
       renderStatus: "Starting render...",
       renderLogs: [],
       renderError: null,
+      renderProgress: null,
+      renderedScenes: [],
     });
     movieStudioAbortController = new AbortController();
     const signal = movieStudioAbortController.signal;
@@ -209,18 +233,34 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
       await readSSEStream(res, (event, data) => {
         switch (event) {
           case "progress":
-            set({ renderStatus: data.label as string });
+            set({
+              renderStatus: data.label as string,
+              renderProgress: {
+                current: Number(data.current) || 0,
+                total: Number(data.total) || 0,
+              },
+            });
             break;
-          case "image":
+          case "image": {
+            const isScene = data.kind === "scene";
             set((s) => ({
               renderStatus: `Generated ${data.kind}: ${data.slug}`,
               renderLogs: [...s.renderLogs, `✓ ${data.kind}: ${data.filename}`],
+              renderedScenes: isScene
+                ? upsertScene(s.renderedScenes, data.slug, {
+                    imageUrl: data.url as string,
+                  })
+                : s.renderedScenes,
             }));
             break;
+          }
           case "video":
             set((s) => ({
               renderStatus: `Generated video: ${data.slug}`,
               renderLogs: [...s.renderLogs, `✓ video: ${data.filename}`],
+              renderedScenes: upsertScene(s.renderedScenes, data.slug, {
+                videoUrl: data.url as string,
+              }),
             }));
             break;
           case "log":
@@ -367,10 +407,12 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
       renderStatus: null,
       renderLogs: [],
       renderError: null,
+      renderProgress: null,
       assets: [],
       assetsRendering: false,
       assetStatus: null,
       assetsError: null,
       regenerating: [],
+      renderedScenes: [],
     }),
 }));
