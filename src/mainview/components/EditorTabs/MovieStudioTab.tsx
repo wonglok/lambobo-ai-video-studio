@@ -100,6 +100,9 @@ export default function MovieStudioTab({ projectId }: Props) {
         <h2 className="text-base font-semibold text-ink-900">Movie Studio</h2>
       </div>
 
+      {gen.agent.serverRunning && gen.agent.serverOnline ? (
+        <>
+
       {/* ===== Idea box ===== */}
       <div>
         <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
@@ -113,11 +116,6 @@ export default function MovieStudioTab({ projectId }: Props) {
           disabled={store.generating}
           className="w-full px-4 py-3 bg-ink-50 border border-ink-200 rounded-2xl text-ink-900 text-sm placeholder-ink-500/40 focus:outline-none focus:border-tiffany-500 focus:ring-2 focus:ring-tiffany-500/30 transition-all resize-none disabled:opacity-50"
         />
-        {!gen.agent.serverOnline && (
-          <p className="text-xs text-amber-600 mt-1.5">
-            The LLM server is not running — start it from the Agent tab first.
-          </p>
-        )}
       </div>
 
       {/* ===== Submit ===== */}
@@ -309,16 +307,16 @@ export default function MovieStudioTab({ projectId }: Props) {
         </>
       )}
 
-      {!gen.agent.serverOnline && (
+        </>
+      ) : (
         <>
-          <div className="flex items-center gap-2">
-            <span className="text-tiffany-600">{SparkleIcon}</span>
-            <h2 className="text-base font-semibold text-ink-900">
-              LLM Server Config
-            </h2>
-          </div>
-
           <MlxVlmServerPanel />
+          <div className="flex flex-col items-center justify-center gap-2 p-8 border border-dashed border-ink-200 rounded-2xl">
+            <span className="text-ink-500">{ClapperIcon}</span>
+            <p className="text-xs text-ink-500 italic">
+              Start the LLM server to begin planning your movie.
+            </p>
+          </div>
         </>
       )}
     </div>
