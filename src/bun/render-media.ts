@@ -2456,7 +2456,9 @@ export async function renderMediaRoutes({
       return;
     }
     if (!Array.isArray(images) || images.length === 0) {
-      res.status(400).json({ error: "At least one reference image is required" });
+      res
+        .status(400)
+        .json({ error: "At least one reference image is required" });
       return;
     }
 
@@ -2503,15 +2505,14 @@ export async function renderMediaRoutes({
         outputFile,
       });
 
-      const args: string[] = [
-        mlxgen,
-        "generate",
-        "--model",
-        FLUX_KLEIN_MODEL,
-      ];
+      const args: string[] = [mlxgen, "generate", "--model", FLUX_KLEIN_MODEL];
+
+      console.log(tempImagePaths);
+
       for (const path of tempImagePaths) {
         args.push("--image", path);
       }
+
       args.push(
         "--prompt",
         prompt,
