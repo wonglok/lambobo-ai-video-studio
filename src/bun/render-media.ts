@@ -1092,6 +1092,270 @@ export async function renderMediaRoutes({
     }
   });
 
+  // ========== Movie Studio: Render (characters/places/scenes → images/videos) ==========
+
+  app.post("/api/movie-studio/render", async (req, res) => {
+    const { projectId, characters, places, scenes } = req.body || {};
+
+    if (!projectId || !isValidProjectId(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    if (
+      !Array.isArray(characters) ||
+      !Array.isArray(places) ||
+      !Array.isArray(scenes)
+    ) {
+      res.status(400).json({ error: "characters, places, scenes are required" });
+      return;
+    }
+
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: string, data: object) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    const outputDir = join(OUTPUT_DIR, String(projectId));
+    ensureDir(outputDir);
+
+    const runStep = async (
+      args: string[],
+      opts: { cwd?: string; label: string; outputPath?: string },
+    ): Promise<{ success: boolean; stderr: string }> => {
+      const proc = spawn(args, {
+        env: process.env,
+        stdout: "pipe",
+        stderr: "pipe",
+        ...(opts.cwd ? { cwd: opts.cwd } : {}),
+      });
+      activeProc = proc;
+      const stdoutPromise = streamToSSE(
+        proc.stdout as ReadableStream<Uint8Array>,
+        opts.label,
+        send,
+      );
+      const stderrText = await streamToSSE(
+        proc.stderr as ReadableStream<Uint8Array>,
+        opts.label,
+        send,
+      );
+      await stdoutPromise;
+      const exitCode = await proc.exited;
+      const success =
+        exitCode === 0 && (!opts.outputPath || existsSync(opts.outputPath));
+      return { success, stderr: stderrText };
+    };
+
+    const slug = (v: unknown): string =>
+      String(v || "")
+        .trim()
+        .replace(/[^a-zA-Z0-9_-]/g, "_");
+
+    const buildVideoPrompt = (s: any): string => {
+      const lines = Array.isArray(s.scriptLines)
+        ? s.scriptLines
+            .map((l: any) => `${l?.characterSlug || ""}: "${l?.line || ""}"`)
+            .join(" ")
+        : "";
+      const vo = s.voiceOver ? ` Voiceover: "${s.voiceOver}"` : "";
+      return `${s.description || ""} ${lines}${vo}`.trim();
+    };
+
+    try {
+      const mlxgen = await getMlxgenBin();
+      const characterPaths: Record<string, string> = {};
+      const placePaths: Record<string, string> = {};
+
+      // 1. Character images (text-to-image).
+      for (const c of characters) {
+        const s = slug(c?.slug);
+        const prompt = String(c?.imagePrompt || "").trim();
+        if (!s || !prompt) continue;
+        send("progress", { label: `Generating character: ${c?.name || s}` });
+        const outputFile = `character-${s}.png`;
+        const outputPath = join(outputDir, outputFile);
+        const result = await runStep(
+          [
+            mlxgen,
+            "generate",
+            "--model",
+            Z_IMAGE_MODEL,
+            "--prompt",
+            prompt,
+            "--output",
+            outputPath,
+            "--steps",
+            "6",
+            "--width",
+            "1024",
+            "--height",
+            "1024",
+          ],
+          { label: "Character", outputPath },
+        );
+        if (!result.success) {
+          send("error", { error: `Character "${s}" failed: ${result.stderr}` });
+          return;
+        }
+        characterPaths[s] = outputPath;
+        send("image", { kind: "character", slug: s, filename: outputFile });
+      }
+
+      // 2. Place images (text-to-image).
+      for (const p of places) {
+        const s = slug(p?.slug);
+        const prompt = String(p?.imagePrompt || "").trim();
+        if (!s || !prompt) continue;
+        send("progress", { label: `Generating place: ${p?.name || s}` });
+        const outputFile = `place-${s}.png`;
+        const outputPath = join(outputDir, outputFile);
+        const result = await runStep(
+          [
+            mlxgen,
+            "generate",
+            "--model",
+            Z_IMAGE_MODEL,
+            "--prompt",
+            prompt,
+            "--output",
+            outputPath,
+            "--steps",
+            "6",
+            "--width",
+            "1024",
+            "--height",
+            "1024",
+          ],
+          { label: "Place", outputPath },
+        );
+        if (!result.success) {
+          send("error", { error: `Place "${s}" failed: ${result.stderr}` });
+          return;
+        }
+        placePaths[s] = outputPath;
+        send("image", { kind: "place", slug: s, filename: outputFile });
+      }
+
+      // 3. Scenes: image (fast-image-edit) then video (ltx-2.3).
+      const ltxFolder = join(PYTHON_DIR, "ltx-2-mlx");
+      const uvPath = await getUvPath();
+      const sceneResults: any[] = [];
+
+      for (const sc of scenes) {
+        const s = slug(sc?.slug);
+        if (!s) continue;
+
+        // Look up the corresponding character/place images by slug.
+        const refImages: string[] = [];
+        for (const cs of Array.isArray(sc?.characterSlugs)
+          ? sc.characterSlugs
+          : []) {
+          const f = characterPaths[slug(cs)];
+          if (f) refImages.push(f);
+        }
+        const placeFile = placePaths[slug(sc?.placeSlug)];
+        if (placeFile) refImages.push(placeFile);
+
+        if (refImages.length === 0) {
+          send("error", {
+            error: `Scene "${s}": no matching character/place images`,
+          });
+          continue;
+        }
+
+        // 3a. Scene image via fast-image-edit (FLUX.2 Klein).
+        send("progress", { label: `Generating scene image: ${s}` });
+        const sceneImageFile = `scene-${s}.png`;
+        const sceneImagePath = join(outputDir, sceneImageFile);
+        const fluxArgs = [mlxgen, "generate", "--model", FLUX_KLEIN_MODEL];
+        for (const p of refImages) fluxArgs.push("--image", p);
+        fluxArgs.push(
+          "--prompt",
+          String(sc?.imagePrompt || ""),
+          "--output",
+          sceneImagePath,
+          "--mlx-cache-limit-gb",
+          "20",
+          "--steps",
+          "5",
+          "--seed",
+          "42",
+          "--width",
+          "1024",
+          "--height",
+          "1024",
+        );
+        const fluxResult = await runStep(fluxArgs, {
+          label: "Scene",
+          outputPath: sceneImagePath,
+        });
+        if (!fluxResult.success) {
+          send("error", {
+            error: `Scene image "${s}" failed: ${fluxResult.stderr}`,
+          });
+          continue;
+        }
+        send("image", { kind: "scene", slug: s, filename: sceneImageFile });
+
+        // 3b. Scene video via LTX-2.3 (320p, 1:1, distilled).
+        send("progress", { label: `Generating scene video: ${s}` });
+        const videoFile = `scene-${s}.mp4`;
+        const videoPath = join(outputDir, videoFile);
+        const frames = Math.max(
+          1,
+          Math.round((Number(sc?.duration) || 5) * 24),
+        );
+        const videoResult = await runStep(
+          [
+            uvPath,
+            "run",
+            "ltx-2-mlx",
+            "generate",
+            "--model",
+            "dgrauet/ltx-2.3-mlx-q8",
+            "--prompt",
+            buildVideoPrompt(sc),
+            "--distilled",
+            "--frames",
+            String(frames),
+            "--width",
+            "320",
+            "--height",
+            "320",
+            "--frame-rate",
+            "24",
+            "--image",
+            sceneImagePath,
+            "--output",
+            videoPath,
+          ],
+          { cwd: ltxFolder, label: "Video", outputPath: videoPath },
+        );
+        if (!videoResult.success) {
+          send("error", {
+            error: `Scene video "${s}" failed: ${videoResult.stderr}`,
+          });
+          continue;
+        }
+        send("video", { slug: s, filename: videoFile });
+        sceneResults.push({ slug: s, image: sceneImageFile, video: videoFile });
+      }
+
+      send("complete", { scenes: sceneResults });
+    } catch (e) {
+      send("error", { error: String(e) });
+    } finally {
+      activeProc = null;
+      res.end();
+    }
+  });
+
   // ========== Render: Text-to-Video ==========
 
   app.post("/api/render/text-to-video", async (req, res) => {
