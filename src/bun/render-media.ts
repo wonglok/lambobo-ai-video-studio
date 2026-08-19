@@ -497,12 +497,12 @@ async function runCommand(
   return { success: exitCode === 0, output: (stdoutText + stderrText).trim() };
 }
 
-/** Copy a generated image into the project's backup folder with a timestamped name. */
-function backupImage(sourcePath: string, projectId: string): string | null {
+/** Copy a generated file into the project's backup folder with a timestamped name. */
+function backupFile(sourcePath: string, projectId: string): string | null {
   try {
     const backupDir = join(OUTPUT_DIR, String(projectId), "backup");
     ensureDir(backupDir);
-    const base = sourcePath.split(sep).pop() || "image";
+    const base = sourcePath.split(sep).pop() || "file";
     const dot = base.lastIndexOf(".");
     const stem = dot > 0 ? base.slice(0, dot) : base;
     const ext = dot > 0 ? base.slice(dot) : "";
@@ -552,10 +552,87 @@ async function generateAssetImage(
     return { error: result.output || `Failed to generate ${kind} ${slug}` };
   }
 
-  backupImage(outputPath, projectId);
+  backupFile(outputPath, projectId);
   return {
     filename: outputFile,
     url: `/api/files?path=${encodeURIComponent(outputPath)}`,
+  };
+}
+
+/** Build the LTX image-to-video prompt for a scene (dialogue + voiceover). */
+function buildVideoPrompt(scene: any, characters: any[]): string {
+  const nameOf = (slug: unknown): string =>
+    characters.find((c) => String(c?.slug) === String(slug))?.name ||
+    String(slug || "");
+  const lines = Array.isArray(scene.scriptLines)
+    ? scene.scriptLines
+        .map((l: any) => `${nameOf(l?.characterSlug)} says: "${l?.line || ""}"`)
+        .join(" ")
+    : "";
+  const vo = scene.voiceOver ? ` Voiceover: "${scene.voiceOver}"` : "";
+  return `${scene.description || ""} ${lines}${vo}`.trim();
+}
+
+/** Generate a single scene video (LTX-2.3) from its scene image, and back it up. */
+async function generateSceneVideo(
+  uvPath: string,
+  projectId: string,
+  scene: any,
+  characters: any[],
+): Promise<{ filename: string; url: string } | { error: string }> {
+  const s = String(scene?.slug || "")
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]/g, "_");
+  if (!s) return { error: "Invalid scene slug" };
+
+  const outputDir = join(OUTPUT_DIR, projectId);
+  const sceneImagePath = join(outputDir, `scene-${s}.png`);
+  if (!existsSync(sceneImagePath)) {
+    return {
+      error: `Scene image not found for "${s}". Generate scene images first.`,
+    };
+  }
+
+  const ltxFolder = join(PYTHON_DIR, "ltx-2-mlx");
+  const videoFile = `scene-${s}.mp4`;
+  const videoPath = join(outputDir, videoFile);
+  const frames = Math.max(1, Math.round((Number(scene?.duration) + 3) * 24));
+
+  const result = await runCommand(
+    [
+      uvPath,
+      "run",
+      "ltx-2-mlx",
+      "generate",
+      "--model",
+      "dgrauet/ltx-2.3-mlx-q8",
+      "--prompt",
+      buildVideoPrompt(scene, characters),
+      "--distilled",
+      "--frames",
+      String(frames),
+      "--width",
+      "320",
+      "--height",
+      "569",
+      "--frame-rate",
+      "24",
+      "--image",
+      sceneImagePath,
+      "--output",
+      videoPath,
+    ],
+    { cwd: ltxFolder },
+  );
+
+  if (!result.success || !existsSync(videoPath)) {
+    return { error: result.output || `Failed to generate video ${s}` };
+  }
+
+  backupFile(videoPath, projectId);
+  return {
+    filename: videoFile,
+    url: `/api/files?path=${encodeURIComponent(videoPath)}`,
   };
 }
 
@@ -1252,21 +1329,6 @@ export async function renderMediaRoutes({
         .trim()
         .replace(/[^a-zA-Z0-9_-]/g, "_");
 
-    const buildVideoPrompt = (s: any, characterList: any[]): string => {
-      const nameOf = (slug: unknown): string =>
-        characterList.find((c) => String(c?.slug) === String(slug))?.name ||
-        String(slug || "");
-      const lines = Array.isArray(s.scriptLines)
-        ? s.scriptLines
-            .map(
-              (l: any) => `${nameOf(l?.characterSlug)} says: "${l?.line || ""}"`,
-            )
-            .join(" ")
-        : "";
-      const vo = s.voiceOver ? ` Voiceover: "${s.voiceOver}"` : "";
-      return `${s.description || ""} ${lines}${vo}`.trim();
-    };
-
     try {
       const mlxgen = await getMlxgenBin();
       const characterPaths: Record<string, string> = {};
@@ -1353,7 +1415,6 @@ export async function renderMediaRoutes({
       }
 
       // 3. Scenes: image (fast-image-edit) then video (ltx-2.3).
-      const ltxFolder = join(PYTHON_DIR, "ltx-2-mlx");
       const uvPath = await getUvPath();
       const sceneResults: any[] = [];
 
@@ -1418,52 +1479,30 @@ export async function renderMediaRoutes({
           url: `/api/files?path=${encodeURIComponent(sceneImagePath)}`,
         });
 
-        // 3b. Scene video via LTX-2.3 (320p, 1:1, distilled).
+        // 3b. Scene video via LTX-2.3 (320p, 9:16, distilled).
         progress(`Generating scene video: ${s}`);
-        const videoFile = `scene-${s}.mp4`;
-        const videoPath = join(outputDir, videoFile);
-        const frames = Math.max(
-          1,
-          Math.round((Number(sc?.duration) + 3) * 24),
+        const video = await generateSceneVideo(
+          uvPath,
+          String(projectId),
+          sc,
+          characters,
         );
-        const videoResult = await runStep(
-          [
-            uvPath,
-            "run",
-            "ltx-2-mlx",
-            "generate",
-            "--model",
-            "dgrauet/ltx-2.3-mlx-q8",
-            "--prompt",
-            buildVideoPrompt(sc, characters),
-            "--distilled",
-            "--frames",
-            String(frames),
-            "--width",
-            "320",
-            "--height",
-            "569",
-            "--frame-rate",
-            "24",
-            "--image",
-            sceneImagePath,
-            "--output",
-            videoPath,
-          ],
-          { cwd: ltxFolder, label: "Video", outputPath: videoPath },
-        );
-        if (!videoResult.success) {
+        if ("error" in video) {
           send("error", {
-            error: `Scene video "${s}" failed: ${videoResult.stderr}`,
+            error: `Scene video "${s}" failed: ${video.error}`,
           });
           continue;
         }
         send("video", {
           slug: s,
-          filename: videoFile,
-          url: `/api/files?path=${encodeURIComponent(videoPath)}`,
+          filename: video.filename,
+          url: video.url,
         });
-        sceneResults.push({ slug: s, image: sceneImageFile, video: videoFile });
+        sceneResults.push({
+          slug: s,
+          image: sceneImageFile,
+          video: video.filename,
+        });
       }
 
       send("complete", { scenes: sceneResults });
@@ -1585,6 +1624,105 @@ export async function renderMediaRoutes({
         kind,
         safeSlug,
         safePrompt,
+      );
+      if ("error" in r) {
+        res.status(500).json({ error: r.error });
+        return;
+      }
+      res.json(r);
+    } catch (e) {
+      res.status(500).json({ error: String(e) });
+    } finally {
+      activeProc = null;
+    }
+  });
+
+  // ========== Movie Studio: Render Videos (scene videos only) ==========
+
+  app.post("/api/movie-studio/render-videos", async (req, res) => {
+    const { projectId, characters, scenes } = req.body || {};
+
+    if (!projectId || !isValidProjectId(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    if (!Array.isArray(characters) || !Array.isArray(scenes)) {
+      res.status(400).json({ error: "characters and scenes are required" });
+      return;
+    }
+
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: string, data: object) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    const total = scenes.length;
+    let current = 0;
+
+    try {
+      const uvPath = await getUvPath();
+      const videos: { slug: string; filename: string; url: string }[] = [];
+
+      for (const sc of scenes) {
+        const slug = String(sc?.slug || "")
+          .trim()
+          .replace(/[^a-zA-Z0-9_-]/g, "_");
+        if (!slug) continue;
+        current += 1;
+        send("progress", {
+          label: `Generating video: ${slug}`,
+          current,
+          total,
+        });
+        const r = await generateSceneVideo(
+          uvPath,
+          String(projectId),
+          sc,
+          characters,
+        );
+        if ("error" in r) {
+          send("error", { error: r.error });
+          continue;
+        }
+        videos.push({ slug, ...r });
+        send("video", { slug, ...r });
+      }
+
+      send("complete", { videos });
+    } catch (e) {
+      send("error", { error: String(e) });
+    } finally {
+      activeProc = null;
+      res.end();
+    }
+  });
+
+  // Regenerate a single scene video.
+  app.post("/api/movie-studio/render-video", async (req, res) => {
+    const { projectId, scene, characters } = req.body || {};
+
+    if (!projectId || !isValidProjectId(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    if (!scene || typeof scene !== "object") {
+      res.status(400).json({ error: "scene is required" });
+      return;
+    }
+
+    try {
+      const uvPath = await getUvPath();
+      const r = await generateSceneVideo(
+        uvPath,
+        String(projectId),
+        scene,
+        Array.isArray(characters) ? characters : [],
       );
       if ("error" in r) {
         res.status(500).json({ error: r.error });

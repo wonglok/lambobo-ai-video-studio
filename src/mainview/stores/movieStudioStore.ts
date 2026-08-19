@@ -103,6 +103,25 @@ function upsertScene(
   return [...scenes, { slug, imageUrl: null, videoUrl: null, ...patch }];
 }
 
+export interface SceneVideo {
+  slug: string;
+  filename: string;
+  url: string;
+  updatedAt: number;
+}
+
+function upsertVideo(
+  videos: SceneVideo[],
+  slug: string,
+  patch: Partial<SceneVideo>,
+): SceneVideo[] {
+  const existing = videos.find((v) => v.slug === slug);
+  if (existing) {
+    return videos.map((v) => (v.slug === slug ? { ...v, ...patch } : v));
+  }
+  return [...videos, { slug, filename: "", url: "", updatedAt: 0, ...patch }];
+}
+
 interface MovieStudioStore {
   idea: string;
   projectId: string | null;
@@ -121,6 +140,12 @@ interface MovieStudioStore {
   assetsError: string | null;
   regenerating: string[];
   renderedScenes: RenderedScene[];
+  videos: SceneVideo[];
+  videosRendering: boolean;
+  videoStatus: string | null;
+  videosError: string | null;
+  videoProgress: { current: number; total: number } | null;
+  regeneratingVideos: string[];
   setIdea: (v: string) => void;
   hydrate: (projectId: string) => Promise<void>;
   generate: (projectId: string, model: string) => Promise<void>;
@@ -132,6 +157,8 @@ interface MovieStudioStore {
     slug: string,
     prompt: string,
   ) => Promise<void>;
+  renderVideos: (projectId: string) => Promise<void>;
+  regenerateVideo: (projectId: string, slug: string) => Promise<void>;
   stop: () => void;
   reset: () => void;
 }
@@ -154,6 +181,12 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
   assetsError: null,
   regenerating: [],
   renderedScenes: [],
+  videos: [],
+  videosRendering: false,
+  videoStatus: null,
+  videosError: null,
+  videoProgress: null,
+  regeneratingVideos: [],
 
   setIdea: (idea) => {
     set({ idea, error: null });
@@ -388,13 +421,118 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
     }
   },
 
+  renderVideos: async (projectId) => {
+    const result = get().result;
+    if (!result || get().videosRendering) return;
+
+    set({
+      videosRendering: true,
+      videoStatus: "Rendering videos...",
+      videosError: null,
+      videoProgress: null,
+    });
+    movieStudioAbortController = new AbortController();
+    const signal = movieStudioAbortController.signal;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/movie-studio/render-videos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId,
+          characters: result.characters,
+          scenes: result.scenes,
+        }),
+        signal,
+      });
+      if (!res.ok) throw new Error(await res.text());
+
+      await readSSEStream(res, (event, data) => {
+        switch (event) {
+          case "progress":
+            set({
+              videoStatus: data.label as string,
+              videoProgress: {
+                current: Number(data.current) || 0,
+                total: Number(data.total) || 0,
+              },
+            });
+            break;
+          case "video":
+            set((s) => ({
+              videos: upsertVideo(s.videos, data.slug, {
+                filename: data.filename,
+                url: data.url,
+                updatedAt: Date.now(),
+              }),
+              videoStatus: `Generated video: ${data.slug}`,
+            }));
+            break;
+          case "error":
+            set({ videosError: data.error || "Video render failed" });
+            break;
+          case "complete":
+            set({ videoStatus: "Videos rendered" });
+            break;
+        }
+      });
+    } catch (e) {
+      if ((e as any)?.name !== "AbortError") {
+        set({ videosError: String(e) });
+      }
+    } finally {
+      movieStudioAbortController = null;
+      set({ videosRendering: false });
+    }
+  },
+
+  regenerateVideo: async (projectId, slug) => {
+    const result = get().result;
+    if (!result || get().regeneratingVideos.includes(slug)) return;
+    const scene = result.scenes.find((s) => s.slug === slug);
+    if (!scene) return;
+
+    set((s) => ({
+      regeneratingVideos: [...s.regeneratingVideos, slug],
+      videosError: null,
+    }));
+
+    try {
+      const res = await fetch(`${API_BASE}/api/movie-studio/render-video`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, scene, characters: result.characters }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = (await res.json()) as { filename: string; url: string };
+      set((s) => ({
+        videos: upsertVideo(s.videos, slug, {
+          filename: data.filename,
+          url: data.url,
+          updatedAt: Date.now(),
+        }),
+        regeneratingVideos: s.regeneratingVideos.filter((k) => k !== slug),
+      }));
+    } catch (e) {
+      set((s) => ({
+        videosError: String(e),
+        regeneratingVideos: s.regeneratingVideos.filter((k) => k !== slug),
+      }));
+    }
+  },
+
   stop: () => {
     if (movieStudioAbortController) {
       movieStudioAbortController.abort();
       movieStudioAbortController = null;
     }
     fetch(`${API_BASE}/api/render/cancel`, { method: "POST" }).catch(() => {});
-    set({ generating: false, rendering: false, assetsRendering: false });
+    set({
+      generating: false,
+      rendering: false,
+      assetsRendering: false,
+      videosRendering: false,
+    });
   },
 
   reset: () =>
@@ -414,5 +552,11 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
       assetsError: null,
       regenerating: [],
       renderedScenes: [],
+      videos: [],
+      videosRendering: false,
+      videoStatus: null,
+      videosError: null,
+      videoProgress: null,
+      regeneratingVideos: [],
     }),
 }));
