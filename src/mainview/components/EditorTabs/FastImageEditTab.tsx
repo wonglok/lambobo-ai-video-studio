@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useGenerationStore } from "../../stores/generationStore";
 import { useProjectStore } from "../../stores/projectStore";
 
@@ -10,6 +10,10 @@ export default function FastImageEditTab({ projectId }: Props) {
   const store = useGenerationStore();
   const { openFolder } = useProjectStore();
   const referenceFileRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<{
+    url: string;
+    filename: string;
+  } | null>(null);
 
   useEffect(() => {
     store.checkFastImageEditStatus();
@@ -17,6 +21,16 @@ export default function FastImageEditTab({ projectId }: Props) {
     store.fetchCharacterSheets(projectId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
+
+  // Close the preview modal on Escape.
+  useEffect(() => {
+    if (!preview) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPreview(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [preview]);
 
   const handleReferenceUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -191,6 +205,24 @@ export default function FastImageEditTab({ projectId }: Props) {
     </svg>
   );
 
+  const MaximizeIcon = (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="15 3 21 3 21 9" />
+      <polyline points="9 21 3 21 3 15" />
+      <line x1="21" y1="3" x2="14" y2="10" />
+      <line x1="3" y1="21" x2="10" y2="14" />
+    </svg>
+  );
+
   const FolderIcon = (
     <svg
       width="16"
@@ -301,25 +333,38 @@ export default function FastImageEditTab({ projectId }: Props) {
                 ? img.url
                 : `http://localhost:${(window as any).PORT}${img.url}`;
               return (
-                <button
+                <div
                   key={`${img.source}-${img.filename}`}
-                  onClick={() => store.toggleFastImageEditImage(img)}
-                  disabled={store.fastImageEdit.generating}
-                  className={`relative rounded-xl border-2 transition-all ${
-                    isSelected
-                      ? "border-tiffany-500 ring-2 ring-tiffany-500/40"
-                      : "border-ink-200 hover:border-ink-300"
-                  } disabled:opacity-50`}
+                  className="relative group"
                 >
-                  <img
-                    src={fullUrl}
-                    alt={img.filename}
-                    className="aspect-square object-cover object-center"
-                  />
-                  <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-ink-700 truncate text-center">
-                    {img.filename}
-                  </span>
-                </button>
+                  <button
+                    onClick={() => store.toggleFastImageEditImage(img)}
+                    disabled={store.fastImageEdit.generating}
+                    className={`w-full relative rounded-xl border-2 overflow-hidden transition-all ${
+                      isSelected
+                        ? "border-tiffany-500 ring-2 ring-tiffany-500/40"
+                        : "border-ink-200 hover:border-ink-300"
+                    } disabled:opacity-50`}
+                  >
+                    <img
+                      src={fullUrl}
+                      alt={img.filename}
+                      className="aspect-square object-cover object-center w-full"
+                    />
+                    <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-ink-700 truncate text-center">
+                      {img.filename}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() =>
+                      setPreview({ url: fullUrl, filename: img.filename })
+                    }
+                    className="absolute top-1.5 right-1.5 flex items-center justify-center w-6 h-6 rounded-full bg-black/50 text-white hover:bg-tiffany-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                    title="Preview"
+                  >
+                    {MaximizeIcon}
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -351,25 +396,35 @@ export default function FastImageEditTab({ projectId }: Props) {
                 ? sheet.url
                 : `http://localhost:${(window as any).PORT}${sheet.url}`;
               return (
-                <button
-                  key={sheet.filename}
-                  onClick={() => store.toggleFastImageEditImage(sheet)}
-                  disabled={store.fastImageEdit.generating}
-                  className={`relative rounded-xl border-2 transition-all ${
-                    isSelected
-                      ? "border-tiffany-500 ring-2 ring-tiffany-500/40"
-                      : "border-ink-200 hover:border-ink-300"
-                  } disabled:opacity-50`}
-                >
-                  <img
-                    src={fullUrl}
-                    alt={sheet.filename}
-                    className="aspect-square object-cover object-center"
-                  />
-                  <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-ink-700 truncate text-center">
-                    {sheet.filename}
-                  </span>
-                </button>
+                <div key={sheet.filename} className="relative group">
+                  <button
+                    onClick={() => store.toggleFastImageEditImage(sheet)}
+                    disabled={store.fastImageEdit.generating}
+                    className={`w-full relative rounded-xl border-2 overflow-hidden transition-all ${
+                      isSelected
+                        ? "border-tiffany-500 ring-2 ring-tiffany-500/40"
+                        : "border-ink-200 hover:border-ink-300"
+                    } disabled:opacity-50`}
+                  >
+                    <img
+                      src={fullUrl}
+                      alt={sheet.filename}
+                      className="aspect-square object-cover object-center w-full"
+                    />
+                    <span className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-1.5 py-0.5 text-[10px] text-ink-700 truncate text-center">
+                      {sheet.filename}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() =>
+                      setPreview({ url: fullUrl, filename: sheet.filename })
+                    }
+                    className="absolute top-1.5 right-1.5 flex items-center justify-center w-6 h-6 rounded-full bg-black/50 text-white hover:bg-tiffany-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                    title="Preview"
+                  >
+                    {MaximizeIcon}
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -463,6 +518,35 @@ export default function FastImageEditTab({ projectId }: Props) {
               alt="Generated"
               className="max-w-full h-auto"
             />
+          </div>
+        </div>
+      )}
+
+      {/* ===== Preview modal ===== */}
+      {preview && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-8"
+          onClick={() => setPreview(null)}
+        >
+          <div
+            className="relative max-w-[90vw] max-h-[90vh] flex flex-col items-center gap-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={preview.url}
+              alt={preview.filename}
+              className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl"
+            />
+            <span className="text-xs text-white/70 truncate max-w-full">
+              {preview.filename}
+            </span>
+            <button
+              onClick={() => setPreview(null)}
+              className="absolute -top-3 -right-3 flex items-center justify-center w-9 h-9 bg-white text-ink-700 rounded-full shadow-lg hover:bg-ink-200 transition-colors"
+              title="Close (Esc)"
+            >
+              {CloseIcon}
+            </button>
           </div>
         </div>
       )}
