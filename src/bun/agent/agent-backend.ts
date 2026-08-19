@@ -194,7 +194,7 @@ const MOVIE_STUDIO_SYSTEM_PROMPT = [
   "",
   "Return ONLY valid JSON (no markdown fences, no commentary) matching this exact shape:",
   "",
-  '{"characters":[{"slug":"string","name":"string","imagePrompt":"string"}],"places":[{"slug":"string","name":"string","imagePrompt":"string"}],"scenes":[{"slug":"string","description":"string","characterSlugs":["string"],"placeSlug":"string","scriptLines":[{"characterSlug":"string","line":"string"}],"voiceOver":"string","imagePrompt":"string"}]}',
+  '{"characters":[{"slug":"string","name":"string","imagePrompt":"string"}],"places":[{"slug":"string","name":"string","imagePrompt":"string"}],"scenes":[{"slug":"string","duration":number,"description":"string","characterSlugs":["string"],"placeSlug":"string","scriptLines":[{"characterSlug":"string","line":"string"}],"voiceOver":"string","imagePrompt":"string"}]}',
   "",
   "Rules:",
   '- "slug" is a short lowercase hyphenated identifier (e.g. "the-lamb", "sunny-meadow").',
@@ -204,6 +204,7 @@ const MOVIE_STUDIO_SYSTEM_PROMPT = [
   "- A scene's imagePrompt is ONE coherent shot that combines the referenced characters AND the place together.",
   "- Each scene also includes a full script: scriptLines is one entry per spoken line, each with the speaking character's slug and the exact spoken line. Include every single line of dialogue in the scene.",
   "- voiceOver is the narration/voiceover for that scene (use an empty string when there is none).",
+  "- Each scene has a duration in seconds (typically 3-20) matching how long the shot should last.",
   "- Write prompts and dialogue as natural-language English sentences, never comma-separated keyword tags.",
 ].join("\n");
 
@@ -700,6 +701,10 @@ export async function agentBackend({
       const data = extractJsonObject(text);
 
       const toStr = (v: unknown): string => (typeof v === "string" ? v : "");
+      const toNum = (v: unknown): number => {
+        const n = typeof v === "number" ? v : Number(v);
+        return Number.isFinite(n) ? n : 0;
+      };
 
       const characters = (Array.isArray(data.characters) ? data.characters : []).map(
         (c: any) => ({
@@ -718,6 +723,7 @@ export async function agentBackend({
       const scenes = (Array.isArray(data.scenes) ? data.scenes : []).map(
         (s: any) => ({
           slug: toStr(s?.slug),
+          duration: toNum(s?.duration),
           description: toStr(s?.description),
           characterSlugs: Array.isArray(s?.characterSlugs)
             ? s.characterSlugs.map(toStr).filter(Boolean)

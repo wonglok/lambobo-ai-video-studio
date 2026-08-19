@@ -25,6 +25,7 @@ export interface MovieScriptLine {
 
 export interface MovieScene {
   slug: string;
+  duration: number;
   description: string;
   characterSlugs: string[];
   placeSlug: string;
