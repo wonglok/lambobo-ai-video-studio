@@ -200,6 +200,7 @@ const MOVIE_STUDIO_CHARACTERS_PROMPT = [
   "Rules:",
   '- "slug" is a short lowercase hyphenated identifier (e.g. "the-lamb").',
   '- "artStyle" is ONE consistent art style for the entire film (e.g. cinematic photorealistic, 3D animation, hand-painted watercolor, anime).',
+  '- If the idea does not mention an art style, set "artStyle" to "photorealistic render".',
   "- A character's imagePrompt is a standalone text-to-image prompt that begins with the character's name and fully describes their appearance (age, face, build, outfit, distinctive features) together with their cultural background — the era/age, culture, ethnicity, and region the character belongs to — so the generated image is historically and culturally accurate and consistent.",
   "- Apply the same artStyle to every character imagePrompt.",
   "- Write prompts as natural-language English sentences, never comma-separated keyword tags.",
@@ -757,7 +758,7 @@ export async function agentBackend({
       // 2. Places (with art style + characters as context).
       const placeData = await ask(
         MOVIE_STUDIO_PLACES_PROMPT,
-        `Art style: ${artStyle || "cinematic photorealistic"}\n\nIdea: ${idea.trim()}\n\nCharacters:\n${JSON.stringify(characters)}`,
+        `Art style: ${artStyle || "photorealistic render"}\n\nIdea: ${idea.trim()}\n\nCharacters:\n${JSON.stringify(characters)}`,
       );
       const places = (Array.isArray(placeData.places) ? placeData.places : []).map(
         (p: any) => ({
@@ -770,7 +771,7 @@ export async function agentBackend({
       // 3. Scenes (with art style + characters + places as context).
       const sceneData = await ask(
         MOVIE_STUDIO_SCENES_PROMPT,
-        `Art style: ${artStyle || "cinematic photorealistic"}\n\nIdea: ${idea.trim()}\n\nCharacters:\n${JSON.stringify(characters)}\n\nPlaces:\n${JSON.stringify(places)}`,
+        `Art style: ${artStyle || "photorealistic render"}\n\nIdea: ${idea.trim()}\n\nCharacters:\n${JSON.stringify(characters)}\n\nPlaces:\n${JSON.stringify(places)}`,
       );
       const scenes = (Array.isArray(sceneData.scenes) ? sceneData.scenes : []).map(
         (s: any) => ({

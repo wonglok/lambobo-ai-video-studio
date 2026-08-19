@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useMovieStudioStore } from "../../stores/movieStudioStore";
 import { useGenerationStore } from "../../stores/generationStore";
+import { useProjectStore } from "../../stores/projectStore";
 import MlxVlmServerPanel from "./MlxVlmServerPanel";
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 export default function MovieStudioTab({ projectId }: Props) {
   const store = useMovieStudioStore();
   const gen = useGenerationStore();
+  const { openFolder } = useProjectStore();
   const model = gen.agent.model;
 
   // Hydrate the persisted idea for this project.
@@ -88,6 +90,21 @@ export default function MovieStudioTab({ projectId }: Props) {
     </svg>
   );
 
+  const FolderIcon = (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+
   const TableHead = ({
     columns,
   }: {
@@ -120,6 +137,13 @@ export default function MovieStudioTab({ projectId }: Props) {
       <div className="flex items-center gap-2">
         <span className="text-tiffany-600">{ClapperIcon}</span>
         <h2 className="text-base font-semibold text-ink-900">Movie Studio</h2>
+        <button
+          onClick={() => openFolder(projectId, "output")}
+          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-ink-200 text-ink-600 hover:border-ink-300 hover:text-ink-900 transition-colors"
+        >
+          {FolderIcon}
+          Show Output Folder
+        </button>
       </div>
 
       {gen.agent.serverRunning && gen.agent.serverOnline ? (
