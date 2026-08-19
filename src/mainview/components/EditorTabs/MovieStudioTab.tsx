@@ -237,6 +237,11 @@ export default function MovieStudioTab({ projectId }: Props) {
                     columns={[
                       { key: "slug", label: "Slug", className: "w-24" },
                       {
+                        key: "duration",
+                        label: "Duration",
+                        className: "w-16",
+                      },
+                      {
                         key: "description",
                         label: "Description",
                         className: "w-44",
@@ -261,6 +266,9 @@ export default function MovieStudioTab({ projectId }: Props) {
                       <tr key={s.slug} className="border-b border-ink-200">
                         <td className="border border-ink-200 px-2 py-1.5 align-top font-mono text-[11px] text-tiffany-700">
                           {s.slug}
+                        </td>
+                        <td className="border border-ink-200 px-2 py-1.5 align-top text-ink-800 tabular-nums whitespace-nowrap">
+                          {s.duration > 0 ? `${s.duration}s` : "—"}
                         </td>
                         <td className="border border-ink-200 px-2 py-1.5 align-top text-ink-800">
                           {s.description}
