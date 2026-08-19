@@ -4,6 +4,30 @@ const API_BASE = `http://localhost:${(window as any).PORT}`;
 
 let movieStudioAbortController: AbortController | null = null;
 
+/** Play three short "ding" sounds to signal a finished generation task. */
+function playDing3x() {
+  try {
+    const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+    const ctx = new Ctx();
+    for (let i = 0; i < 3; i++) {
+      const t = ctx.currentTime + i * 0.35;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.32);
+    }
+  } catch {
+    // silently ignore if audio is unavailable
+  }
+}
+
 async function readSSEStream(
   response: Response,
   onEvent: (event: string, data: any) => void,
@@ -269,6 +293,7 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
       const data = (await res.json()) as MovieStudioResult;
       set({ result: data, generating: false });
       persistMovieStudioState();
+      playDing3x();
     } catch (e) {
       if ((e as any)?.name !== "AbortError") {
         set({ error: String(e), generating: false });
@@ -346,6 +371,7 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
             break;
           case "complete":
             set({ renderStatus: "Render complete" });
+            playDing3x();
             break;
         }
       });
@@ -414,6 +440,7 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
             break;
           case "complete":
             set({ assetStatus: "Assets rendered" });
+            playDing3x();
             break;
         }
       });
@@ -515,6 +542,7 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
             break;
           case "complete":
             set({ videoStatus: "Videos rendered" });
+            playDing3x();
             break;
         }
       });
@@ -618,6 +646,7 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
             break;
           case "complete":
             set({ sceneImageStatus: "Scene images rendered" });
+            playDing3x();
             break;
         }
       });
