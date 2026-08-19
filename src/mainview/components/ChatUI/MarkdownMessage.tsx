@@ -127,20 +127,7 @@ function getDurationIndex(node: HastNode | undefined): number {
   );
 }
 
-function DurationInput({ initialValue }: { initialValue: string }) {
-  const [value, setValue] = useState(initialValue);
-  return (
-    <input
-      type="text"
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-      className="w-14 rounded-lg border border-ink-200 bg-white px-1.5 py-0.5 text-xs text-ink-900 focus:outline-none focus:border-tiffany-500 focus:ring-2 focus:ring-tiffany-500/30"
-    />
-  );
-}
-
 function StoryTable({ node }: { node?: HastNode }) {
-  const durationIdx = getDurationIndex(node);
   const headers = getHeaderCells(node);
   const rows = getBodyRows(node);
 
@@ -167,11 +154,7 @@ function StoryTable({ node }: { node?: HastNode }) {
                   key={ci}
                   className="border border-ink-200 px-2 py-1 align-top text-ink-800"
                 >
-                  {ci === durationIdx ? (
-                    <DurationInput initialValue={hastText(cell).trim()} />
-                  ) : (
-                    hastText(cell)
-                  )}
+                  {hastText(cell)}
                 </td>
               ))}
             </tr>
@@ -195,7 +178,7 @@ const components: Components = {
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="text-ink-600 underline hover:text-ink-800"
+      className="text-tiffany-700 underline hover:text-tiffany-800"
     >
       {children}
     </a>
@@ -230,14 +213,10 @@ const components: Components = {
     </h4>
   ),
   h5: ({ children }) => (
-    <h5 className="mb-0.5 mt-1 text-xs font-medium text-ink-700">
-      {children}
-    </h5>
+    <h5 className="mb-0.5 mt-1 text-xs font-medium text-ink-700">{children}</h5>
   ),
   h6: ({ children }) => (
-    <h6 className="mb-0.5 mt-1 text-xs font-medium text-ink-700">
-      {children}
-    </h6>
+    <h6 className="mb-0.5 mt-1 text-xs font-medium text-ink-700">{children}</h6>
   ),
   table: ({ node, children }) => {
     if (getDurationIndex(node) >= 0) {
@@ -250,9 +229,7 @@ const components: Components = {
     );
   },
   thead: ({ children }) => <thead className="bg-ink-50">{children}</thead>,
-  tr: ({ children }) => (
-    <tr className="border-b border-ink-200">{children}</tr>
-  ),
+  tr: ({ children }) => <tr className="border-b border-ink-200">{children}</tr>,
   th: ({ children }) => (
     <th className="whitespace-nowrap border border-ink-200 px-2 py-1 text-left font-semibold text-ink-700">
       {children}
