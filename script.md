@@ -30,3 +30,43 @@ uv run mlx_audio.tts.generate \
 
 
 ```
+
+#
+
+# Image editing
+
+## 4B OK FOR COMMERCAIL USE
+
+```bash
+
+mlxgen download --model AbstractFramework/flux.2-klein-4b-8bit
+
+mlxgen generate \
+  --output result.png \
+  --model AbstractFramework/flux.2-klein-4b-8bit \
+  --image input.jpeg \
+  --image lamb2048.png \
+  --prompt "The lamb and The ninja standing next to each other. taking a photo in a photo shooting studio." \
+  --mlx-cache-limit-gb 20 \
+  --steps 5 --seed 42 --width 1024 --height 1024
+
+```
+
+#
+
+#
+
+# Upscale to 2048
+
+```bash
+
+mlxgen download --model AbstractFramework/seedvr2-3b-8bit
+
+mlxgen upscale \
+  --model AbstractFramework/seedvr2-3b-8bit \
+  --image-path cafe.png \
+  --resolution 2048 \
+  --mlx-cache-limit-gb 20 \
+  --output upscale_result_2048.png
+
+```

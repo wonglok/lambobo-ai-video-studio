@@ -14,7 +14,6 @@ export interface PersistedTextToImageState {
     | "720p"
     | "1080p"
     | "2048p";
-  quality: "4bit" | "8bit";
   steps: number;
 }
 

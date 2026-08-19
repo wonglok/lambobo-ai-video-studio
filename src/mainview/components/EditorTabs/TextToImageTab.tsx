@@ -272,15 +272,12 @@ export default function TextToImageTab({ projectId }: Props) {
             Install mlx-gen
           </button>
           <button
-            onClick={() => store.downloadTextToImageModel("8bit")}
+            onClick={() => store.downloadTextToImageModel()}
             disabled={store.textToImage.downloading}
             className="flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-xl border transition-all bg-white border-ink-200 text-ink-600 hover:border-ink-300 disabled:opacity-50"
           >
-            {store.textToImage.downloading &&
-            store.textToImage.downloadingQuality === "8bit"
-              ? SpinnerIcon
-              : DownloadIcon}
-            Download z-image Model (8-bit)
+            {store.textToImage.downloading ? SpinnerIcon : DownloadIcon}
+            Download z-image Model
           </button>
         </div>
 
@@ -292,8 +289,8 @@ export default function TextToImageTab({ projectId }: Props) {
           )}
           {renderStatus(
             store.textToImage.zModelDownloaded,
-            "z-image 8-bit model downloaded",
-            "z-image 8-bit model not downloaded",
+            "z-image model downloaded",
+            "z-image model not downloaded",
           )}
         </div>
 
@@ -405,34 +402,6 @@ export default function TextToImageTab({ projectId }: Props) {
               } disabled:opacity-50`}
             >
               {s} steps
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ===== Model Quality ===== */}
-      <div>
-        <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
-          Model Quality
-        </label>
-        <div className="flex flex-wrap gap-2">
-          {(
-            [
-              { label: "Faster · Low Quality", value: "4bit" },
-              { label: "Slower · High Quality", value: "8bit" },
-            ] as const
-          ).map((q) => (
-            <button
-              key={q.value}
-              onClick={() => store.setTextToImageQuality(q.value)}
-              disabled={busy}
-              className={`px-4 py-1.5 text-xs font-medium rounded-xl border transition-all ${
-                store.textToImage.quality === q.value
-                  ? "bg-ink-100 border-ink-300 text-ink-800"
-                  : "bg-white border-ink-200 text-ink-600 hover:border-ink-300"
-              } disabled:opacity-50`}
-            >
-              {q.label}
             </button>
           ))}
         </div>

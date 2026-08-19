@@ -43,7 +43,6 @@ const CHARACTERS_FILE = join(JSON_DIR, "characters.json");
 
 const MLXGEN_MODEL = "AbstractFramework/qwen-image-edit-2511-8bit";
 const Z_IMAGE_MODEL = "AbstractFramework/z-image-turbo-8bit";
-const Z_IMAGE_MODEL4Bit = "AbstractFramework/z-image-turbo-4bit";
 const MLX_VLM_MODEL = "mlx-community/gemma-4-e2b-it-4bit";
 const H3_MODEL = "appautomaton/minimax-h3-base-8bit-mlx";
 
@@ -1800,7 +1799,6 @@ export async function renderMediaRoutes({
       installed: isMlxgenInstalled(),
       modelDownloaded: isModelDownloaded(),
       zModelDownloaded: isModelDownloaded(Z_IMAGE_MODEL),
-      zModel4BitDownloaded: isModelDownloaded(Z_IMAGE_MODEL4Bit),
     });
   });
 
@@ -1920,7 +1918,7 @@ export async function renderMediaRoutes({
 
   // ========== MLX-Gen: Download Z-Image Model ==========
 
-  app.post("/api/mlxgen/download-z-model", async (req, res) => {
+  app.post("/api/mlxgen/download-z-model", async (_req, res) => {
     res.writeHead(200, {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
@@ -1932,8 +1930,7 @@ export async function renderMediaRoutes({
       res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
 
-    const { quality } = req.body || {};
-    const model = quality === "4bit" ? Z_IMAGE_MODEL4Bit : Z_IMAGE_MODEL;
+    const model = Z_IMAGE_MODEL;
 
     try {
       const mlxgen = await getMlxgenBin();
@@ -2385,7 +2382,7 @@ export async function renderMediaRoutes({
   // ========== MLX-Gen: Generate (Text-to-Image) ==========
 
   app.post("/api/mlxgen/text-to-image", async (req, res) => {
-    const { prompt, projectId, width, height, steps, quality } = req.body || {};
+    const { prompt, projectId, width, height, steps } = req.body || {};
 
     if (!prompt) {
       res.status(400).json({ error: "Prompt is required" });
@@ -2428,7 +2425,7 @@ export async function renderMediaRoutes({
       // z-image-turbo is a few-step distillation model; default to 4 steps.
       const resolvedSteps = Number(steps) > 0 ? Number(steps) : 6;
 
-      const model = quality === "4bit" ? Z_IMAGE_MODEL4Bit : Z_IMAGE_MODEL;
+      const model = Z_IMAGE_MODEL;
 
       const args: string[] = [
         mlxgen,

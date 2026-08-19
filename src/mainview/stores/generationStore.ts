@@ -535,26 +535,22 @@ const TEXT_TO_IMAGE_PRESETS: Record<
     aspectRatio: AspectRatio;
     resolution: Resolution;
     steps: number;
-    quality: ZImageQuality;
   }
 > = {
   prototype: {
     aspectRatio: "1:1",
     resolution: "320p",
     steps: 4,
-    quality: "8bit",
   },
   medium: {
     aspectRatio: "1:1",
     resolution: "720p",
     steps: 7,
-    quality: "8bit",
   },
   optimal: {
     aspectRatio: "1:1",
     resolution: "1080p",
     steps: 6,
-    quality: "8bit",
   },
 };
 
@@ -562,13 +558,11 @@ const initialTextToImage: TextToImageState = {
   prompt: "",
   aspectRatio: "1:1",
   resolution: "480p",
-  quality: "8bit",
   steps: 4,
   installing: false,
   installingLogs: [],
   installingError: null,
   downloading: false,
-  downloadingQuality: null,
   downloadingLogs: [],
   downloadingError: null,
   generating: false,
@@ -577,7 +571,6 @@ const initialTextToImage: TextToImageState = {
   logs: [],
   mlxgenInstalled: null,
   zModelDownloaded: null,
-  zModel4BitDownloaded: null,
 };
 
 const initialAgent: AgentState = {
@@ -603,7 +596,6 @@ function toPersistedTextToImageState(
     prompt: t.prompt,
     aspectRatio: t.aspectRatio,
     resolution: t.resolution,
-    quality: t.quality,
     steps: t.steps,
   };
 }
@@ -1695,7 +1687,6 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
         prompt: stored.prompt ?? s.textToImage.prompt,
         aspectRatio: stored.aspectRatio ?? s.textToImage.aspectRatio,
         resolution: stored.resolution ?? s.textToImage.resolution,
-        quality: stored.quality ?? s.textToImage.quality,
         steps: stored.steps ?? s.textToImage.steps,
       },
     }));
@@ -1723,11 +1714,6 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     persistTextToImageState();
   },
 
-  setTextToImageQuality: (quality) => {
-    set((s) => ({ textToImage: { ...s.textToImage, quality } }));
-    persistTextToImageState();
-  },
-
   applyTextToImagePreset: (preset) => {
     const p = TEXT_TO_IMAGE_PRESETS[preset];
     set((s) => ({ textToImage: { ...s.textToImage, ...p } }));
@@ -1749,7 +1735,6 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
           ...s.textToImage,
           mlxgenInstalled: Boolean(data.installed),
           zModelDownloaded: Boolean(data.zModelDownloaded),
-          zModel4BitDownloaded: Boolean(data.zModel4BitDownloaded),
         },
       }));
     } catch {
@@ -1828,14 +1813,13 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     }
   },
 
-  downloadTextToImageModel: async (quality) => {
+  downloadTextToImageModel: async () => {
     if (get().textToImage.downloading) return;
 
     set((s) => ({
       textToImage: {
         ...s.textToImage,
         downloading: true,
-        downloadingQuality: quality,
         downloadingError: null,
         downloadingLogs: [],
       },
@@ -1844,8 +1828,6 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     try {
       const res = await fetch(`${API_BASE}/api/mlxgen/download-z-model`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quality }),
       });
 
       if (!res.ok) {
@@ -1854,7 +1836,6 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
           textToImage: {
             ...s.textToImage,
             downloading: false,
-            downloadingQuality: null,
             downloadingError: err,
           },
         }));
@@ -1879,7 +1860,6 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
               textToImage: {
                 ...s.textToImage,
                 downloading: false,
-                downloadingQuality: null,
               },
             }));
             get().checkTextToImageStatus();
@@ -1889,7 +1869,6 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
               textToImage: {
                 ...s.textToImage,
                 downloading: false,
-                downloadingQuality: null,
                 downloadingError: data.error || "Download failed",
               },
             }));
@@ -1901,7 +1880,6 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
         textToImage: {
           ...s.textToImage,
           downloading: false,
-          downloadingQuality: null,
           downloadingError: String(e),
         },
       }));
@@ -1941,7 +1919,6 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
           width,
           height,
           steps: textToImage.steps,
-          quality: textToImage.quality,
         }),
         signal,
       });
