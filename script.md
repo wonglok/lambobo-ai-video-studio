@@ -68,3 +68,22 @@ mlxgen upscale \
   --output upscale_result_2048.png
 
 ```
+
+# Reference to video:
+
+```bash
+
+ mlxgen download --model ByteDance/Bernini-R-1.3B-Diffusers
+
+
+mlxgen generate \
+  --model ByteDance/Bernini-R-1.3B-Diffusers \
+  --reference-image input.jpeg \
+  --prompt "image0 look at a lady walking in a fashion show catwalk." \
+  --width 480 --height 480 --frames 121 --fps 24 \
+  --steps 20 --max-condition-size 256 \
+  --seed 42 --mlx-cache-limit-gb 20 \
+  --output referenced.mp4
+
+
+```
