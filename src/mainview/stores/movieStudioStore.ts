@@ -190,8 +190,8 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
 
   setIdea: (idea) => {
     set({ idea, error: null });
-    const { projectId } = get();
-    if (projectId) void saveMovieStudioState(projectId, { idea });
+    const { projectId, result } = get();
+    if (projectId) void saveMovieStudioState(projectId, { idea, result });
   },
 
   hydrate: async (projectId) => {
@@ -208,7 +208,7 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
 
     const stored = await loadMovieStudioState(projectId);
     if (!stored) return;
-    set({ idea: stored.idea ?? "" });
+    set({ idea: stored.idea ?? "", result: stored.result ?? null });
   },
 
   generate: async (projectId, model) => {
@@ -229,6 +229,7 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
       if (!res.ok) throw new Error(await res.text());
       const data = (await res.json()) as MovieStudioResult;
       set({ result: data, generating: false });
+      void saveMovieStudioState(projectId, { idea: get().idea, result: data });
     } catch (e) {
       if ((e as any)?.name !== "AbortError") {
         set({ error: String(e), generating: false });

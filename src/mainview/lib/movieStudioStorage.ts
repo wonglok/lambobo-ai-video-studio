@@ -1,10 +1,12 @@
 import localforage from "localforage";
+import type { MovieStudioResult } from "../stores/movieStudioStore";
 
-// Persisted "UI state" for the Movie Studio tab: the editable idea box.
-// Transient state (generating, result, error) is intentionally not persisted —
-// the generated tables are already written to disk under studio/:projectId/data.
+// Persisted "UI state" for the Movie Studio tab: the idea box plus the latest
+// generated production bible (characters/places/scenes) so it can be autoloaded.
+// Transient state (generating, error, render logs) is intentionally not persisted.
 export interface PersistedMovieStudioState {
   idea: string;
+  result: MovieStudioResult | null;
 }
 
 const store = localforage.createInstance({
