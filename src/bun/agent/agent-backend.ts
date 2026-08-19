@@ -198,6 +198,7 @@ const MOVIE_STUDIO_SYSTEM_PROMPT = [
   "",
   "Rules:",
   '- "slug" is a short lowercase hyphenated identifier (e.g. "the-lamb", "sunny-meadow").',
+  "- Establish ONE consistent art style for the entire idea (e.g. cinematic photorealistic, 3D animation, hand-painted watercolor, anime) and apply that exact same style to every character imagePrompt, place imagePrompt, and scene imagePrompt so all generated images look like they belong to the same film.",
   "- A character's imagePrompt is a standalone text-to-image prompt that begins with the character's name and fully describes their appearance (age, face, build, outfit, distinctive features) together with their cultural background — the era/age, culture, ethnicity, and region the character belongs to — so the generated image is historically and culturally accurate and consistent.",
   "- A place's imagePrompt is a standalone text-to-image prompt that fully describes the location/environment (time of day, lighting, atmosphere, visual style).",
   "- Each scene references the characters and the place involved via their slugs (characterSlugs is a list; placeSlug is a single slug).",

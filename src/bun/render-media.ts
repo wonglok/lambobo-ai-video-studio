@@ -1242,10 +1242,15 @@ export async function renderMediaRoutes({
         .trim()
         .replace(/[^a-zA-Z0-9_-]/g, "_");
 
-    const buildVideoPrompt = (s: any): string => {
+    const buildVideoPrompt = (s: any, characterList: any[]): string => {
+      const nameOf = (slug: unknown): string =>
+        characterList.find((c) => String(c?.slug) === String(slug))?.name ||
+        String(slug || "");
       const lines = Array.isArray(s.scriptLines)
         ? s.scriptLines
-            .map((l: any) => `${l?.characterSlug || ""}: "${l?.line || ""}"`)
+            .map(
+              (l: any) => `${nameOf(l?.characterSlug)} says: "${l?.line || ""}"`,
+            )
             .join(" ")
         : "";
       const vo = s.voiceOver ? ` Voiceover: "${s.voiceOver}"` : "";
@@ -1372,9 +1377,9 @@ export async function renderMediaRoutes({
           "--seed",
           "42",
           "--width",
-          "1024",
+          "448",
           "--height",
-          "1024",
+          "796",
         );
         const fluxResult = await runStep(fluxArgs, {
           label: "Scene",
@@ -1394,7 +1399,7 @@ export async function renderMediaRoutes({
         const videoPath = join(outputDir, videoFile);
         const frames = Math.max(
           1,
-          Math.round((Number(sc?.duration) || 5) * 24),
+          Math.round((Number(sc?.duration) + 3) * 24),
         );
         const videoResult = await runStep(
           [
@@ -1405,14 +1410,14 @@ export async function renderMediaRoutes({
             "--model",
             "dgrauet/ltx-2.3-mlx-q8",
             "--prompt",
-            buildVideoPrompt(sc),
+            buildVideoPrompt(sc, characters),
             "--distilled",
             "--frames",
             String(frames),
             "--width",
             "320",
             "--height",
-            "320",
+            "569",
             "--frame-rate",
             "24",
             "--image",
