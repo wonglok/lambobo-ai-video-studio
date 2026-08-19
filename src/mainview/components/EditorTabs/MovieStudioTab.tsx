@@ -130,7 +130,7 @@ export default function MovieStudioTab({ projectId }: Props) {
         </div>
       ) : (
         <button
-          onClick={() => store.generate(model)}
+          onClick={() => store.generate(projectId, model)}
           disabled={!store.idea.trim()}
           className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-tiffany-500 hover:bg-tiffany-600 active:bg-tiffany-700 disabled:bg-ink-200 disabled:text-ink-500 text-ink-950 text-sm font-semibold rounded-2xl transition-all duration-150 shadow-sm hover:shadow-md disabled:shadow-none"
         >

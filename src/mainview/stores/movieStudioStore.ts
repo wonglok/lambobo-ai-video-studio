@@ -34,7 +34,7 @@ interface MovieStudioStore {
   result: MovieStudioResult | null;
   error: string | null;
   setIdea: (v: string) => void;
-  generate: (model: string) => Promise<void>;
+  generate: (projectId: string, model: string) => Promise<void>;
   reset: () => void;
 }
 
@@ -46,7 +46,7 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
 
   setIdea: (idea) => set({ idea, error: null }),
 
-  generate: async (model) => {
+  generate: async (projectId, model) => {
     const idea = get().idea.trim();
     if (!idea || get().generating) return;
 
@@ -56,7 +56,7 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
       const res = await fetch(`${API_BASE}/api/movie-studio/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idea, model }),
+        body: JSON.stringify({ idea, model, projectId }),
       });
       if (!res.ok) throw new Error(await res.text());
       const data = (await res.json()) as MovieStudioResult;

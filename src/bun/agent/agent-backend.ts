@@ -16,6 +16,7 @@ import {
   walkFiles,
   classifyFile,
   ensureDir,
+  movieStudioDataDir,
 } from "./workspace";
 import { TOOLS, toolDefinitions, runTool } from "./tools";
 import story from "./prompt/story-writer.txt" with { type: "txt" };
@@ -664,9 +665,16 @@ export async function agentBackend({
   // ===== Movie Studio: idea → characters / places / scenes =====
 
   app.post("/api/movie-studio/generate", async (req, res) => {
-    const { idea, model } = req.body || {};
+    const { idea, model, projectId } = req.body || {};
     if (typeof idea !== "string" || !idea.trim()) {
       res.status(400).json({ error: "Idea is required" });
+      return;
+    }
+    if (
+      typeof projectId !== "string" ||
+      !/^[a-zA-Z0-9_-]{1,64}$/.test(projectId)
+    ) {
+      res.status(400).json({ error: "Invalid project ID" });
       return;
     }
     const resolvedModel =
@@ -715,6 +723,25 @@ export async function agentBackend({
           placeSlug: toStr(s?.placeSlug),
           imagePrompt: toStr(s?.imagePrompt),
         }),
+      );
+
+      // Persist the generated production bible to studio/:projectId/data/*.json
+      const dataDir = movieStudioDataDir(projectId);
+      ensureDir(dataDir);
+      writeFileSync(
+        join(dataDir, "characters.json"),
+        JSON.stringify(characters, null, 2),
+        "utf-8",
+      );
+      writeFileSync(
+        join(dataDir, "places.json"),
+        JSON.stringify(places, null, 2),
+        "utf-8",
+      );
+      writeFileSync(
+        join(dataDir, "scenes.json"),
+        JSON.stringify(scenes, null, 2),
+        "utf-8",
       );
 
       res.json({ characters, places, scenes });

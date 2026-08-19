@@ -16,6 +16,7 @@ export const UPLOAD_DIR = join(APP_DATA_DIR, "upload");
 export const AGENT_UPLOAD_DIR = join(APP_DATA_DIR, "agent-upload");
 export const MEMORIES_DIR_NAME = "memories";
 export const PROJECTS_FILE = join(JSON_DIR, "projects.json");
+export const STUDIO_DIR = join(APP_DATA_DIR, "studio");
 
 export function ensureDir(dir: string): void {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
@@ -23,6 +24,10 @@ export function ensureDir(dir: string): void {
 
 export function workspaceDir(projectId: string): string {
   return join(AGENTS_DIR, projectId);
+}
+
+export function movieStudioDataDir(projectId: string): string {
+  return join(STUDIO_DIR, projectId, "data");
 }
 
 export function memoriesDir(projectId: string): string {
