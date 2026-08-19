@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useMovieStudioStore } from "../../stores/movieStudioStore";
 import { useGenerationStore } from "../../stores/generationStore";
+import MlxVlmServerPanel from "./MlxVlmServerPanel";
 
 interface Props {
   projectId: string;
@@ -237,8 +238,16 @@ export default function MovieStudioTab({ projectId }: Props) {
                   <TableHead
                     columns={[
                       { key: "slug", label: "Slug", className: "w-24" },
-                      { key: "description", label: "Description", className: "w-48" },
-                      { key: "characters", label: "Characters", className: "w-32" },
+                      {
+                        key: "description",
+                        label: "Description",
+                        className: "w-48",
+                      },
+                      {
+                        key: "characters",
+                        label: "Characters",
+                        className: "w-32",
+                      },
                       { key: "place", label: "Place", className: "w-28" },
                       { key: "prompt", label: "Image Prompt" },
                     ]}
@@ -270,6 +279,15 @@ export default function MovieStudioTab({ projectId }: Props) {
           </div>
         </>
       )}
+
+      <div className="flex items-center gap-2">
+        <span className="text-tiffany-600">{SparkleIcon}</span>
+        <h2 className="text-base font-semibold text-ink-900">
+          LLM Server Config
+        </h2>
+      </div>
+
+      <MlxVlmServerPanel />
     </div>
   );
 }

@@ -29,9 +29,7 @@ export default function StoryWriterTab({ projectId }: Props) {
     <div className="flex flex-col gap-7">
       <div className="flex items-center gap-2">
         <span className="text-tiffany-600">{StoryWriterIcon}</span>
-        <h2 className="text-base font-semibold text-ink-900">
-          Story Writer
-        </h2>
+        <h2 className="text-base font-semibold text-ink-900">Story Writer</h2>
       </div>
 
       {store.agent.serverRunning && store.agent.serverOnline ? null : (
