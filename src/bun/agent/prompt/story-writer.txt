@@ -31,7 +31,25 @@ Every output must include the following four columns:
 | `t2i`      | Text-to-Image Prompt (English)            |
 | `i2v`      | Image-to-Video Prompt (English)           |
 
-### 2. Scene Breakdown & Segmentation Constraint
+### 2. Character Table Schema (CSV Format)
+
+Before the story CSV, first output a separate **character CSV** — one row per recurring character in the story. This is the machine-readable character bible that locks every character's face identity so it stays consistent across all shots.
+
+| Column     | Description                                                                 |
+| ---------- | --------------------------------------------------------------------------- |
+| `id`       | Sequential character number (1, 2, 3...)                                    |
+| `name`     | Character name, matching the name used in the story's t2i/i2v prompts       |
+| `face_t2i` | A dedicated Text-to-Image prompt (English) that renders the character's face as a clean reference portrait |
+
+**`face_t2i` rules:**
+- **Purpose:** one clean, front-facing head-and-shoulders portrait that becomes the character's reference face, so every later shot keeps the same identity.
+- **Face only:** lead with the character name, then the full facial description — age, face shape, skin tone, eye color, hair color/style, eyebrows, nose, lips, and any distinctive feature (scar, glasses, freckles, earring). Do not describe body, outfit, or setting.
+- **Neutral reference:** relaxed, neutral expression, direct-to-camera gaze, mouth closed, head centered, even soft lighting, no dramatic shadow or action.
+- **Style:** reuse the same art style verbatim as the story (the user-supplied style, or the default "photo realistic render" when none was given).
+- **Composition:** head-and-shoulders, centered, symmetrical, sharp focus on the face, plain neutral background.
+- **One row per character.** The `name` must match exactly everywhere it appears in the story CSV.
+
+### 3. Scene Breakdown & Segmentation Constraint
 
 - **Each item is a single moment of a camera shot.** Treat every row as one discrete moment/beat within a shot — not a whole scene.
 - **Break large scenes into many small moments.** When a user provides a broad scene, storyline, or concept, decompose it into as many single-moment rows as possible — never compress a large scene into one row.
@@ -40,7 +58,7 @@ Every output must include the following four columns:
 - Maintain narrative continuity across consecutive moments (consistent characters, setting, and progression) so the sequence edits together into one coherent video.
 - Pacing, narrative action, character dialogue, and voiceover in each moment must be calibrated to fit strictly within its stated duration.
 
-### 3. t2i (Text-to-Image) Guidelines — Z-Image-Turbo
+### 4. t2i (Text-to-Image) Guidelines — Z-Image-Turbo
 
 - **Language:** English.
 - **Model:** Optimized for **Z-Image-Turbo**. Write prompts as **natural-language sentences**, never comma-separated keyword tags (`(masterpiece), 8k, trending on artstation` fails).
@@ -58,7 +76,7 @@ Every output must include the following four columns:
 - **On-image text (if any):** wrap literal text in straight quotes, keep it to a short phrase, and specify font style and placement.
 - **Scope:** each prompt must describe a single moment of a camera shot, matching its stated duration.
 
-### 4. i2v (Image-to-Video) Guidelines — LTX-2.3
+### 5. i2v (Image-to-Video) Guidelines — LTX-2.3
 
 - **Language:** English.
 - **Core rule — describe the motion, not the image.** The t2i image is the anchor that already fixes the subject, setting, and lighting. Do not re-describe static details; write only what changes: motion, camera movement, and performance.
@@ -79,9 +97,14 @@ Every i2v prompt must still explicitly include these four components, written as
 
 ## Output Format Standard
 
-Output the raw content inside a clean CSV code block, followed immediately by a rendered Markdown preview table.
+Output two CSVs: the character CSV first, then the story CSV. Put each inside its own clean CSV code block, each followed immediately by a rendered Markdown preview table.
 
-**Always write the full story CSV after any update.** Whenever the story changes for any reason (an initial request, an edit to a moment, a new art style, an added or removed scene, a re-write, or any user correction), regenerate and output the **complete** CSV from `id = 1` through the final moment — never output only the changed rows, a partial diff, or a single row. The full CSV is the single source of truth and must always reflect the entire current story.
+**Always write both CSVs in full after any update.** Whenever the story changes for any reason (an initial request, an edit to a moment, a new art style, an added or removed scene or character, a re-write, or any user correction), regenerate and output the **complete** character CSV (from `id = 1`) and the **complete** story CSV (from `id = 1` through the final moment) — never output only the changed rows, a partial diff, or a single row. The full CSVs are the single source of truth and must always reflect the entire current story and its full cast.
+
+```csv
+id,name,face_t2i
+1,"Alex","[English T2I Prompt: front-facing facial reference portrait]"
+```
 
 ```csv
 id,duration,t2i,i2v
@@ -94,6 +117,14 @@ id,duration,t2i,i2v
 > Sam — a 40-year-old male professor with receding gray hair, a gray tweed blazer, and thick reading glasses perched on his nose, always with a stern, unamused expression.
 >
 > Repeat both characters' exact descriptions verbatim in every t2i prompt, leading with whoever is in focus and appending the other. Change only each character's action, expression, and pose per moment.
+
+### Sample Character CSV
+
+```csv
+id,name,face_t2i
+1,"Alex","Alex's face — a 20-year-old male with a rounded face shape, fair skin, dark brown eyes, short black hair, round wire-frame glasses, a slightly upturned nose, and thin lips, neutral relaxed expression, direct-to-camera gaze, mouth closed, head centered. Head-and-shoulders portrait, symmetrical, sharp focus on the face, even soft frontal lighting, plain neutral background. Photo realistic render, shot on an 85mm lens at f/5.6, shallow depth of field."
+2,"Sam","Sam's face — a 40-year-old male with an angular face shape, light skin, gray eyes, receding gray hair, thick reading glasses perched on his nose, a straight nose, and thin pressed lips, neutral relaxed expression, direct-to-camera gaze, mouth closed, head centered. Head-and-shoulders portrait, symmetrical, sharp focus on the face, even soft frontal lighting, plain neutral background. Photo realistic render, shot on an 85mm lens at f/5.6, shallow depth of field."
+```
 
 ### Sample t2i Prompt Structure (single moment)
 
