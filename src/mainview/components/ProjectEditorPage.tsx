@@ -4,6 +4,7 @@ import { useProjectStore, type Project } from "../stores/projectStore";
 import { useGenerationStore } from "../stores/generationStore";
 import ExtendVideoTab from "./EditorTabs/ExtendVideoTab";
 import GenerateImageTab from "./EditorTabs/GenerateImageTab";
+import FastImageEditTab from "./EditorTabs/FastImageEditTab";
 import GenerateVideoTab from "./EditorTabs/GenerateVideoTab";
 import AgentTab from "./EditorTabs/AgentTab";
 import StoryWriterTab from "./EditorTabs/StoryWriterTab";
@@ -121,6 +122,21 @@ export default function ProjectEditorPage() {
       <path d="M2 12h20" />
       <path d="M11 8v3" />
       <path d="M11 13v3" />
+    </svg>
+  );
+
+  const FastImageEditIcon = (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
     </svg>
   );
 
@@ -416,6 +432,17 @@ export default function ProjectEditorPage() {
               Edit Image
             </button>
             <button
+              onClick={() => store.setActiveTab("fastImageEdit")}
+              className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-2xl transition-all ${
+                store.activeTab === "fastImageEdit"
+                  ? "bg-tiffany-500/10 text-tiffany-700 shadow-glow-sm"
+                  : "text-ink-600 hover:bg-ink-100 hover:text-ink-800"
+              }`}
+            >
+              {FastImageEditIcon}
+              Fast Image Edit
+            </button>
+            <button
               onClick={() => store.setActiveTab("agent")}
               className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-2xl transition-all ${
                 store.activeTab === "agent"
@@ -541,6 +568,11 @@ export default function ProjectEditorPage() {
 
           {/* ========== IMAGE GENERATION PANEL ========== */}
           {store.activeTab === "image" && <GenerateImageTab projectId={id!} />}
+
+          {/* ========== FAST IMAGE EDIT PANEL ========== */}
+          {store.activeTab === "fastImageEdit" && (
+            <FastImageEditTab projectId={id!} />
+          )}
 
           {/* ========== VIDEO GENERATION PANEL ========== */}
           {store.activeTab === "video" && <GenerateVideoTab projectId={id!} />}
