@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useProjectStore, type Project } from "../stores/projectStore";
 import { useGenerationStore } from "../stores/generationStore";
 import ExtendVideoTab from "./EditorTabs/ExtendVideoTab";
-import GenerateImageTab from "./EditorTabs/GenerateImageTab";
 import FastImageEditTab from "./EditorTabs/FastImageEditTab";
 import GenerateVideoTab from "./EditorTabs/GenerateVideoTab";
 import AgentTab from "./EditorTabs/AgentTab";
@@ -103,25 +102,6 @@ export default function ProjectEditorPage() {
       <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
       <line x1="5" y1="12" x2="11" y2="12" />
       <line x1="8" y1="9" x2="8" y2="15" />
-    </svg>
-  );
-
-  const ImageEditIcon = (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M11 19H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5" />
-      <path d="M13 5h7a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-7" />
-      <path d="M2 12h20" />
-      <path d="M11 8v3" />
-      <path d="M11 13v3" />
     </svg>
   );
 
@@ -421,17 +401,6 @@ export default function ProjectEditorPage() {
               Extend Video
             </button>
             <button
-              onClick={() => store.setActiveTab("image")}
-              className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-2xl transition-all ${
-                store.activeTab === "image"
-                  ? "bg-tiffany-500/10 text-tiffany-700 shadow-glow-sm"
-                  : "text-ink-600 hover:bg-ink-100 hover:text-ink-800"
-              }`}
-            >
-              {ImageEditIcon}
-              Edit Image
-            </button>
-            <button
               onClick={() => store.setActiveTab("fastImageEdit")}
               className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-2xl transition-all ${
                 store.activeTab === "fastImageEdit"
@@ -565,9 +534,6 @@ export default function ProjectEditorPage() {
               <ServerStatusLight />
             </button>
           </div>
-
-          {/* ========== IMAGE GENERATION PANEL ========== */}
-          {store.activeTab === "image" && <GenerateImageTab projectId={id!} />}
 
           {/* ========== FAST IMAGE EDIT PANEL ========== */}
           {store.activeTab === "fastImageEdit" && (

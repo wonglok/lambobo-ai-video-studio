@@ -12,7 +12,6 @@ const API_BASE = `http://localhost:${(window as any).PORT}`;
 // ========== Types ==========
 
 export type GenerationTab =
-  | "image"
   | "fastImageEdit"
   | "video"
   | "extend"
@@ -93,24 +92,6 @@ interface ExtendState {
   logs: string[];
 }
 
-interface ImageEditState {
-  prompt: string;
-  characterImage: ProjectImage | null;
-  outputSize: number;
-  installing: boolean;
-  installingLogs: string[];
-  installingError: string | null;
-  downloading: boolean;
-  downloadingLogs: string[];
-  downloadingError: string | null;
-  generating: boolean;
-  result: string | null;
-  error: string | null;
-  logs: string[];
-  mlxgenInstalled: boolean | null;
-  modelDownloaded: boolean | null;
-}
-
 interface TextToImageState {
   prompt: string;
   aspectRatio: AspectRatio;
@@ -188,18 +169,6 @@ interface GenerationStore {
   setExtendFrames: (v: number) => void;
   clearExtendResult: () => void;
   generateExtend: (projectId: string, videoPath: string) => Promise<void>;
-
-  // MLX-Gen image edit
-  imageEdit: ImageEditState;
-  setImageEditPrompt: (v: string) => void;
-  setImageEditOutputSize: (size: number) => void;
-  selectCharacterImage: (img: ProjectImage | null) => void;
-  clearImageEditResult: () => void;
-  checkMlxgenStatus: () => Promise<void>;
-  installMlxGen: () => Promise<void>;
-  downloadMlxGenModel: () => Promise<void>;
-  generateEditedImage: (projectId: string) => Promise<void>;
-  generateBatchEditedImages: (projectId: string) => Promise<void>;
 
   // Text-to-image (mlx-gen z-image-turbo)
   textToImage: TextToImageState;
@@ -417,63 +386,6 @@ async function resizeImageToPng(
   }
 }
 
-/**
- * Compute output dimensions so the longest edge equals `maxDim` while keeping
- * the source aspect ratio.
- */
-function fitDimensions(
-  sourceWidth: number,
-  sourceHeight: number,
-  maxDim: number,
-): { width: number; height: number } {
-  const longest = Math.max(sourceWidth, sourceHeight);
-  const scale = longest > 0 ? maxDim / longest : 1;
-  return {
-    width: Math.max(1, Math.round(sourceWidth * scale)),
-    height: Math.max(1, Math.round(sourceHeight * scale)),
-  };
-}
-
-async function requestMlxgenGenerate(
-  body: {
-    prompt: string;
-    image: string;
-    projectId: string;
-    width: number;
-    height: number;
-  },
-  onLog: (text: string) => void,
-): Promise<{ ok: boolean; error?: string; result?: string }> {
-  const res = await fetch(`${API_BASE}/api/mlxgen/generate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    return { ok: false, error: await res.text() };
-  }
-
-  let result: string | undefined;
-  let error: string | undefined;
-
-  await readSSEStream(res, (event, data) => {
-    switch (event) {
-      case "log":
-        onLog(data.text as string);
-        break;
-      case "complete":
-        result = `http://localhost:${(window as any).PORT}/api/files?path=${encodeURIComponent(data.path)}`;
-        break;
-      case "error":
-        error = data.error || "Image generation failed";
-        break;
-    }
-  });
-
-  return { ok: !error, error, result };
-}
-
 async function requestFastImageEdit(
   body: {
     prompt: string;
@@ -573,24 +485,6 @@ const initialExtend: ExtendState = {
   logs: [],
 };
 
-const initialImageEdit: ImageEditState = {
-  prompt: "the character is at AI Chip lab.",
-  characterImage: null,
-  outputSize: 1024,
-  installing: false,
-  installingLogs: [],
-  installingError: null,
-  downloading: false,
-  downloadingLogs: [],
-  downloadingError: null,
-  generating: false,
-  result: null,
-  error: null,
-  logs: [],
-  mlxgenInstalled: null,
-  modelDownloaded: null,
-};
-
 const TEXT_TO_IMAGE_PRESETS: Record<
   TextToImagePreset,
   {
@@ -686,7 +580,7 @@ function persistTextToImageState() {
 }
 
 export const useGenerationStore = create<GenerationStore>((set, get) => ({
-  activeTab: "image",
+  activeTab: "video",
   setActiveTab: (tab) => set({ activeTab: tab }),
 
   // ---- Image ----
@@ -1350,387 +1244,6 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       }
     } finally {
       generateAbortController = null;
-    }
-  },
-
-  // ---- MLX-Gen Image Edit ----
-  imageEdit: { ...initialImageEdit },
-
-  setImageEditPrompt: (prompt) =>
-    set((s) => ({ imageEdit: { ...s.imageEdit, prompt, error: null } })),
-
-  setImageEditOutputSize: (outputSize) =>
-    set((s) => ({ imageEdit: { ...s.imageEdit, outputSize } })),
-
-  selectCharacterImage: (img) =>
-    set((s) => ({ imageEdit: { ...s.imageEdit, characterImage: img } })),
-
-  clearImageEditResult: () =>
-    set((s) => ({
-      imageEdit: { ...s.imageEdit, result: null, error: null, logs: [] },
-    })),
-
-  checkMlxgenStatus: async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/mlxgen/status`);
-      if (!res.ok) return;
-      const data = await res.json();
-      set((s) => ({
-        imageEdit: {
-          ...s.imageEdit,
-          mlxgenInstalled: Boolean(data.installed),
-          modelDownloaded: Boolean(data.modelDownloaded),
-        },
-      }));
-    } catch {
-      // Leave status unknown (null) if the check fails.
-    }
-  },
-
-  installMlxGen: async () => {
-    const { imageEdit } = get();
-    if (imageEdit.installing) return;
-
-    set((s) => ({
-      imageEdit: {
-        ...s.imageEdit,
-        installing: true,
-        installingError: null,
-        installingLogs: [],
-      },
-    }));
-
-    try {
-      const res = await fetch(`${API_BASE}/api/mlxgen/install`, {
-        method: "POST",
-      });
-
-      if (!res.ok) {
-        const err = await res.text();
-        set((s) => ({
-          imageEdit: {
-            ...s.imageEdit,
-            installing: false,
-            installingError: err,
-          },
-        }));
-        return;
-      }
-
-      await readSSEStream(res, (event, data) => {
-        switch (event) {
-          case "log":
-            set((s) => ({
-              imageEdit: {
-                ...s.imageEdit,
-                installingLogs: [
-                  ...s.imageEdit.installingLogs,
-                  data.text as string,
-                ],
-              },
-            }));
-            break;
-          case "complete":
-            set((s) => ({
-              imageEdit: { ...s.imageEdit, installing: false },
-            }));
-            get().checkMlxgenStatus();
-            break;
-          case "error":
-            set((s) => ({
-              imageEdit: {
-                ...s.imageEdit,
-                installing: false,
-                installingError: data.error || "Install failed",
-              },
-            }));
-            break;
-        }
-      });
-    } catch (e) {
-      set((s) => ({
-        imageEdit: {
-          ...s.imageEdit,
-          installing: false,
-          installingError: String(e),
-        },
-      }));
-    }
-  },
-
-  downloadMlxGenModel: async () => {
-    const { imageEdit } = get();
-    if (imageEdit.downloading) return;
-
-    set((s) => ({
-      imageEdit: {
-        ...s.imageEdit,
-        downloading: true,
-        downloadingError: null,
-        downloadingLogs: [],
-      },
-    }));
-
-    try {
-      const res = await fetch(`${API_BASE}/api/mlxgen/download-model`, {
-        method: "POST",
-      });
-
-      if (!res.ok) {
-        const err = await res.text();
-        set((s) => ({
-          imageEdit: {
-            ...s.imageEdit,
-            downloading: false,
-            downloadingError: err,
-          },
-        }));
-        return;
-      }
-
-      await readSSEStream(res, (event, data) => {
-        switch (event) {
-          case "log":
-            set((s) => ({
-              imageEdit: {
-                ...s.imageEdit,
-                downloadingLogs: [
-                  ...s.imageEdit.downloadingLogs,
-                  data.text as string,
-                ],
-              },
-            }));
-            break;
-          case "complete":
-            set((s) => ({
-              imageEdit: { ...s.imageEdit, downloading: false },
-            }));
-            get().checkMlxgenStatus();
-            break;
-          case "error":
-            set((s) => ({
-              imageEdit: {
-                ...s.imageEdit,
-                downloading: false,
-                downloadingError: data.error || "Download failed",
-              },
-            }));
-            break;
-        }
-      });
-    } catch (e) {
-      set((s) => ({
-        imageEdit: {
-          ...s.imageEdit,
-          downloading: false,
-          downloadingError: String(e),
-        },
-      }));
-    }
-  },
-
-  generateEditedImage: async (projectId) => {
-    const { imageEdit } = get();
-    if (imageEdit.generating) return;
-
-    if (!imageEdit.prompt.trim()) {
-      set((s) => ({
-        imageEdit: { ...s.imageEdit, error: "Prompt is required" },
-      }));
-      return;
-    }
-    if (!imageEdit.characterImage) {
-      set((s) => ({
-        imageEdit: {
-          ...s.imageEdit,
-          error: "Select a character image first.",
-        },
-      }));
-      return;
-    }
-
-    set((s) => ({
-      imageEdit: {
-        ...s.imageEdit,
-        generating: true,
-        error: null,
-        result: null,
-        logs: [],
-      },
-    }));
-
-    // Preprocess the character image: resize to max 1024px and re-encode as PNG.
-    // use the same size as output
-    const processed = await resizeImageToPng(
-      resolveImageUrl(imageEdit.characterImage.url),
-      imageEdit.outputSize,
-    );
-    if (!processed) {
-      set((s) => ({
-        imageEdit: {
-          ...s.imageEdit,
-          generating: false,
-          error: "Failed to process character image.",
-        },
-      }));
-      return;
-    }
-
-    const { width, height } = fitDimensions(
-      processed.width,
-      processed.height,
-      imageEdit.outputSize,
-    );
-
-    const result = await requestMlxgenGenerate(
-      {
-        prompt: imageEdit.prompt.trim(),
-        image: processed.dataUrl,
-        projectId,
-        width,
-        height,
-      },
-      (text) =>
-        set((s) => ({
-          imageEdit: {
-            ...s.imageEdit,
-            logs: [...s.imageEdit.logs, text],
-          },
-        })),
-    );
-
-    set((s) => ({
-      imageEdit: {
-        ...s.imageEdit,
-        generating: false,
-        result: result.result ?? null,
-        error: result.error ?? null,
-      },
-    }));
-
-    if (result.ok) {
-      get().fetchProjectImages(projectId);
-    }
-  },
-
-  generateBatchEditedImages: async (projectId) => {
-    const { imageEdit, csvRows, csvSelectedIndices } = get();
-    const selectedIndices = Array.from(csvSelectedIndices).sort(
-      (a, b) => a - b,
-    );
-    if (selectedIndices.length === 0) return;
-
-    if (!imageEdit.characterImage) {
-      set((s) => ({
-        imageEdit: {
-          ...s.imageEdit,
-          error: "Select a character image first.",
-        },
-      }));
-      return;
-    }
-
-    set({
-      batchRunning: true,
-      batchProgress: { current: 0, total: selectedIndices.length },
-      batchCancelRequested: false,
-    });
-    set((s) => ({
-      imageEdit: {
-        ...s.imageEdit,
-        generating: true,
-        error: null,
-        result: null,
-        logs: [],
-      },
-    }));
-
-    // Preprocess the character image once and reuse it for every batch row.
-    const processed = await resizeImageToPng(
-      resolveImageUrl(imageEdit.characterImage.url),
-    );
-    if (!processed) {
-      set({
-        batchRunning: false,
-        batchProgress: null,
-        batchCancelRequested: false,
-      });
-      set((s) => ({
-        imageEdit: {
-          ...s.imageEdit,
-          generating: false,
-          error: "Failed to process character image.",
-        },
-      }));
-      return;
-    }
-
-    const { width, height } = fitDimensions(
-      processed.width,
-      processed.height,
-      imageEdit.outputSize,
-    );
-
-    let lastError: string | null = null;
-
-    for (let idx = 0; idx < selectedIndices.length; idx++) {
-      if (get().batchCancelRequested) break;
-
-      const i = selectedIndices[idx];
-      set({
-        batchProgress: { current: idx + 1, total: selectedIndices.length },
-      });
-
-      const rowData = csvRows[i];
-      const renderedPrompt = Mustache.render(`${imageEdit.prompt}`, {
-        ...rowData,
-      });
-
-      const result = await requestMlxgenGenerate(
-        {
-          prompt: renderedPrompt,
-          image: processed.dataUrl,
-          projectId,
-          width,
-          height,
-        },
-        (text) =>
-          set((s) => ({
-            imageEdit: {
-              ...s.imageEdit,
-              logs: [
-                ...s.imageEdit.logs,
-                `[${idx + 1}/${selectedIndices.length}] ${text}`,
-              ],
-            },
-          })),
-      );
-
-      set((s) => ({
-        imageEdit: {
-          ...s.imageEdit,
-          result: result.result ?? s.imageEdit.result,
-          error: result.error ?? s.imageEdit.error,
-        },
-      }));
-
-      if (result.error) {
-        lastError = result.error;
-        break;
-      }
-    }
-
-    const finished = !get().batchCancelRequested;
-    set({
-      batchRunning: false,
-      batchProgress: null,
-      batchCancelRequested: false,
-    });
-    set((s) => ({ imageEdit: { ...s.imageEdit, generating: false } }));
-
-    if (finished && !lastError) {
-      playBeep();
-      get().fetchProjectImages(projectId);
     }
   },
 
@@ -2557,11 +2070,10 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
   // ---- Reset ----
   resetAll: () =>
     set({
-      activeTab: "image",
+      activeTab: "video",
       image: { ...initialImage },
       video: { ...initialVideo },
       extend: { ...initialExtend },
-      imageEdit: { ...initialImageEdit },
       fastImageEdit: { ...initialFastImageEdit },
       textToImage: { ...initialTextToImage },
       textToImageProjectId: null,
