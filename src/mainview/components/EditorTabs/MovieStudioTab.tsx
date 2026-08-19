@@ -82,6 +82,12 @@ export default function MovieStudioTab({ projectId }: Props) {
     </svg>
   );
 
+  const StopIcon = (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <rect x="5" y="5" width="14" height="14" rx="2" />
+    </svg>
+  );
+
   const TableHead = ({
     columns,
   }: {
@@ -136,11 +142,20 @@ export default function MovieStudioTab({ projectId }: Props) {
 
       {/* ===== Submit ===== */}
       {store.generating ? (
-        <div className="flex items-center gap-2 px-4 py-3 bg-ink-50 border border-ink-200 rounded-2xl">
-          {SpinnerIcon}
-          <span className="text-sm font-medium text-ink-700">
-            Generating production bible...
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-1 px-4 py-3 bg-ink-50 border border-ink-200 rounded-2xl">
+            {SpinnerIcon}
+            <span className="text-sm font-medium text-ink-700">
+              Generating production bible...
+            </span>
+          </div>
+          <button
+            onClick={() => store.stop()}
+            className="flex items-center justify-center gap-2 px-4 py-3 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-2xl transition-all duration-150 shadow-sm"
+          >
+            {StopIcon}
+            Stop
+          </button>
         </div>
       ) : (
         <button
@@ -339,10 +354,19 @@ export default function MovieStudioTab({ projectId }: Props) {
                 Character &amp; Place Images
               </h3>
               {store.assetsRendering ? (
-                <span className="flex items-center gap-1.5 text-xs text-tiffany-600">
-                  {SpinnerIcon}
-                  {store.assetStatus ?? "Rendering..."}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-1.5 text-xs text-tiffany-600">
+                    {SpinnerIcon}
+                    {store.assetStatus ?? "Rendering..."}
+                  </span>
+                  <button
+                    onClick={() => store.stop()}
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-xl bg-red-500 hover:bg-red-600 text-white transition-colors"
+                  >
+                    {StopIcon}
+                    Stop
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={() => store.renderAssets(projectId)}
@@ -420,11 +444,20 @@ export default function MovieStudioTab({ projectId }: Props) {
         {store.result && (
           <div className="flex flex-col gap-3">
             {store.rendering ? (
-              <div className="flex items-center gap-2 px-4 py-3 bg-ink-50 border border-ink-200 rounded-2xl">
-                {SpinnerIcon}
-                <span className="text-sm font-medium text-ink-700">
-                  {store.renderStatus ?? "Rendering..."}
-                </span>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 flex-1 px-4 py-3 bg-ink-50 border border-ink-200 rounded-2xl">
+                  {SpinnerIcon}
+                  <span className="text-sm font-medium text-ink-700">
+                    {store.renderStatus ?? "Rendering..."}
+                  </span>
+                </div>
+                <button
+                  onClick={() => store.stop()}
+                  className="flex items-center justify-center gap-2 px-4 py-3 bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-sm font-semibold rounded-2xl transition-all duration-150 shadow-sm"
+                >
+                  {StopIcon}
+                  Stop
+                </button>
               </div>
             ) : (
               <button

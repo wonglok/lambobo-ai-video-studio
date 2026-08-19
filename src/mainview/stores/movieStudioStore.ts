@@ -6,6 +6,8 @@ import {
 
 const API_BASE = `http://localhost:${(window as any).PORT}`;
 
+let movieStudioAbortController: AbortController | null = null;
+
 async function readSSEStream(
   response: Response,
   onEvent: (event: string, data: any) => void,
@@ -110,6 +112,7 @@ interface MovieStudioStore {
     slug: string,
     prompt: string,
   ) => Promise<void>;
+  stop: () => void;
   reset: () => void;
 }
 
@@ -158,18 +161,26 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
     if (!idea || get().generating) return;
 
     set({ generating: true, error: null, result: null });
+    movieStudioAbortController = new AbortController();
+    const signal = movieStudioAbortController.signal;
 
     try {
       const res = await fetch(`${API_BASE}/api/movie-studio/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idea, model, projectId }),
+        signal,
       });
       if (!res.ok) throw new Error(await res.text());
       const data = (await res.json()) as MovieStudioResult;
       set({ result: data, generating: false });
     } catch (e) {
-      set({ error: String(e), generating: false });
+      if ((e as any)?.name !== "AbortError") {
+        set({ error: String(e), generating: false });
+      }
+    } finally {
+      movieStudioAbortController = null;
+      set({ generating: false });
     }
   },
 
@@ -183,12 +194,15 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
       renderLogs: [],
       renderError: null,
     });
+    movieStudioAbortController = new AbortController();
+    const signal = movieStudioAbortController.signal;
 
     try {
       const res = await fetch(`${API_BASE}/api/movie-studio/render`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId, ...result }),
+        signal,
       });
       if (!res.ok) throw new Error(await res.text());
 
@@ -223,8 +237,11 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
         }
       });
     } catch (e) {
-      set({ renderError: String(e) });
+      if ((e as any)?.name !== "AbortError") {
+        set({ renderError: String(e) });
+      }
     } finally {
+      movieStudioAbortController = null;
       set({ rendering: false });
     }
   },
@@ -238,6 +255,8 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
       assetStatus: "Rendering assets...",
       assetsError: null,
     });
+    movieStudioAbortController = new AbortController();
+    const signal = movieStudioAbortController.signal;
 
     try {
       const res = await fetch(`${API_BASE}/api/movie-studio/render-assets`, {
@@ -248,6 +267,7 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
           characters: result.characters,
           places: result.places,
         }),
+        signal,
       });
       if (!res.ok) throw new Error(await res.text());
 
@@ -285,8 +305,11 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
         }
       });
     } catch (e) {
-      set({ assetsError: String(e) });
+      if ((e as any)?.name !== "AbortError") {
+        set({ assetsError: String(e) });
+      }
     } finally {
+      movieStudioAbortController = null;
       set({ assetsRendering: false });
     }
   },
@@ -323,6 +346,15 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
         regenerating: s.regenerating.filter((k) => k !== key),
       }));
     }
+  },
+
+  stop: () => {
+    if (movieStudioAbortController) {
+      movieStudioAbortController.abort();
+      movieStudioAbortController = null;
+    }
+    fetch(`${API_BASE}/api/render/cancel`, { method: "POST" }).catch(() => {});
+    set({ generating: false, rendering: false, assetsRendering: false });
   },
 
   reset: () =>
