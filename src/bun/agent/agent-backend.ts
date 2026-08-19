@@ -760,38 +760,38 @@ export async function agentBackend({
         MOVIE_STUDIO_PLACES_PROMPT,
         `Art style: ${artStyle || "photorealistic render"}\n\nIdea: ${idea.trim()}\n\nCharacters:\n${JSON.stringify(characters)}`,
       );
-      const places = (Array.isArray(placeData.places) ? placeData.places : []).map(
-        (p: any) => ({
-          slug: toStr(p?.slug),
-          name: toStr(p?.name),
-          imagePrompt: toStr(p?.imagePrompt),
-        }),
-      );
+      const places = (
+        Array.isArray(placeData.places) ? placeData.places : []
+      ).map((p: any) => ({
+        slug: toStr(p?.slug),
+        name: toStr(p?.name),
+        imagePrompt: toStr(p?.imagePrompt),
+      }));
 
       // 3. Scenes (with art style + characters + places as context).
       const sceneData = await ask(
         MOVIE_STUDIO_SCENES_PROMPT,
         `Art style: ${artStyle || "photorealistic render"}\n\nIdea: ${idea.trim()}\n\nCharacters:\n${JSON.stringify(characters)}\n\nPlaces:\n${JSON.stringify(places)}`,
       );
-      const scenes = (Array.isArray(sceneData.scenes) ? sceneData.scenes : []).map(
-        (s: any) => ({
-          slug: toStr(s?.slug),
-          duration: toNum(s?.duration),
-          description: toStr(s?.description),
-          characterSlugs: Array.isArray(s?.characterSlugs)
-            ? s.characterSlugs.map(toStr).filter(Boolean)
-            : [],
-          placeSlug: toStr(s?.placeSlug),
-          scriptLines: Array.isArray(s?.scriptLines)
-            ? s.scriptLines.map((l: any) => ({
-                characterSlug: toStr(l?.characterSlug),
-                line: toStr(l?.line),
-              }))
-            : [],
-          voiceOver: toStr(s?.voiceOver),
-          imagePrompt: toStr(s?.imagePrompt),
-        }),
-      );
+      const scenes = (
+        Array.isArray(sceneData.scenes) ? sceneData.scenes : []
+      ).map((s: any) => ({
+        slug: toStr(s?.slug),
+        duration: toNum(s?.duration),
+        description: toStr(s?.description),
+        characterSlugs: Array.isArray(s?.characterSlugs)
+          ? s.characterSlugs.map(toStr).filter(Boolean)
+          : [],
+        placeSlug: toStr(s?.placeSlug),
+        scriptLines: Array.isArray(s?.scriptLines)
+          ? s.scriptLines.map((l: any) => ({
+              characterSlug: toStr(l?.characterSlug),
+              line: toStr(l?.line),
+            }))
+          : [],
+        voiceOver: toStr(s?.voiceOver),
+        imagePrompt: toStr(s?.imagePrompt),
+      }));
 
       // Persist the generated production bible to studio/:projectId/data/*.json
       const dataDir = movieStudioDataDir(projectId);
