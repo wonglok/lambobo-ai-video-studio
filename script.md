@@ -90,15 +90,18 @@ mlxgen generate \
 
 ```bash
 
-mlxgen download --model AbstractFramework/bernini-r-1.3B-diffusers-bf16
+
+mlxgen download --model ByteDance/Bernini-R-1.3B-Diffusers
 
 mlxgen generate \
-  --model AbstractFramework/bernini-r-1.3B-diffusers-bf16 \
-  --reference-image input.jpeg \
-  --prompt "image0 is the ninja. ninja is taking a photo at a studio." \
-  --width 480 --height 480 --frames 121 --fps 24 \
-  --steps 4 \
-  --seed 42 --mlx-cache-limit-gb 20 \
-  --output referenced.mp4
+ --model ByteDance/Bernini-R-1.3B-Diffusers \
+ --reference-image person.png \
+ --reference-image input.jpeg \
+ --prompt "Bring the person from image0 to life wearing the armor from image1" \
+ --width 320 --height 192 --frames 17 --fps 16 --steps 20 \
+ --max-condition-size 256 \
+ --seed 42 --low-ram --metadata \
+ --output referenced.mp4
+
 
 ```

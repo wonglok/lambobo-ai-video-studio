@@ -186,14 +186,7 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
 
   setIdea: (idea) => {
     set({ idea, error: null });
-    const { projectId, result } = get();
-    if (projectId) {
-      fetch(`${API_BASE}/api/movie-studio/state`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, idea, result }),
-      }).catch(() => {});
-    }
+    persistMovieStudioState();
   },
 
   hydrate: async (projectId) => {
@@ -212,7 +205,12 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
       if (!res.ok) return;
       const stored = await res.json();
       if (!stored) return;
-      set({ idea: stored.idea ?? "", result: stored.result ?? null });
+      set({
+        idea: stored.idea ?? "",
+        result: stored.result ?? null,
+        assets: Array.isArray(stored.assets) ? stored.assets : [],
+        videos: Array.isArray(stored.videos) ? stored.videos : [],
+      });
     } catch {
       // Ignore — keep in-memory defaults.
     }
@@ -236,11 +234,7 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
       if (!res.ok) throw new Error(await res.text());
       const data = (await res.json()) as MovieStudioResult;
       set({ result: data, generating: false });
-      fetch(`${API_BASE}/api/movie-studio/state`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, idea: get().idea, result: data }),
-      }).catch(() => {});
+      persistMovieStudioState();
     } catch (e) {
       if ((e as any)?.name !== "AbortError") {
         set({ error: String(e), generating: false });
@@ -396,6 +390,7 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
     } finally {
       movieStudioAbortController = null;
       set({ assetsRendering: false });
+      persistMovieStudioState();
     }
   },
 
@@ -425,6 +420,7 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
           regenerating: s.regenerating.filter((k) => k !== key),
         };
       });
+      persistMovieStudioState();
     } catch (e) {
       set((s) => ({
         assetsError: String(e),
@@ -495,6 +491,7 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
     } finally {
       movieStudioAbortController = null;
       set({ videosRendering: false });
+      persistMovieStudioState();
     }
   },
 
@@ -525,6 +522,7 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
         }),
         regeneratingVideos: s.regeneratingVideos.filter((k) => k !== slug),
       }));
+      persistMovieStudioState();
     } catch (e) {
       set((s) => ({
         videosError: String(e),
@@ -572,3 +570,19 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
       regeneratingVideos: [],
     }),
 }));
+
+function persistMovieStudioState() {
+  const s = useMovieStudioStore.getState();
+  if (!s.projectId) return;
+  fetch(`${API_BASE}/api/movie-studio/state`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      projectId: s.projectId,
+      idea: s.idea,
+      result: s.result,
+      assets: s.assets,
+      videos: s.videos,
+    }),
+  }).catch(() => {});
+}

@@ -839,7 +839,7 @@ export async function agentBackend({
   });
 
   app.post("/api/movie-studio/state", (req, res) => {
-    const { projectId, idea, result } = req.body || {};
+    const { projectId, idea, result, assets, videos } = req.body || {};
     if (!projectId || !/^[a-zA-Z0-9_-]{1,64}$/.test(String(projectId))) {
       res.status(400).json({ error: "Invalid project ID" });
       return;
@@ -849,7 +849,12 @@ export async function agentBackend({
     writeFileSync(
       file,
       JSON.stringify(
-        { idea: String(idea ?? ""), result: result ?? null },
+        {
+          idea: String(idea ?? ""),
+          result: result ?? null,
+          assets: Array.isArray(assets) ? assets : [],
+          videos: Array.isArray(videos) ? videos : [],
+        },
         null,
         2,
       ),
