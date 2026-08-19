@@ -66,6 +66,22 @@ export default function MovieStudioTab({ projectId }: Props) {
     </svg>
   );
 
+  const RefreshIcon = (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="23 4 23 10 17 10" />
+      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+    </svg>
+  );
+
   const TableHead = ({
     columns,
   }: {
@@ -314,6 +330,91 @@ export default function MovieStudioTab({ projectId }: Props) {
           </div>
         </>
       )}
+
+        {/* ===== Assets ===== */}
+        {store.result && (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-ink-900">
+                Character &amp; Place Images
+              </h3>
+              {store.assetsRendering ? (
+                <span className="flex items-center gap-1.5 text-xs text-tiffany-600">
+                  {SpinnerIcon}
+                  {store.assetStatus ?? "Rendering..."}
+                </span>
+              ) : (
+                <button
+                  onClick={() => store.renderAssets(projectId)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-tiffany-500 hover:bg-tiffany-600 text-ink-950 transition-colors"
+                >
+                  {SparkleIcon}
+                  Render Assets
+                </button>
+              )}
+            </div>
+
+            {store.assetsError && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs">
+                {store.assetsError}
+              </div>
+            )}
+
+            {store.assets.length > 0 && (
+              <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                {store.assets.map((asset) => {
+                  const key = `${asset.kind}:${asset.slug}`;
+                  const isRegenerating = store.regenerating.includes(key);
+                  const fullUrl = asset.url.startsWith("http")
+                    ? asset.url
+                    : `http://localhost:${(window as any).PORT}${asset.url}`;
+                  const prompt =
+                    asset.kind === "character"
+                      ? store.result?.characters.find(
+                          (c) => c.slug === asset.slug,
+                        )?.imagePrompt ?? ""
+                      : store.result?.places.find(
+                          (p) => p.slug === asset.slug,
+                        )?.imagePrompt ?? "";
+                  return (
+                    <div key={key} className="flex flex-col gap-1.5">
+                      <div className="relative rounded-xl border border-ink-200 overflow-hidden">
+                        <img
+                          src={`${fullUrl}&t=${asset.updatedAt}`}
+                          alt={asset.slug}
+                          className="aspect-square object-cover object-center w-full"
+                        />
+                        <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/50 text-white text-[10px] font-medium uppercase">
+                          {asset.kind}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[11px] text-ink-600 truncate font-mono">
+                          {asset.slug}
+                        </span>
+                        <button
+                          onClick={() =>
+                            store.regenerateAsset(
+                              projectId,
+                              asset.kind,
+                              asset.slug,
+                              prompt,
+                            )
+                          }
+                          disabled={isRegenerating}
+                          className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-lg border border-ink-200 text-ink-600 hover:border-tiffany-400 hover:text-tiffany-600 transition-colors disabled:opacity-50"
+                        >
+                          {isRegenerating ? SpinnerIcon : RefreshIcon}
+                          Regenerate
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ===== Render ===== */}
         {store.result && (

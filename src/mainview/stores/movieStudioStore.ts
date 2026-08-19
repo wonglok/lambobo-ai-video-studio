@@ -75,6 +75,14 @@ export interface MovieStudioResult {
   scenes: MovieScene[];
 }
 
+export interface AssetImage {
+  kind: "character" | "place";
+  slug: string;
+  filename: string;
+  url: string;
+  updatedAt: number;
+}
+
 interface MovieStudioStore {
   idea: string;
   projectId: string | null;
@@ -86,10 +94,22 @@ interface MovieStudioStore {
   renderStatus: string | null;
   renderLogs: string[];
   renderError: string | null;
+  assets: AssetImage[];
+  assetsRendering: boolean;
+  assetStatus: string | null;
+  assetsError: string | null;
+  regenerating: string[];
   setIdea: (v: string) => void;
   hydrate: (projectId: string) => Promise<void>;
   generate: (projectId: string, model: string) => Promise<void>;
   render: (projectId: string) => Promise<void>;
+  renderAssets: (projectId: string) => Promise<void>;
+  regenerateAsset: (
+    projectId: string,
+    kind: "character" | "place",
+    slug: string,
+    prompt: string,
+  ) => Promise<void>;
   reset: () => void;
 }
 
@@ -104,6 +124,11 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
   renderStatus: null,
   renderLogs: [],
   renderError: null,
+  assets: [],
+  assetsRendering: false,
+  assetStatus: null,
+  assetsError: null,
+  regenerating: [],
 
   setIdea: (idea) => {
     set({ idea, error: null });
@@ -204,6 +229,102 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
     }
   },
 
+  renderAssets: async (projectId) => {
+    const result = get().result;
+    if (!result || get().assetsRendering) return;
+
+    set({
+      assetsRendering: true,
+      assetStatus: "Rendering assets...",
+      assetsError: null,
+    });
+
+    try {
+      const res = await fetch(`${API_BASE}/api/movie-studio/render-assets`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId,
+          characters: result.characters,
+          places: result.places,
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+
+      await readSSEStream(res, (event, data) => {
+        switch (event) {
+          case "progress":
+            set({ assetStatus: data.label as string });
+            break;
+          case "image": {
+            const img: AssetImage = {
+              kind: data.kind,
+              slug: data.slug,
+              filename: data.filename,
+              url: data.url,
+              updatedAt: Date.now(),
+            };
+            set((s) => {
+              const key = `${img.kind}:${img.slug}`;
+              const filtered = s.assets.filter(
+                (a) => `${a.kind}:${a.slug}` !== key,
+              );
+              return {
+                assets: [...filtered, img],
+                assetStatus: `Generated ${img.kind}: ${img.slug}`,
+              };
+            });
+            break;
+          }
+          case "error":
+            set({ assetsError: data.error || "Asset render failed" });
+            break;
+          case "complete":
+            set({ assetStatus: "Assets rendered" });
+            break;
+        }
+      });
+    } catch (e) {
+      set({ assetsError: String(e) });
+    } finally {
+      set({ assetsRendering: false });
+    }
+  },
+
+  regenerateAsset: async (projectId, kind, slug, prompt) => {
+    const key = `${kind}:${slug}`;
+    if (get().regenerating.includes(key)) return;
+
+    set((s) => ({
+      regenerating: [...s.regenerating, key],
+      assetsError: null,
+    }));
+
+    try {
+      const res = await fetch(`${API_BASE}/api/movie-studio/render-asset`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, kind, slug, prompt }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = (await res.json()) as { filename: string; url: string };
+      set((s) => {
+        const filtered = s.assets.filter(
+          (a) => `${a.kind}:${a.slug}` !== key,
+        );
+        return {
+          assets: [...filtered, { kind, slug, ...data, updatedAt: Date.now() }],
+          regenerating: s.regenerating.filter((k) => k !== key),
+        };
+      });
+    } catch (e) {
+      set((s) => ({
+        assetsError: String(e),
+        regenerating: s.regenerating.filter((k) => k !== key),
+      }));
+    }
+  },
+
   reset: () =>
     set({
       idea: "",
@@ -214,5 +335,10 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
       renderStatus: null,
       renderLogs: [],
       renderError: null,
+      assets: [],
+      assetsRendering: false,
+      assetStatus: null,
+      assetsError: null,
+      regenerating: [],
     }),
 }));

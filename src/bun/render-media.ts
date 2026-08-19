@@ -475,6 +475,90 @@ async function streamToSSE(
   return text;
 }
 
+/** Run a command to completion, returning its exit status and combined output. */
+async function runCommand(
+  args: string[],
+  opts: { cwd?: string } = {},
+): Promise<{ success: boolean; output: string }> {
+  const proc = spawn(args, {
+    env: process.env,
+    stdout: "pipe",
+    stderr: "pipe",
+    ...(opts.cwd ? { cwd: opts.cwd } : {}),
+  });
+  activeProc = proc;
+  const stdoutText = await new Response(
+    proc.stdout as ReadableStream<Uint8Array>,
+  ).text();
+  const stderrText = await new Response(
+    proc.stderr as ReadableStream<Uint8Array>,
+  ).text();
+  const exitCode = await proc.exited;
+  return { success: exitCode === 0, output: (stdoutText + stderrText).trim() };
+}
+
+/** Copy a generated image into the project's backup folder with a timestamped name. */
+function backupImage(sourcePath: string, projectId: string): string | null {
+  try {
+    const backupDir = join(OUTPUT_DIR, String(projectId), "backup");
+    ensureDir(backupDir);
+    const base = sourcePath.split(sep).pop() || "image";
+    const dot = base.lastIndexOf(".");
+    const stem = dot > 0 ? base.slice(0, dot) : base;
+    const ext = dot > 0 ? base.slice(dot) : "";
+    const ts = new Date().toISOString().replace(/[:.]/g, "-");
+    const backupPath = join(backupDir, `${stem}-${ts}${ext}`);
+    copyFileSync(sourcePath, backupPath);
+    return backupPath;
+  } catch {
+    return null;
+  }
+}
+
+/** Generate a single character/place image (text-to-image) and back it up. */
+async function generateAssetImage(
+  projectId: string,
+  kind: "character" | "place",
+  slug: string,
+  prompt: string,
+): Promise<{ filename: string; url: string } | { error: string }> {
+  const mlxgen = await getMlxgenBin();
+  const outputDir = join(OUTPUT_DIR, projectId);
+  ensureDir(outputDir);
+  const outputFile = `${kind}-${slug}.png`;
+  const outputPath = join(outputDir, outputFile);
+
+  const result = await runCommand(
+    [
+      mlxgen,
+      "generate",
+      "--model",
+      Z_IMAGE_MODEL,
+      "--prompt",
+      prompt,
+      "--output",
+      outputPath,
+      "--steps",
+      "6",
+      "--width",
+      "1024",
+      "--height",
+      "1024",
+    ],
+    {},
+  );
+
+  if (!result.success || !existsSync(outputPath)) {
+    return { error: result.output || `Failed to generate ${kind} ${slug}` };
+  }
+
+  backupImage(outputPath, projectId);
+  return {
+    filename: outputFile,
+    url: `/api/files?path=${encodeURIComponent(outputPath)}`,
+  };
+}
+
 // ========== Routes ==========
 
 export async function renderMediaRoutes({
@@ -1354,6 +1438,129 @@ export async function renderMediaRoutes({
     } finally {
       activeProc = null;
       res.end();
+    }
+  });
+
+  // ========== Movie Studio: Render Assets (characters + places images) ==========
+
+  app.post("/api/movie-studio/render-assets", async (req, res) => {
+    const { projectId, characters, places } = req.body || {};
+
+    if (!projectId || !isValidProjectId(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    if (!Array.isArray(characters) || !Array.isArray(places)) {
+      res.status(400).json({ error: "characters and places are required" });
+      return;
+    }
+
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: string, data: object) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    const slugify = (v: unknown): string =>
+      String(v || "")
+        .trim()
+        .replace(/[^a-zA-Z0-9_-]/g, "_");
+
+    const assets: {
+      characters: { slug: string; filename: string; url: string }[];
+      places: { slug: string; filename: string; url: string }[];
+    } = { characters: [], places: [] };
+
+    try {
+      for (const c of characters) {
+        const slug = slugify(c?.slug);
+        const prompt = String(c?.imagePrompt || "").trim();
+        if (!slug || !prompt) continue;
+        send("progress", { label: `Generating character: ${c?.name || slug}` });
+        const r = await generateAssetImage(
+          String(projectId),
+          "character",
+          slug,
+          prompt,
+        );
+        if ("error" in r) {
+          send("error", { error: r.error });
+          continue;
+        }
+        assets.characters.push({ slug, ...r });
+        send("image", { kind: "character", slug, ...r });
+      }
+
+      for (const p of places) {
+        const slug = slugify(p?.slug);
+        const prompt = String(p?.imagePrompt || "").trim();
+        if (!slug || !prompt) continue;
+        send("progress", { label: `Generating place: ${p?.name || slug}` });
+        const r = await generateAssetImage(
+          String(projectId),
+          "place",
+          slug,
+          prompt,
+        );
+        if ("error" in r) {
+          send("error", { error: r.error });
+          continue;
+        }
+        assets.places.push({ slug, ...r });
+        send("image", { kind: "place", slug, ...r });
+      }
+
+      send("complete", { assets });
+    } catch (e) {
+      send("error", { error: String(e) });
+    } finally {
+      activeProc = null;
+      res.end();
+    }
+  });
+
+  // Regenerate a single character/place image.
+  app.post("/api/movie-studio/render-asset", async (req, res) => {
+    const { projectId, kind, slug, prompt } = req.body || {};
+
+    if (!projectId || !isValidProjectId(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    if (kind !== "character" && kind !== "place") {
+      res.status(400).json({ error: "kind must be 'character' or 'place'" });
+      return;
+    }
+    const safeSlug = String(slug || "")
+      .trim()
+      .replace(/[^a-zA-Z0-9_-]/g, "_");
+    const safePrompt = String(prompt || "").trim();
+    if (!safeSlug || !safePrompt) {
+      res.status(400).json({ error: "slug and prompt are required" });
+      return;
+    }
+
+    try {
+      const r = await generateAssetImage(
+        String(projectId),
+        kind,
+        safeSlug,
+        safePrompt,
+      );
+      if ("error" in r) {
+        res.status(500).json({ error: r.error });
+        return;
+      }
+      res.json(r);
+    } catch (e) {
+      res.status(500).json({ error: String(e) });
+    } finally {
+      activeProc = null;
     }
   });
 
