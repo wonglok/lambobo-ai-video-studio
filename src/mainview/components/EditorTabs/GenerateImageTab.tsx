@@ -276,11 +276,8 @@ export default function GenerateImageTab({ projectId }: Props) {
     <div className="flex flex-col gap-7">
       <div className="flex items-center gap-2">
         <span className="text-tiffany-600">{ImageEditIcon}</span>
-        <h2 className="text-base font-semibold text-ink-900">
-          Generate Image
-        </h2>
+        <h2 className="text-base font-semibold text-ink-900">Generate Image</h2>
       </div>
-
       {/* ===== Setup: install + download model ===== */}
       <div>
         <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
@@ -344,7 +341,6 @@ export default function GenerateImageTab({ projectId }: Props) {
           </div>
         )}
       </div>
-
       {/* ===== Character image picker ===== */}
       <div>
         <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
@@ -413,7 +409,6 @@ export default function GenerateImageTab({ projectId }: Props) {
           </p>
         )}
       </div>
-
       {/* ===== Output Size ===== */}
       <div>
         <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
@@ -439,7 +434,6 @@ export default function GenerateImageTab({ projectId }: Props) {
           })}
         </div>
       </div>
-
       {/* ===== CSV batch ===== */}
       <div>
         <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
@@ -536,9 +530,7 @@ export default function GenerateImageTab({ projectId }: Props) {
                       <tr
                         key={rowIdx}
                         className={`border-b border-ink-200 transition-colors ${
-                          isSelected
-                            ? "bg-white"
-                            : "bg-ink-100/50 opacity-60"
+                          isSelected ? "bg-white" : "bg-ink-100/50 opacity-60"
                         }`}
                       >
                         <td className="px-3 py-1.5">
@@ -572,7 +564,6 @@ export default function GenerateImageTab({ projectId }: Props) {
           </div>
         )}
       </div>
-
       {/* ===== Prompt ===== */}
       <div>
         <label className="block text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
@@ -592,7 +583,6 @@ export default function GenerateImageTab({ projectId }: Props) {
           className="w-full px-4 py-3 bg-ink-50 border border-ink-200 rounded-2xl text-ink-900 text-sm placeholder-ink-500/40 focus:outline-none focus:border-tiffany-500 focus:ring-2 focus:ring-tiffany-500/30 transition-all resize-none disabled:opacity-50"
         />
       </div>
-
       {/* ===== Batch generate ===== */}
       {store.csvRows.length > 0 && (
         <div className="space-y-2">
@@ -637,7 +627,6 @@ export default function GenerateImageTab({ projectId }: Props) {
           )}
         </div>
       )}
-
       {/* ===== Generate single ===== */}
       {store.imageEdit.generating ? (
         <div className="flex items-center gap-3">
@@ -682,7 +671,6 @@ export default function GenerateImageTab({ projectId }: Props) {
           Generate Image
         </button>
       )}
-
       {/* ===== Show output folder ===== */}
       <button
         onClick={handleOpenOutputFolder}
@@ -691,14 +679,12 @@ export default function GenerateImageTab({ projectId }: Props) {
         {FolderIcon}
         Show Output Folder
       </button>
-
       {/* ===== Error ===== */}
       {store.imageEdit.error && (
         <div className="p-5 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-sm">
           {store.imageEdit.error}
         </div>
       )}
-
       {/* ===== Logs ===== */}
       {store.imageEdit.logs.length > 0 && (
         <div
@@ -713,7 +699,6 @@ export default function GenerateImageTab({ projectId }: Props) {
           </pre>
         </div>
       )}
-
       {/* ===== Result ===== */}
       {store.imageEdit.result && (
         <div>
