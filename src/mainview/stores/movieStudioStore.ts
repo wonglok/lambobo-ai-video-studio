@@ -118,6 +118,25 @@ function upsertVideo(
   return [...videos, { slug, filename: "", url: "", updatedAt: 0, ...patch }];
 }
 
+export interface SceneImage {
+  slug: string;
+  filename: string;
+  url: string;
+  updatedAt: number;
+}
+
+function upsertSceneImage(
+  images: SceneImage[],
+  slug: string,
+  patch: Partial<SceneImage>,
+): SceneImage[] {
+  const existing = images.find((v) => v.slug === slug);
+  if (existing) {
+    return images.map((v) => (v.slug === slug ? { ...v, ...patch } : v));
+  }
+  return [...images, { slug, filename: "", url: "", updatedAt: 0, ...patch }];
+}
+
 interface MovieStudioStore {
   idea: string;
   projectId: string | null;
@@ -142,6 +161,12 @@ interface MovieStudioStore {
   videosError: string | null;
   videoProgress: { current: number; total: number } | null;
   regeneratingVideos: string[];
+  sceneImages: SceneImage[];
+  sceneImagesRendering: boolean;
+  sceneImageStatus: string | null;
+  sceneImagesError: string | null;
+  sceneImageProgress: { current: number; total: number } | null;
+  regeneratingSceneImages: string[];
   setIdea: (v: string) => void;
   hydrate: (projectId: string) => Promise<void>;
   generate: (projectId: string, model: string) => Promise<void>;
@@ -155,6 +180,8 @@ interface MovieStudioStore {
   ) => Promise<void>;
   renderVideos: (projectId: string) => Promise<void>;
   regenerateVideo: (projectId: string, slug: string) => Promise<void>;
+  renderSceneImages: (projectId: string) => Promise<void>;
+  regenerateSceneImage: (projectId: string, slug: string) => Promise<void>;
   stop: () => void;
   reset: () => void;
 }
@@ -183,6 +210,12 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
   videosError: null,
   videoProgress: null,
   regeneratingVideos: [],
+  sceneImages: [],
+  sceneImagesRendering: false,
+  sceneImageStatus: null,
+  sceneImagesError: null,
+  sceneImageProgress: null,
+  regeneratingSceneImages: [],
 
   setIdea: (idea) => {
     set({ idea, error: null });
@@ -210,6 +243,7 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
         result: stored.result ?? null,
         assets: Array.isArray(stored.assets) ? stored.assets : [],
         videos: Array.isArray(stored.videos) ? stored.videos : [],
+        sceneImages: Array.isArray(stored.sceneImages) ? stored.sceneImages : [],
       });
     } catch {
       // Ignore — keep in-memory defaults.
@@ -531,6 +565,116 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
     }
   },
 
+  renderSceneImages: async (projectId) => {
+    const result = get().result;
+    if (!result || get().sceneImagesRendering) return;
+
+    set({
+      sceneImagesRendering: true,
+      sceneImageStatus: "Rendering scene images...",
+      sceneImagesError: null,
+      sceneImageProgress: null,
+    });
+    movieStudioAbortController = new AbortController();
+    const signal = movieStudioAbortController.signal;
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/movie-studio/render-scene-images`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectId, scenes: result.scenes }),
+          signal,
+        },
+      );
+      if (!res.ok) throw new Error(await res.text());
+
+      await readSSEStream(res, (event, data) => {
+        switch (event) {
+          case "progress":
+            set({
+              sceneImageStatus: data.label as string,
+              sceneImageProgress: {
+                current: Number(data.current) || 0,
+                total: Number(data.total) || 0,
+              },
+            });
+            break;
+          case "image":
+            set((s) => ({
+              sceneImages: upsertSceneImage(s.sceneImages, data.slug, {
+                filename: data.filename,
+                url: data.url,
+                updatedAt: Date.now(),
+              }),
+              sceneImageStatus: `Generated scene image: ${data.slug}`,
+            }));
+            break;
+          case "error":
+            set({
+              sceneImagesError: data.error || "Scene image render failed",
+            });
+            break;
+          case "complete":
+            set({ sceneImageStatus: "Scene images rendered" });
+            break;
+        }
+      });
+    } catch (e) {
+      if ((e as any)?.name !== "AbortError") {
+        set({ sceneImagesError: String(e) });
+      }
+    } finally {
+      movieStudioAbortController = null;
+      set({ sceneImagesRendering: false });
+      persistMovieStudioState();
+    }
+  },
+
+  regenerateSceneImage: async (projectId, slug) => {
+    const result = get().result;
+    if (!result || get().regeneratingSceneImages.includes(slug)) return;
+    const scene = result.scenes.find((s) => s.slug === slug);
+    if (!scene) return;
+
+    set((s) => ({
+      regeneratingSceneImages: [...s.regeneratingSceneImages, slug],
+      sceneImagesError: null,
+    }));
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/movie-studio/render-scene-image`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectId, scene }),
+        },
+      );
+      if (!res.ok) throw new Error(await res.text());
+      const data = (await res.json()) as { filename: string; url: string };
+      set((s) => ({
+        sceneImages: upsertSceneImage(s.sceneImages, slug, {
+          filename: data.filename,
+          url: data.url,
+          updatedAt: Date.now(),
+        }),
+        regeneratingSceneImages: s.regeneratingSceneImages.filter(
+          (k) => k !== slug,
+        ),
+      }));
+      persistMovieStudioState();
+    } catch (e) {
+      set((s) => ({
+        sceneImagesError: String(e),
+        regeneratingSceneImages: s.regeneratingSceneImages.filter(
+          (k) => k !== slug,
+        ),
+      }));
+    }
+  },
+
   stop: () => {
     if (movieStudioAbortController) {
       movieStudioAbortController.abort();
@@ -568,6 +712,12 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
       videosError: null,
       videoProgress: null,
       regeneratingVideos: [],
+      sceneImages: [],
+      sceneImagesRendering: false,
+      sceneImageStatus: null,
+      sceneImagesError: null,
+      sceneImageProgress: null,
+      regeneratingSceneImages: [],
     }),
 }));
 
@@ -583,6 +733,7 @@ function persistMovieStudioState() {
       result: s.result,
       assets: s.assets,
       videos: s.videos,
+      sceneImages: s.sceneImages,
     }),
   }).catch(() => {});
 }
