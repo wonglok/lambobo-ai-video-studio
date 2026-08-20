@@ -4,7 +4,7 @@
 
 uv run mlx_audio.tts.generate \
  --model Qwen/Qwen3-TTS-12Hz-1.7B-Base \
- --text "Ghost reporting. ... 明月幾時有？把酒問青天。不知天上宮闕，今夕是何年。我欲乘風歸去，又恐瓊樓玉宇，高處不勝寒。起舞弄清影，何似在人間！轉朱閣，低綺戶，照無眠。不應有恨，何事長向別時圓？人有悲歡離合，月有陰晴圓缺，此事古難全。但願人長久，千里共嬋娟。 中秋節快樂！" \
+ --text "Ghost reporting. ... 你好嗎?" \
  --ref_audio ./reference_voice.wav \
  --play --output ./out --audio_format mp3 --stream --save --instruct "slow down"
 
@@ -24,7 +24,7 @@ uv run mlx_audio.tts.generate \
 
 uv run mlx_audio.tts.generate \
  --model Qwen/Qwen3-TTS-12Hz-0.6B-Base \
- --text "example hi how are you?" \
+ --text "ghost reporting! Hi how are you?" \
  --ref_audio ./reference_voice.wav \
  --play --output ./out --audio_format mp3 --stream --save --instruct "slow down"
 
