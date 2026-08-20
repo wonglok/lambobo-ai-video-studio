@@ -447,11 +447,12 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
         } else if (err) {
           set({ assetsRendering: false, assetsError: err });
         } else {
-          set({
+          set((s) => ({
             assetsRendering: isActive,
             assetStatus: task.status === "running" ? task.statusText : null,
             assetsError: null,
-          });
+            assets: task.result?.assets ?? s.assets,
+          }));
         }
         break;
       }
@@ -472,12 +473,13 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
         } else if (err) {
           set({ sceneImagesRendering: false, sceneImagesError: err });
         } else {
-          set({
+          set((s) => ({
             sceneImagesRendering: isActive,
             sceneImageStatus: task.status === "running" ? task.statusText : null,
             sceneImageProgress: task.progress,
             sceneImagesError: null,
-          });
+            sceneImages: task.result?.sceneImages ?? s.sceneImages,
+          }));
         }
         break;
       }
@@ -498,12 +500,13 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
         } else if (err) {
           set({ videosRendering: false, videosError: err });
         } else {
-          set({
+          set((s) => ({
             videosRendering: isActive,
             videoStatus: task.status === "running" ? task.statusText : null,
             videoProgress: task.progress,
             videosError: null,
-          });
+            videos: task.result?.videos ?? s.videos,
+          }));
         }
         break;
       }
@@ -527,12 +530,15 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
         } else if (err) {
           set({ rendering: false, renderError: err });
         } else {
-          set({
+          set((s) => ({
             rendering: isActive,
             renderStatus: task.status === "running" ? task.statusText : null,
             renderProgress: task.progress,
             renderError: null,
-          });
+            assets: task.result?.assets ?? s.assets,
+            sceneImages: task.result?.sceneImages ?? s.sceneImages,
+            videos: task.result?.videos ?? s.videos,
+          }));
         }
         break;
       }

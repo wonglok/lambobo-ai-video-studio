@@ -31,8 +31,8 @@ export default function MovieStudioTab({ projectId }: Props) {
 
   // Poll the generation queue for this project.
   useEffect(() => {
-    queue.startPolling(projectId);
-    return () => queue.stopPolling();
+    queue.startStreaming(projectId);
+    return () => queue.stopStreaming();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 

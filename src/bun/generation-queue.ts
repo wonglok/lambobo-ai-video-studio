@@ -80,6 +80,7 @@ function appendLog(projectId: string, text: string): void {
   const dir = dirname(file);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   appendFileSync(file, text, "utf-8");
+  broadcast(projectId, "log", { text });
 }
 
 function slugify(v: unknown): string {
@@ -117,6 +118,25 @@ let resolveUvPath: () => Promise<string> = async () => {
 // is killed and remembered as "paused", and no new tasks are started for that
 // project until it is resumed.
 const pausedProjects = new Set<string>();
+
+// Connected SSE clients (one per open Movie Studio tab), keyed by project id.
+interface SseClient {
+  res: Response;
+  projectId: string;
+}
+const sseClients = new Set<SseClient>();
+
+/** Push an event to every SSE client watching the given project. */
+function broadcast(projectId: string, event: string, data: any): void {
+  for (const client of sseClients) {
+    if (client.projectId !== projectId) continue;
+    try {
+      client.res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    } catch {
+      sseClients.delete(client);
+    }
+  }
+}
 
 function loadState(projectId: string): QueueState {
   const existing = queues.get(projectId);
@@ -185,6 +205,7 @@ function updateTask(
   if (index === -1) return null;
   state.tasks[index] = { ...state.tasks[index], ...patch };
   persist(projectId);
+  broadcast(projectId, "task", state.tasks[index]);
   return state.tasks[index];
 }
 
@@ -217,6 +238,7 @@ function enqueue(
   state.tasks.push(task);
   order.push({ projectId, taskId: task.id });
   persist(projectId);
+  broadcast(projectId, "task", task);
   void pump();
   return task;
 }
@@ -747,6 +769,28 @@ export function generationQueueSetup({
     } catch {
       res.json({ logs: "" });
     }
+  });
+
+  // Server-Sent Events: push queue/task and log updates to a watching client.
+  app.get("/api/events", (req, res) => {
+    const projectId = String(req.query.projectId ?? "");
+    if (!isValidProjectId(projectId)) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+    res.write(`event: hello\ndata: {}\n\n`);
+
+    const client: SseClient = { res, projectId };
+    sseClients.add(client);
+    req.on("close", () => {
+      sseClients.delete(client);
+    });
   });
 
   // Enqueue a new generation task.

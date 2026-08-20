@@ -43,8 +43,8 @@ interface QueueStore {
   logs: string;
   refresh: (projectId: string) => Promise<void>;
   refreshLogs: (projectId: string) => Promise<void>;
-  startPolling: (projectId: string) => void;
-  stopPolling: () => void;
+  startStreaming: (projectId: string) => void;
+  stopStreaming: () => void;
   cancel: (projectId: string, taskId: string) => Promise<void>;
   cancelActive: (projectId: string) => Promise<void>;
   clearFinished: (projectId: string) => Promise<void>;
@@ -52,8 +52,16 @@ interface QueueStore {
   resume: (projectId: string) => Promise<void>;
 }
 
-let pollTimer: ReturnType<typeof setInterval> | null = null;
-const POLL_INTERVAL_MS = 1200;
+let eventSource: EventSource | null = null;
+
+/** Upsert a task into the list, replacing any existing entry with the same id. */
+function upsertTask(tasks: QueueTask[], task: QueueTask): QueueTask[] {
+  const index = tasks.findIndex((t) => t.id === task.id);
+  if (index === -1) return [...tasks, task];
+  const next = tasks.slice();
+  next[index] = task;
+  return next;
+}
 
 export const useQueueStore = create<QueueStore>((set, get) => ({
   tasks: [],
@@ -93,21 +101,48 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
     }
   },
 
-  startPolling: (projectId) => {
-    get().stopPolling();
+  startStreaming: (projectId) => {
+    get().stopStreaming();
     set({ projectId, loading: true });
     void get().refresh(projectId);
     void get().refreshLogs(projectId);
-    pollTimer = setInterval(() => {
+
+    const es = new EventSource(
+      `${API_BASE}/api/events?projectId=${encodeURIComponent(projectId)}`,
+    );
+    eventSource = es;
+
+    es.addEventListener("task", (event) => {
+      try {
+        const task = JSON.parse((event as MessageEvent).data) as QueueTask;
+        set((s) => ({ tasks: upsertTask(s.tasks, task) }));
+      } catch {
+        // ignore malformed events
+      }
+    });
+
+    es.addEventListener("log", (event) => {
+      try {
+        const data = JSON.parse((event as MessageEvent).data) as {
+          text: string;
+        };
+        set((s) => ({ logs: s.logs + (data.text ?? "") }));
+      } catch {
+        // ignore malformed events
+      }
+    });
+
+    // On (re)connect, re-sync full state to catch anything missed while offline.
+    es.onopen = () => {
       void get().refresh(projectId);
       void get().refreshLogs(projectId);
-    }, POLL_INTERVAL_MS);
+    };
   },
 
-  stopPolling: () => {
-    if (pollTimer) {
-      clearInterval(pollTimer);
-      pollTimer = null;
+  stopStreaming: () => {
+    if (eventSource) {
+      eventSource.close();
+      eventSource = null;
     }
     set({ tasks: [], projectId: null, loading: false, paused: false, logs: "" });
   },
