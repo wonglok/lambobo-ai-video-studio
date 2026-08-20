@@ -5,6 +5,7 @@ import { useProjectStore } from "../../stores/projectStore";
 import { useQueueStore } from "../../stores/queueStore";
 import MlxVlmServerPanel from "./MlxVlmServerPanel";
 import TaskQueuePanel from "./TaskQueuePanel";
+import TerminalLogPanel from "./TerminalLogPanel";
 
 interface Props {
   projectId: string;
@@ -245,6 +246,8 @@ export default function MovieStudioTab({ projectId }: Props) {
       </div>
 
       <TaskQueuePanel projectId={projectId} />
+
+      <TerminalLogPanel />
 
       {gen.agent.serverRunning && gen.agent.serverOnline ? (
         <>
@@ -822,17 +825,6 @@ export default function MovieStudioTab({ projectId }: Props) {
               {store.renderError && (
                 <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs">
                   {store.renderError}
-                </div>
-              )}
-
-              {store.renderLogs.length > 0 && (
-                <div className="p-4 bg-ink-50 border border-ink-200 rounded-2xl max-h-40 overflow-y-auto">
-                  <p className="text-xs font-semibold text-ink-700 uppercase tracking-wider mb-2">
-                    Render Log
-                  </p>
-                  <pre className="text-xs text-ink-600 font-mono whitespace-pre-wrap">
-                    {store.renderLogs.join("")}
-                  </pre>
                 </div>
               )}
 

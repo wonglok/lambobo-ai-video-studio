@@ -40,7 +40,9 @@ interface QueueStore {
   loading: boolean;
   projectId: string | null;
   paused: boolean;
+  logs: string;
   refresh: (projectId: string) => Promise<void>;
+  refreshLogs: (projectId: string) => Promise<void>;
   startPolling: (projectId: string) => void;
   stopPolling: () => void;
   cancel: (projectId: string, taskId: string) => Promise<void>;
@@ -58,6 +60,7 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
   loading: false,
   projectId: null,
   paused: false,
+  logs: "",
 
   refresh: async (projectId) => {
     try {
@@ -77,12 +80,27 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
     }
   },
 
+  refreshLogs: async (projectId) => {
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/logs?projectId=${encodeURIComponent(projectId)}`,
+      );
+      if (!res.ok) return;
+      const data = (await res.json()) as { logs: string };
+      set({ logs: data.logs ?? "" });
+    } catch {
+      // ignore log fetch failures
+    }
+  },
+
   startPolling: (projectId) => {
     get().stopPolling();
     set({ projectId, loading: true });
     void get().refresh(projectId);
+    void get().refreshLogs(projectId);
     pollTimer = setInterval(() => {
       void get().refresh(projectId);
+      void get().refreshLogs(projectId);
     }, POLL_INTERVAL_MS);
   },
 
@@ -91,7 +109,7 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
       clearInterval(pollTimer);
       pollTimer = null;
     }
-    set({ tasks: [], projectId: null, loading: false, paused: false });
+    set({ tasks: [], projectId: null, loading: false, paused: false, logs: "" });
   },
 
   cancel: async (projectId, taskId) => {

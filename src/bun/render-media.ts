@@ -475,10 +475,32 @@ async function streamToSSE(
   return text;
 }
 
+/** Read a process stream, decoding UTF-8 and stripping ANSI, emitting chunks. */
+async function readStream(
+  readable: ReadableStream<Uint8Array> | undefined,
+  onChunk: (text: string) => void,
+): Promise<void> {
+  const reader = readable?.getReader();
+  if (!reader) return;
+  const decoder = new TextDecoder();
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = stripAnsi(decoder.decode(value, { stream: true }));
+      if (chunk) onChunk(chunk);
+    }
+    const final = stripAnsi(decoder.decode());
+    if (final) onChunk(final);
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 /** Run a command to completion, returning its exit status and combined output. */
 async function runCommand(
   args: string[],
-  opts: { cwd?: string } = {},
+  opts: { cwd?: string; onLog?: (text: string) => void } = {},
 ): Promise<{ success: boolean; output: string }> {
   const proc = spawn(args, {
     env: process.env,
@@ -487,14 +509,20 @@ async function runCommand(
     ...(opts.cwd ? { cwd: opts.cwd } : {}),
   });
   activeProc = proc;
-  const stdoutText = await new Response(
-    proc.stdout as ReadableStream<Uint8Array>,
-  ).text();
-  const stderrText = await new Response(
-    proc.stderr as ReadableStream<Uint8Array>,
-  ).text();
+
+  let output = "";
+  const onLog = opts.onLog;
+  const collect = (text: string) => {
+    output += text;
+    if (onLog) onLog(text);
+  };
+
+  await Promise.all([
+    readStream(proc.stdout as ReadableStream<Uint8Array>, collect),
+    readStream(proc.stderr as ReadableStream<Uint8Array>, collect),
+  ]);
   const exitCode = await proc.exited;
-  return { success: exitCode === 0, output: (stdoutText + stderrText).trim() };
+  return { success: exitCode === 0, output: output.trim() };
 }
 
 /** Copy a generated file into the project's backup folder with a timestamped name. */
@@ -533,6 +561,7 @@ export async function generateAssetImage(
   kind: "character" | "place",
   slug: string,
   prompt: string,
+  onLog?: (text: string) => void,
 ): Promise<{ filename: string; url: string } | { error: string }> {
   const mlxgen = await getMlxgenBin();
   const outputDir = join(OUTPUT_DIR, projectId);
@@ -557,7 +586,7 @@ export async function generateAssetImage(
       "--height",
       "1024",
     ],
-    {},
+    { onLog },
   );
 
   if (!result.success || !existsSync(outputPath)) {
@@ -591,6 +620,7 @@ export async function generateSceneVideo(
   projectId: string,
   scene: any,
   characters: any[],
+  onLog?: (text: string) => void,
 ): Promise<{ filename: string; url: string } | { error: string }> {
   const s = String(scene?.slug || "")
     .trim()
@@ -634,7 +664,7 @@ export async function generateSceneVideo(
       "--output",
       videoPath,
     ],
-    { cwd: ltxFolder },
+    { cwd: ltxFolder, onLog },
   );
 
   if (!result.success || !existsSync(videoPath)) {
@@ -662,6 +692,7 @@ function slugify(v: unknown): string {
 export async function generateSceneImage(
   projectId: string,
   scene: any,
+  onLog?: (text: string) => void,
 ): Promise<{ filename: string; url: string } | { error: string }> {
   const s = slugify(scene?.slug);
   if (!s) return { error: "Invalid scene slug" };
@@ -707,7 +738,7 @@ export async function generateSceneImage(
     "796",
   );
 
-  const result = await runCommand(fluxArgs, {});
+  const result = await runCommand(fluxArgs, { onLog });
   if (!result.success || !existsSync(sceneImagePath)) {
     return { error: result.output || `Failed to generate scene image ${s}` };
   }

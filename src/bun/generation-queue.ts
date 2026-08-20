@@ -1,5 +1,6 @@
 import { type Application, type Request, type Response } from "express";
 import {
+  appendFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -19,6 +20,7 @@ import { movieStudioStateFile } from "./agent/workspace";
 
 const APP_DATA_DIR = join(homedir(), "media-studio");
 const TASKS_DIR = join(APP_DATA_DIR, "tasks");
+const LOGS_DIR = join(APP_DATA_DIR, "logs");
 
 const PROJECT_ID_RE = /^[a-zA-Z0-9_-]{1,64}$/;
 
@@ -65,6 +67,19 @@ function queueDir(projectId: string): string {
 
 function queueFile(projectId: string): string {
   return join(queueDir(projectId), "queue.json");
+}
+
+function logFile(projectId: string): string {
+  return join(LOGS_DIR, projectId, "logs.txt");
+}
+
+/** Append a chunk of terminal output to the project's persistent log file. */
+function appendLog(projectId: string, text: string): void {
+  if (!text) return;
+  const file = logFile(projectId);
+  const dir = dirname(file);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  appendFileSync(file, text, "utf-8");
 }
 
 function slugify(v: unknown): string {
@@ -224,6 +239,7 @@ interface TaskContext {
   task: QueueTask;
   update: (patch: Partial<QueueTask>) => void;
   signal: AbortSignal;
+  log: (text: string) => void;
 }
 
 function throwIfAborted(signal: AbortSignal): void {
@@ -251,7 +267,13 @@ async function runRenderAssets(
       statusText: `Generating character: ${c?.name || slug}`,
       progress: { current, total },
     });
-    const r = await generateAssetImage(ctx.projectId, "character", slug, prompt);
+    const r = await generateAssetImage(
+      ctx.projectId,
+      "character",
+      slug,
+      prompt,
+      ctx.log,
+    );
     throwIfAborted(ctx.signal);
     if ("error" in r) throw new Error(r.error);
     assets.push({
@@ -274,7 +296,13 @@ async function runRenderAssets(
       statusText: `Generating place: ${p?.name || slug}`,
       progress: { current, total },
     });
-    const r = await generateAssetImage(ctx.projectId, "place", slug, prompt);
+    const r = await generateAssetImage(
+      ctx.projectId,
+      "place",
+      slug,
+      prompt,
+      ctx.log,
+    );
     throwIfAborted(ctx.signal);
     if ("error" in r) throw new Error(r.error);
     assets.push({
@@ -309,7 +337,7 @@ async function runRenderSceneImages(
       statusText: `Generating scene image: ${slug}`,
       progress: { current, total },
     });
-    const r = await generateSceneImage(ctx.projectId, sc);
+    const r = await generateSceneImage(ctx.projectId, sc, ctx.log);
     throwIfAborted(ctx.signal);
     if ("error" in r) throw new Error(r.error);
     sceneImages.push({
@@ -346,7 +374,7 @@ async function runRenderVideos(
       statusText: `Generating video: ${slug}`,
       progress: { current, total },
     });
-    const r = await generateSceneVideo(uvPath, ctx.projectId, sc, chars);
+    const r = await generateSceneVideo(uvPath, ctx.projectId, sc, chars, ctx.log);
     throwIfAborted(ctx.signal);
     if ("error" in r) throw new Error(r.error);
     videos.push({
@@ -408,11 +436,14 @@ const handlers: Record<QueueTaskType, Handler> = {
     if (typeof idea !== "string" || !idea.trim()) {
       throw new Error("Idea is required");
     }
-    return generateMovieStudioBible(
+    ctx.log(`Planning production bible (characters → places → scenes)…\n`);
+    const result = await generateMovieStudioBible(
       ctx.projectId,
       idea.trim(),
       typeof model === "string" && model.trim() ? model.trim() : undefined,
     );
+    ctx.log("Production bible ready.\n");
+    return result;
   },
 
   "render-assets": async (ctx) => {
@@ -448,7 +479,7 @@ const handlers: Record<QueueTaskType, Handler> = {
     const s = slugify(slug);
     const p = String(prompt || "").trim();
     if (!s || !p) throw new Error("slug and prompt are required");
-    const r = await generateAssetImage(ctx.projectId, kind, s, p);
+    const r = await generateAssetImage(ctx.projectId, kind, s, p, ctx.log);
     if ("error" in r) throw new Error(r.error);
     return {
       kind,
@@ -467,6 +498,7 @@ const handlers: Record<QueueTaskType, Handler> = {
       ctx.projectId,
       scene,
       Array.isArray(characters) ? characters : [],
+      ctx.log,
     );
     if ("error" in r) throw new Error(r.error);
     return {
@@ -480,7 +512,7 @@ const handlers: Record<QueueTaskType, Handler> = {
   "regenerate-scene-image": async (ctx) => {
     const { scene } = ctx.task.payload || {};
     if (!scene || typeof scene !== "object") throw new Error("scene is required");
-    const r = await generateSceneImage(ctx.projectId, scene);
+    const r = await generateSceneImage(ctx.projectId, scene, ctx.log);
     if ("error" in r) throw new Error(r.error);
     return {
       slug: slugify(scene?.slug),
@@ -531,6 +563,7 @@ async function pump(): Promise<void> {
         task,
         update: (patch) => updateTask(next.projectId, task.id, patch),
         signal: controller.signal,
+        log: (text) => appendLog(next.projectId, text),
       };
 
       try {
@@ -691,6 +724,29 @@ export function generationQueueSetup({
       tasks: loadState(projectId).tasks,
       paused: pausedProjects.has(projectId),
     });
+  });
+
+  // Read a project's persisted terminal log (tail, so large logs stay bounded).
+  app.get("/api/logs", (req, res) => {
+    const projectId = String(req.query.projectId ?? "");
+    if (!isValidProjectId(projectId)) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    const file = logFile(projectId);
+    if (!existsSync(file)) {
+      res.json({ logs: "" });
+      return;
+    }
+    try {
+      const content = readFileSync(file, "utf-8");
+      const MAX = 200_000;
+      const tail =
+        content.length > MAX ? content.slice(content.length - MAX) : content;
+      res.json({ logs: tail });
+    } catch {
+      res.json({ logs: "" });
+    }
   });
 
   // Enqueue a new generation task.
