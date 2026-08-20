@@ -123,13 +123,13 @@ export async function runSetup({}: {}): Promise<SetupState> {
     },
   });
 
-  let primary = Screen.getPrimaryDisplay();
   // mainWindow.setFullScreen(true);
-  if (process.env.NODE_ENV === "development") {
-    mainWindow.setFrame(0, 0, primary.bounds.width / 3, primary.bounds.height);
-  } else {
-    mainWindow.setFrame(0, 0, primary.bounds.width, primary.bounds.height);
-  }
+  // let primary = Screen.getPrimaryDisplay();
+  // if (process.env.NODE_ENV === "development") {
+  //   mainWindow.setFrame(0, 0, primary.bounds.width / 3, primary.bounds.height);
+  // } else {
+  //   mainWindow.setFrame(0, 0, primary.bounds.width, primary.bounds.height);
+  // }
 
   const app = express();
   app.use(cors());
@@ -713,66 +713,66 @@ async function installPythonDependencies(): Promise<boolean> {
     }
   }
 
-  {
-    const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
-    if (!existsSync(pythonAppSrcDir)) {
-      mkdirSync(pythonAppSrcDir, { recursive: true });
-    }
+  // {
+  //   const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");
+  //   if (!existsSync(pythonAppSrcDir)) {
+  //     mkdirSync(pythonAppSrcDir, { recursive: true });
+  //   }
 
-    const featureFolder = join(pythonAppSrcDir, "mlx-h3");
+  //   const featureFolder = join(pythonAppSrcDir, "mlx-h3");
 
-    if (!existsSync(featureFolder)) {
-      let cloneCMD = await runCommand(
-        "git",
-        [`clone`, `https://github.com/appautomaton/mlx-h3.git`, "mlx-h3"],
-        { cwd: pythonAppSrcDir },
-      );
+  //   if (!existsSync(featureFolder)) {
+  //     let cloneCMD = await runCommand(
+  //       "git",
+  //       [`clone`, `https://github.com/appautomaton/mlx-h3.git`, "mlx-h3"],
+  //       { cwd: pythonAppSrcDir },
+  //     );
 
-      console.log(cloneCMD.success, cloneCMD.output);
-    }
+  //     console.log(cloneCMD.success, cloneCMD.output);
+  //   }
 
-    const uvPath = await getUvPath();
+  //   const uvPath = await getUvPath();
 
-    const uvSyncResult = await runCommand(
-      uvPath,
-      [
-        //
-        "sync",
-        // "--all-extras",
-      ],
-      {
-        cwd: featureFolder,
-      },
-    );
-    if (!uvSyncResult.success) {
-      console.error("Failed to install uv in mlx h3:", uvSyncResult.error);
-      return false;
-    }
+  //   const uvSyncResult = await runCommand(
+  //     uvPath,
+  //     [
+  //       //
+  //       "sync",
+  //       // "--all-extras",
+  //     ],
+  //     {
+  //       cwd: featureFolder,
+  //     },
+  //   );
+  //   if (!uvSyncResult.success) {
+  //     console.error("Failed to install uv in mlx h3:", uvSyncResult.error);
+  //     return false;
+  //   }
 
-    {
-      const uvSyncResult = await runCommand(
-        uvPath,
-        [
-          //
-          "tool",
-          "install",
-          "--prerelease",
-          "allow",
-          "mlx-h3",
-        ],
-        {
-          cwd: featureFolder,
-        },
-      );
-      if (!uvSyncResult.success) {
-        console.error(
-          "Failed to install uv mlx-h3 global:",
-          uvSyncResult.error,
-        );
-        return false;
-      }
-    }
-  }
+  //   {
+  //     const uvSyncResult = await runCommand(
+  //       uvPath,
+  //       [
+  //         //
+  //         "tool",
+  //         "install",
+  //         "--prerelease",
+  //         "allow",
+  //         "mlx-h3",
+  //       ],
+  //       {
+  //         cwd: featureFolder,
+  //       },
+  //     );
+  //     if (!uvSyncResult.success) {
+  //       console.error(
+  //         "Failed to install uv mlx-h3 global:",
+  //         uvSyncResult.error,
+  //       );
+  //       return false;
+  //     }
+  //   }
+  // }
 
   {
     const pythonAppSrcDir = join(APP_DATA_DIR, "python-src");

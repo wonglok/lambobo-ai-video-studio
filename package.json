@@ -8,7 +8,7 @@
     "dev": "concurrently \"bun run hmr\" \"bun run start\"",
     "hmr": "vite --port 5173",
     "build": "vite build && electrobun build --env=canary",
-    "build:production": "vite build && electrobun build --env=dev"
+    "build:production": "vite build && electrobun build --env=canary"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",
