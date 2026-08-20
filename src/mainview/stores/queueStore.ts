@@ -46,8 +46,8 @@ interface QueueStore {
   cancel: (projectId: string, taskId: string) => Promise<void>;
   cancelActive: (projectId: string) => Promise<void>;
   clearFinished: (projectId: string) => Promise<void>;
-  pause: () => Promise<void>;
-  resume: () => Promise<void>;
+  pause: (projectId: string) => Promise<void>;
+  resume: (projectId: string) => Promise<void>;
 }
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -133,23 +133,29 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
     void get().refresh(projectId);
   },
 
-  pause: async () => {
+  pause: async (projectId) => {
     try {
-      await fetch(`${API_BASE}/api/queue/pause`, { method: "POST" });
+      await fetch(`${API_BASE}/api/queue/pause`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId }),
+      });
     } catch {
       // ignore pause failures
     }
-    const projectId = get().projectId;
-    if (projectId) void get().refresh(projectId);
+    void get().refresh(projectId);
   },
 
-  resume: async () => {
+  resume: async (projectId) => {
     try {
-      await fetch(`${API_BASE}/api/queue/resume`, { method: "POST" });
+      await fetch(`${API_BASE}/api/queue/resume`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId }),
+      });
     } catch {
       // ignore resume failures
     }
-    const projectId = get().projectId;
-    if (projectId) void get().refresh(projectId);
+    void get().refresh(projectId);
   },
 }));

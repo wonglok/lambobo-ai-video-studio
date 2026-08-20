@@ -203,7 +203,7 @@ export default function TaskQueuePanel({ projectId }: Props) {
         <div className="ml-auto flex items-center gap-2">
           {paused ? (
             <button
-              onClick={() => resume()}
+              onClick={() => resume(projectId)}
               className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-xl bg-tiffany-500 hover:bg-tiffany-600 text-ink-950 transition-colors"
             >
               {PlayIcon}
@@ -212,7 +212,7 @@ export default function TaskQueuePanel({ projectId }: Props) {
           ) : (
             hasActive && (
               <button
-                onClick={() => pause()}
+                onClick={() => pause(projectId)}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-xl border border-ink-200 text-ink-600 hover:border-ink-300 hover:text-ink-900 transition-colors"
               >
                 {PauseIcon}

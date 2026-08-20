@@ -1,4 +1,4 @@
-import { type Application } from "express";
+import { type Application, type Request, type Response } from "express";
 import {
   existsSync,
   mkdirSync,
@@ -98,9 +98,10 @@ let resolveUvPath: () => Promise<string> = async () => {
   throw new Error("uv path not configured");
 };
 
-// Whether the worker is paused. While paused, the running task is killed and
-// remembered as "paused", and no new tasks are started until resumed.
-let paused = false;
+// Projects whose queue is paused. While a project is paused, its running task
+// is killed and remembered as "paused", and no new tasks are started for that
+// project until it is resumed.
+const pausedProjects = new Set<string>();
 
 function loadState(projectId: string): QueueState {
   const existing = queues.get(projectId);
@@ -207,6 +208,7 @@ function enqueue(
 
 function nextPending(): { projectId: string; taskId: string } | null {
   for (const entry of order) {
+    if (pausedProjects.has(entry.projectId)) continue;
     const state = queues.get(entry.projectId);
     if (!state) continue;
     const task = state.tasks.find((t) => t.id === entry.taskId);
@@ -496,7 +498,6 @@ async function pump(): Promise<void> {
   pumping = true;
   try {
     while (true) {
-      if (paused) break;
       const next = nextPending();
       if (!next) break;
 
@@ -538,7 +539,9 @@ async function pump(): Promise<void> {
           const current = getTask(next.projectId, task.id);
           if (current && current.status === "running") {
             updateTask(next.projectId, task.id, {
-              status: paused ? "paused" : "cancelled",
+              status: pausedProjects.has(next.projectId)
+                ? "paused"
+                : "cancelled",
               statusText: null,
               completedAt: Date.now(),
             });
@@ -562,7 +565,9 @@ async function pump(): Promise<void> {
           const current = getTask(next.projectId, task.id);
           if (current && current.status === "running") {
             updateTask(next.projectId, task.id, {
-              status: paused ? "paused" : "cancelled",
+              status: pausedProjects.has(next.projectId)
+                ? "paused"
+                : "cancelled",
               statusText: null,
               completedAt: Date.now(),
             });
@@ -645,6 +650,27 @@ function syncToMovieStudioState(
 
 // ========== Routes ==========
 
+/**
+ * CSRF guard for the localhost server. Rejects mutating requests whose Origin
+ * points at another site (a malicious page in the user's browser). Same-origin
+ * and custom-protocol (views://) clients send no Origin or an Origin of
+ * "null"/localhost, so they pass through.
+ */
+function assertLocalRequest(req: Request, res: Response): boolean {
+  const origin = req.headers.origin;
+  if (!origin || origin === "null") return true;
+  try {
+    const host = new URL(origin).hostname;
+    if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
+      return true;
+    }
+  } catch {
+    // Fall through to reject malformed origins.
+  }
+  res.status(403).json({ error: "Forbidden" });
+  return false;
+}
+
 export function generationQueueSetup({
   app,
   getUvPath,
@@ -654,18 +680,22 @@ export function generationQueueSetup({
 }) {
   resolveUvPath = getUvPath;
 
-  // List the current queue for a project (plus the global paused flag).
+  // List the current queue for a project (plus whether that project is paused).
   app.get("/api/queue", (req, res) => {
     const projectId = String(req.query.projectId ?? "");
     if (!isValidProjectId(projectId)) {
       res.status(400).json({ error: "Invalid project ID" });
       return;
     }
-    res.json({ tasks: loadState(projectId).tasks, paused });
+    res.json({
+      tasks: loadState(projectId).tasks,
+      paused: pausedProjects.has(projectId),
+    });
   });
 
   // Enqueue a new generation task.
   app.post("/api/queue/enqueue", (req, res) => {
+    if (!assertLocalRequest(req, res)) return;
     const { projectId, type, label, payload } = req.body || {};
     if (!projectId || !isValidProjectId(String(projectId))) {
       res.status(400).json({ error: "Invalid project ID" });
@@ -686,10 +716,16 @@ export function generationQueueSetup({
     res.status(201).json(task);
   });
 
-  // Pause the worker: kill the running task but remember it as "paused".
-  app.post("/api/queue/pause", (_req, res) => {
-    paused = true;
-    if (runningRef) {
+  // Pause a project's queue: kill its running task but remember it as "paused".
+  app.post("/api/queue/pause", (req, res) => {
+    if (!assertLocalRequest(req, res)) return;
+    const { projectId } = req.body || {};
+    if (!projectId || !isValidProjectId(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    pausedProjects.add(String(projectId));
+    if (runningRef && runningRef.projectId === String(projectId)) {
       const current = getTask(runningRef.projectId, runningRef.taskId);
       if (current && current.status === "running") {
         updateTask(runningRef.projectId, runningRef.taskId, {
@@ -703,13 +739,23 @@ export function generationQueueSetup({
     res.json({ paused: true });
   });
 
-  // Resume the worker and re-queue any paused tasks.
-  app.post("/api/queue/resume", (_req, res) => {
-    paused = false;
-    for (const [projectId, state] of queues) {
+  // Resume a project's queue and re-queue any of its paused tasks.
+  app.post("/api/queue/resume", (req, res) => {
+    if (!assertLocalRequest(req, res)) return;
+    const { projectId } = req.body || {};
+    if (!projectId || !isValidProjectId(String(projectId))) {
+      res.status(400).json({ error: "Invalid project ID" });
+      return;
+    }
+    pausedProjects.delete(String(projectId));
+    const state = queues.get(String(projectId));
+    if (state) {
       for (const t of state.tasks) {
         if (t.status === "paused") {
-          updateTask(projectId, t.id, { status: "pending", startedAt: null });
+          updateTask(String(projectId), t.id, {
+            status: "pending",
+            startedAt: null,
+          });
         }
       }
     }
@@ -719,6 +765,7 @@ export function generationQueueSetup({
 
   // Cancel a single task (pending or running).
   app.post("/api/queue/cancel", (req, res) => {
+    if (!assertLocalRequest(req, res)) return;
     const { projectId, taskId } = req.body || {};
     if (!projectId || !isValidProjectId(String(projectId))) {
       res.status(400).json({ error: "Invalid project ID" });
@@ -747,6 +794,7 @@ export function generationQueueSetup({
 
   // Cancel every queued/running task for a project (the "Stop" button).
   app.post("/api/queue/cancel-active", (req, res) => {
+    if (!assertLocalRequest(req, res)) return;
     const { projectId } = req.body || {};
     if (!projectId || !isValidProjectId(String(projectId))) {
       res.status(400).json({ error: "Invalid project ID" });
@@ -775,6 +823,7 @@ export function generationQueueSetup({
 
   // Remove finished tasks (completed/failed/cancelled) from the queue.
   app.post("/api/queue/clear", (req, res) => {
+    if (!assertLocalRequest(req, res)) return;
     const { projectId } = req.body || {};
     if (!projectId || !isValidProjectId(String(projectId))) {
       res.status(400).json({ error: "Invalid project ID" });
