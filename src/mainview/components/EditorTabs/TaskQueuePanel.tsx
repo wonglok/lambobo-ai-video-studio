@@ -37,6 +37,11 @@ const STATUS_META: Record<
     badgeClass: "bg-amber-50 text-amber-700 border-amber-200",
     dotClass: "bg-amber-500",
   },
+  paused: {
+    label: "Paused",
+    badgeClass: "bg-violet-50 text-violet-700 border-violet-200",
+    dotClass: "bg-violet-500",
+  },
 };
 
 const QueueIcon = (
@@ -84,6 +89,29 @@ const ClearIcon = (
   </svg>
 );
 
+const PauseIcon = (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <rect x="6" y="4" width="4" height="16" rx="1" />
+    <rect x="14" y="4" width="4" height="16" rx="1" />
+  </svg>
+);
+
+const PlayIcon = (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+  >
+    <path d="M8 5v14l11-7z" />
+  </svg>
+);
+
 function StatusBadge({ status }: { status: QueueTaskStatus }) {
   const meta = STATUS_META[status];
   return (
@@ -104,6 +132,7 @@ function TaskRow({
   onCancel: () => void;
 }) {
   const active = task.status === "pending" || task.status === "running";
+  const cancellable = active || task.status === "paused";
   const progress =
     task.progress && task.progress.total > 0
       ? Math.round((task.progress.current / task.progress.total) * 100)
@@ -116,7 +145,7 @@ function TaskRow({
         <span className="flex-1 text-sm font-medium text-ink-800 truncate">
           {task.label}
         </span>
-        {active && (
+        {cancellable && (
           <button
             onClick={onCancel}
             className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-lg border border-ink-200 text-ink-600 hover:border-red-300 hover:text-red-600 transition-colors"
@@ -150,13 +179,19 @@ function TaskRow({
 
 export default function TaskQueuePanel({ projectId }: Props) {
   const tasks = useQueueStore((s) => s.tasks);
+  const paused = useQueueStore((s) => s.paused);
   const cancel = useQueueStore((s) => s.cancel);
+  const pause = useQueueStore((s) => s.pause);
+  const resume = useQueueStore((s) => s.resume);
   const clearFinished = useQueueStore((s) => s.clearFinished);
 
-  if (tasks.length === 0) return null;
+  if (tasks.length === 0 && !paused) return null;
 
+  const hasActive = tasks.some(
+    (t) => t.status === "pending" || t.status === "running",
+  );
   const hasFinished = tasks.some(
-    (t) => t.status !== "pending" && t.status !== "running",
+    (t) => t.status !== "pending" && t.status !== "running" && t.status !== "paused",
   );
 
   return (
@@ -165,15 +200,36 @@ export default function TaskQueuePanel({ projectId }: Props) {
         <span className="text-tiffany-600">{QueueIcon}</span>
         <h3 className="text-sm font-semibold text-ink-900">Generation Queue</h3>
         <span className="text-xs text-ink-500">{tasks.length}</span>
-        {hasFinished && (
-          <button
-            onClick={() => clearFinished(projectId)}
-            className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-xl border border-ink-200 text-ink-600 hover:border-ink-300 hover:text-ink-900 transition-colors"
-          >
-            {ClearIcon}
-            Clear finished
-          </button>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {paused ? (
+            <button
+              onClick={() => resume()}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-xl bg-tiffany-500 hover:bg-tiffany-600 text-ink-950 transition-colors"
+            >
+              {PlayIcon}
+              Resume
+            </button>
+          ) : (
+            hasActive && (
+              <button
+                onClick={() => pause()}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-xl border border-ink-200 text-ink-600 hover:border-ink-300 hover:text-ink-900 transition-colors"
+              >
+                {PauseIcon}
+                Pause
+              </button>
+            )
+          )}
+          {hasFinished && (
+            <button
+              onClick={() => clearFinished(projectId)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-xl border border-ink-200 text-ink-600 hover:border-ink-300 hover:text-ink-900 transition-colors"
+            >
+              {ClearIcon}
+              Clear finished
+            </button>
+          )}
+        </div>
       </div>
 
       <ul className="flex flex-col gap-1.5">

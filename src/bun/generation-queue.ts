@@ -39,7 +39,8 @@ export type QueueTaskStatus =
   | "running"
   | "completed"
   | "failed"
-  | "cancelled";
+  | "cancelled"
+  | "paused";
 
 export interface QueueTask {
   id: string;
@@ -97,6 +98,10 @@ let resolveUvPath: () => Promise<string> = async () => {
   throw new Error("uv path not configured");
 };
 
+// Whether the worker is paused. While paused, the running task is killed and
+// remembered as "paused", and no new tasks are started until resumed.
+let paused = false;
+
 function loadState(projectId: string): QueueState {
   const existing = queues.get(projectId);
   if (existing) return existing;
@@ -115,10 +120,10 @@ function loadState(projectId: string): QueueState {
     }
   }
 
-  // A task left "running" by a previous session was interrupted — reset it so
-  // the worker picks it back up.
+  // A task left "running" (or "paused") by a previous session was interrupted —
+  // reset it so the worker picks it back up on restart.
   for (const t of tasks) {
-    if (t.status === "running") {
+    if (t.status === "running" || t.status === "paused") {
       t.status = "pending";
       t.startedAt = null;
     }
@@ -165,6 +170,11 @@ function updateTask(
   state.tasks[index] = { ...state.tasks[index], ...patch };
   persist(projectId);
   return state.tasks[index];
+}
+
+function getTask(projectId: string, taskId: string): QueueTask | null {
+  const state = queues.get(projectId);
+  return state?.tasks.find((t) => t.id === taskId) ?? null;
 }
 
 function enqueue(
@@ -486,6 +496,7 @@ async function pump(): Promise<void> {
   pumping = true;
   try {
     while (true) {
+      if (paused) break;
       const next = nextPending();
       if (!next) break;
 
@@ -524,11 +535,14 @@ async function pump(): Promise<void> {
       try {
         const result = await handler(ctx, resolveUvPath);
         if (controller.signal.aborted) {
-          updateTask(next.projectId, task.id, {
-            status: "cancelled",
-            statusText: null,
-            completedAt: Date.now(),
-          });
+          const current = getTask(next.projectId, task.id);
+          if (current && current.status === "running") {
+            updateTask(next.projectId, task.id, {
+              status: paused ? "paused" : "cancelled",
+              statusText: null,
+              completedAt: Date.now(),
+            });
+          }
         } else {
           updateTask(next.projectId, task.id, {
             status: "completed",
@@ -545,11 +559,14 @@ async function pump(): Promise<void> {
         }
       } catch (e) {
         if (controller.signal.aborted) {
-          updateTask(next.projectId, task.id, {
-            status: "cancelled",
-            statusText: null,
-            completedAt: Date.now(),
-          });
+          const current = getTask(next.projectId, task.id);
+          if (current && current.status === "running") {
+            updateTask(next.projectId, task.id, {
+              status: paused ? "paused" : "cancelled",
+              statusText: null,
+              completedAt: Date.now(),
+            });
+          }
         } else {
           updateTask(next.projectId, task.id, {
             status: "failed",
@@ -637,14 +654,14 @@ export function generationQueueSetup({
 }) {
   resolveUvPath = getUvPath;
 
-  // List the current queue for a project.
+  // List the current queue for a project (plus the global paused flag).
   app.get("/api/queue", (req, res) => {
     const projectId = String(req.query.projectId ?? "");
     if (!isValidProjectId(projectId)) {
       res.status(400).json({ error: "Invalid project ID" });
       return;
     }
-    res.json(loadState(projectId).tasks);
+    res.json({ tasks: loadState(projectId).tasks, paused });
   });
 
   // Enqueue a new generation task.
@@ -669,6 +686,37 @@ export function generationQueueSetup({
     res.status(201).json(task);
   });
 
+  // Pause the worker: kill the running task but remember it as "paused".
+  app.post("/api/queue/pause", (_req, res) => {
+    paused = true;
+    if (runningRef) {
+      const current = getTask(runningRef.projectId, runningRef.taskId);
+      if (current && current.status === "running") {
+        updateTask(runningRef.projectId, runningRef.taskId, {
+          status: "paused",
+          statusText: null,
+        });
+      }
+      runningAbort?.abort();
+      cancelActiveRender();
+    }
+    res.json({ paused: true });
+  });
+
+  // Resume the worker and re-queue any paused tasks.
+  app.post("/api/queue/resume", (_req, res) => {
+    paused = false;
+    for (const [projectId, state] of queues) {
+      for (const t of state.tasks) {
+        if (t.status === "paused") {
+          updateTask(projectId, t.id, { status: "pending", startedAt: null });
+        }
+      }
+    }
+    void pump();
+    res.json({ paused: false });
+  });
+
   // Cancel a single task (pending or running).
   app.post("/api/queue/cancel", (req, res) => {
     const { projectId, taskId } = req.body || {};
@@ -683,7 +731,7 @@ export function generationQueueSetup({
       return;
     }
 
-    if (task.status === "pending") {
+    if (task.status === "pending" || task.status === "paused") {
       updateTask(String(projectId), task.id, {
         status: "cancelled",
         completedAt: Date.now(),
@@ -707,7 +755,7 @@ export function generationQueueSetup({
     const state = queues.get(String(projectId));
     if (state) {
       for (const task of state.tasks) {
-        if (task.status === "pending") {
+        if (task.status === "pending" || task.status === "paused") {
           updateTask(String(projectId), task.id, {
             status: "cancelled",
             completedAt: Date.now(),
@@ -735,7 +783,10 @@ export function generationQueueSetup({
     const state = queues.get(String(projectId));
     if (state) {
       state.tasks = state.tasks.filter(
-        (t) => t.status === "pending" || t.status === "running",
+        (t) =>
+          t.status === "pending" ||
+          t.status === "running" ||
+          t.status === "paused",
       );
       persist(String(projectId));
     }

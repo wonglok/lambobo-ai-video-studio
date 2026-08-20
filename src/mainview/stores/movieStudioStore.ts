@@ -552,7 +552,11 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
             }));
             persistMovieStudioState();
           }
-        } else if (task.status === "failed" || task.status === "cancelled") {
+        } else if (
+          task.status === "failed" ||
+          task.status === "cancelled" ||
+          task.status === "paused"
+        ) {
           set((s) => ({
             regenerating: s.regenerating.filter((k) => k !== key),
             assetsError: err,
@@ -573,7 +577,11 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
             }));
             persistMovieStudioState();
           }
-        } else if (task.status === "failed" || task.status === "cancelled") {
+        } else if (
+          task.status === "failed" ||
+          task.status === "cancelled" ||
+          task.status === "paused"
+        ) {
           set((s) => ({
             regeneratingVideos: s.regeneratingVideos.filter((k) => k !== slug),
             videosError: err,
@@ -596,7 +604,11 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
             }));
             persistMovieStudioState();
           }
-        } else if (task.status === "failed" || task.status === "cancelled") {
+        } else if (
+          task.status === "failed" ||
+          task.status === "cancelled" ||
+          task.status === "paused"
+        ) {
           set((s) => ({
             regeneratingSceneImages: s.regeneratingSceneImages.filter(
               (k) => k !== slug,

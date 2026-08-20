@@ -17,7 +17,8 @@ export type QueueTaskStatus =
   | "running"
   | "completed"
   | "failed"
-  | "cancelled";
+  | "cancelled"
+  | "paused";
 
 export interface QueueTask {
   id: string;
@@ -38,12 +39,15 @@ interface QueueStore {
   tasks: QueueTask[];
   loading: boolean;
   projectId: string | null;
+  paused: boolean;
   refresh: (projectId: string) => Promise<void>;
   startPolling: (projectId: string) => void;
   stopPolling: () => void;
   cancel: (projectId: string, taskId: string) => Promise<void>;
   cancelActive: (projectId: string) => Promise<void>;
   clearFinished: (projectId: string) => Promise<void>;
+  pause: () => Promise<void>;
+  resume: () => Promise<void>;
 }
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -53,6 +57,7 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
   tasks: [],
   loading: false,
   projectId: null,
+  paused: false,
 
   refresh: async (projectId) => {
     try {
@@ -60,8 +65,13 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
         `${API_BASE}/api/queue?projectId=${encodeURIComponent(projectId)}`,
       );
       if (!res.ok) return;
-      const tasks: QueueTask[] = await res.json();
-      set({ tasks, projectId, loading: false });
+      const data = (await res.json()) as { tasks: QueueTask[]; paused: boolean };
+      set({
+        tasks: Array.isArray(data.tasks) ? data.tasks : [],
+        paused: Boolean(data.paused),
+        projectId,
+        loading: false,
+      });
     } catch {
       set({ loading: false });
     }
@@ -81,7 +91,7 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
       clearInterval(pollTimer);
       pollTimer = null;
     }
-    set({ tasks: [], projectId: null, loading: false });
+    set({ tasks: [], projectId: null, loading: false, paused: false });
   },
 
   cancel: async (projectId, taskId) => {
@@ -121,5 +131,25 @@ export const useQueueStore = create<QueueStore>((set, get) => ({
       // ignore clear failures
     }
     void get().refresh(projectId);
+  },
+
+  pause: async () => {
+    try {
+      await fetch(`${API_BASE}/api/queue/pause`, { method: "POST" });
+    } catch {
+      // ignore pause failures
+    }
+    const projectId = get().projectId;
+    if (projectId) void get().refresh(projectId);
+  },
+
+  resume: async () => {
+    try {
+      await fetch(`${API_BASE}/api/queue/resume`, { method: "POST" });
+    } catch {
+      // ignore resume failures
+    }
+    const projectId = get().projectId;
+    if (projectId) void get().refresh(projectId);
   },
 }));
