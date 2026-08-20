@@ -20,13 +20,13 @@ export default {
     watchIgnore: ["dist/**"],
     mac: {
       icons: "icons/lamb-icon.iconset",
-      // bundleCEF: false,
+      bundleCEF: false,
     },
     linux: {
-      // bundleCEF: false,
+      bundleCEF: false,
     },
     win: {
-      // bundleCEF: false,
+      bundleCEF: false,
     },
   },
 } satisfies ElectrobunConfig;
