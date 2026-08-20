@@ -1,8 +1,7 @@
 import { create } from "zustand";
+import type { QueueTask } from "./queueStore";
 
 const API_BASE = `http://localhost:${(window as any).PORT}`;
-
-let movieStudioAbortController: AbortController | null = null;
 
 /** Play three short "ding" sounds to signal a finished generation task. */
 function playDing3x() {
@@ -28,40 +27,8 @@ function playDing3x() {
   }
 }
 
-async function readSSEStream(
-  response: Response,
-  onEvent: (event: string, data: any) => void,
-): Promise<void> {
-  const reader = response.body?.getReader();
-  if (!reader) return;
-  const decoder = new TextDecoder();
-  let buffer = "";
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-      let eventType = "message";
-      for (const line of lines) {
-        if (line.startsWith("event: ")) {
-          eventType = line.slice(7).trim();
-        } else if (line.startsWith("data: ")) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            onEvent(eventType, data);
-          } catch {
-            // skip malformed lines
-          }
-          eventType = "message";
-        }
-      }
-    }
-  } finally {
-    reader.releaseLock();
-  }
-}
+/** Track task ids whose completed result has already been applied. */
+const appliedCompleted = new Set<string>();
 
 export interface MovieCharacter {
   slug: string;
@@ -111,18 +78,6 @@ export interface RenderedScene {
   videoUrl: string | null;
 }
 
-function upsertScene(
-  scenes: RenderedScene[],
-  slug: string,
-  patch: Partial<RenderedScene>,
-): RenderedScene[] {
-  const existing = scenes.find((s) => s.slug === slug);
-  if (existing) {
-    return scenes.map((s) => (s.slug === slug ? { ...s, ...patch } : s));
-  }
-  return [...scenes, { slug, imageUrl: null, videoUrl: null, ...patch }];
-}
-
 export interface SceneVideo {
   slug: string;
   filename: string;
@@ -159,6 +114,28 @@ function upsertSceneImage(
     return images.map((v) => (v.slug === slug ? { ...v, ...patch } : v));
   }
   return [...images, { slug, filename: "", url: "", updatedAt: 0, ...patch }];
+}
+
+/** Enqueue a generation task in the backend worker. */
+async function enqueueTask(
+  projectId: string,
+  type: string,
+  label: string,
+  payload: any,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/api/queue/enqueue`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId, type, label, payload }),
+    });
+    if (!res.ok) {
+      return { ok: false, error: await res.text() };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
 }
 
 interface MovieStudioStore {
@@ -206,6 +183,8 @@ interface MovieStudioStore {
   regenerateVideo: (projectId: string, slug: string) => Promise<void>;
   renderSceneImages: (projectId: string) => Promise<void>;
   regenerateSceneImage: (projectId: string, slug: string) => Promise<void>;
+  applyQueueTask: (task: QueueTask) => void;
+  primeAppliedQueue: (tasks: QueueTask[]) => void;
   stop: () => void;
   reset: () => void;
 }
@@ -278,30 +257,14 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
     const idea = get().idea.trim();
     if (!idea || get().generating) return;
 
-    set({ generating: true, error: null, result: null });
-    movieStudioAbortController = new AbortController();
-    const signal = movieStudioAbortController.signal;
-
-    try {
-      const res = await fetch(`${API_BASE}/api/movie-studio/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idea, model, projectId }),
-        signal,
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = (await res.json()) as MovieStudioResult;
-      set({ result: data, generating: false });
-      persistMovieStudioState();
-      playDing3x();
-    } catch (e) {
-      if ((e as any)?.name !== "AbortError") {
-        set({ error: String(e), generating: false });
-      }
-    } finally {
-      movieStudioAbortController = null;
-      set({ generating: false });
-    }
+    set({ generating: true, error: null });
+    const r = await enqueueTask(
+      projectId,
+      "generate",
+      "Generate production bible",
+      { idea, model },
+    );
+    if (!r.ok) set({ generating: false, error: r.error });
   },
 
   render: async (projectId) => {
@@ -310,149 +273,31 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
 
     set({
       rendering: true,
-      renderStatus: "Starting render...",
+      renderStatus: "Queued…",
       renderLogs: [],
       renderError: null,
       renderProgress: null,
-      renderedScenes: [],
     });
-    movieStudioAbortController = new AbortController();
-    const signal = movieStudioAbortController.signal;
-
-    try {
-      const res = await fetch(`${API_BASE}/api/movie-studio/render`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, ...result }),
-        signal,
-      });
-      if (!res.ok) throw new Error(await res.text());
-
-      await readSSEStream(res, (event, data) => {
-        switch (event) {
-          case "progress":
-            set({
-              renderStatus: data.label as string,
-              renderProgress: {
-                current: Number(data.current) || 0,
-                total: Number(data.total) || 0,
-              },
-            });
-            break;
-          case "image": {
-            const isScene = data.kind === "scene";
-            set((s) => ({
-              renderStatus: `Generated ${data.kind}: ${data.slug}`,
-              renderLogs: [...s.renderLogs, `✓ ${data.kind}: ${data.filename}`],
-              renderedScenes: isScene
-                ? upsertScene(s.renderedScenes, data.slug, {
-                    imageUrl: data.url as string,
-                  })
-                : s.renderedScenes,
-            }));
-            break;
-          }
-          case "video":
-            set((s) => ({
-              renderStatus: `Generated video: ${data.slug}`,
-              renderLogs: [...s.renderLogs, `✓ video: ${data.filename}`],
-              renderedScenes: upsertScene(s.renderedScenes, data.slug, {
-                videoUrl: data.url as string,
-              }),
-            }));
-            break;
-          case "log":
-            set((s) => ({
-              renderLogs: [...s.renderLogs, data.text as string],
-            }));
-            break;
-          case "error":
-            set({ renderError: data.error || "Render failed" });
-            break;
-          case "complete":
-            set({ renderStatus: "Render complete" });
-            playDing3x();
-            break;
-        }
-      });
-    } catch (e) {
-      if ((e as any)?.name !== "AbortError") {
-        set({ renderError: String(e) });
-      }
-    } finally {
-      movieStudioAbortController = null;
-      set({ rendering: false });
-    }
+    const r = await enqueueTask(projectId, "render", "Render full movie", {
+      characters: result.characters,
+      places: result.places,
+      scenes: result.scenes,
+    });
+    if (!r.ok) set({ rendering: false, renderError: r.error });
   },
 
   renderAssets: async (projectId) => {
     const result = get().result;
     if (!result || get().assetsRendering) return;
 
-    set({
-      assetsRendering: true,
-      assetStatus: "Rendering assets...",
-      assetsError: null,
-    });
-    movieStudioAbortController = new AbortController();
-    const signal = movieStudioAbortController.signal;
-
-    try {
-      const res = await fetch(`${API_BASE}/api/movie-studio/render-assets`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectId,
-          characters: result.characters,
-          places: result.places,
-        }),
-        signal,
-      });
-      if (!res.ok) throw new Error(await res.text());
-
-      await readSSEStream(res, (event, data) => {
-        switch (event) {
-          case "progress":
-            set({ assetStatus: data.label as string });
-            break;
-          case "image": {
-            const img: AssetImage = {
-              kind: data.kind,
-              slug: data.slug,
-              filename: data.filename,
-              url: data.url,
-              updatedAt: Date.now(),
-            };
-            set((s) => {
-              const key = `${img.kind}:${img.slug}`;
-              const filtered = s.assets.filter(
-                (a) => `${a.kind}:${a.slug}` !== key,
-              );
-              return {
-                assets: [...filtered, img],
-                assetStatus: `Generated ${img.kind}: ${img.slug}`,
-              };
-            });
-            break;
-          }
-          case "error":
-            set({ assetsError: data.error || "Asset render failed" });
-            break;
-          case "complete":
-            set({ assetStatus: "Assets rendered" });
-            playDing3x();
-            break;
-        }
-      });
-    } catch (e) {
-      if ((e as any)?.name !== "AbortError") {
-        set({ assetsError: String(e) });
-      }
-    } finally {
-      movieStudioAbortController = null;
-      set({ assetsRendering: false });
-      persistMovieStudioState();
-    }
+    set({ assetsRendering: true, assetStatus: "Queued…", assetsError: null });
+    const r = await enqueueTask(
+      projectId,
+      "render-assets",
+      "Render character & place images",
+      { characters: result.characters, places: result.places },
+    );
+    if (!r.ok) set({ assetsRendering: false, assetsError: r.error });
   },
 
   regenerateAsset: async (projectId, kind, slug, prompt) => {
@@ -463,29 +308,16 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
       regenerating: [...s.regenerating, key],
       assetsError: null,
     }));
-
-    try {
-      const res = await fetch(`${API_BASE}/api/movie-studio/render-asset`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, kind, slug, prompt }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = (await res.json()) as { filename: string; url: string };
-      set((s) => {
-        const filtered = s.assets.filter(
-          (a) => `${a.kind}:${a.slug}` !== key,
-        );
-        return {
-          assets: [...filtered, { kind, slug, ...data, updatedAt: Date.now() }],
-          regenerating: s.regenerating.filter((k) => k !== key),
-        };
-      });
-      persistMovieStudioState();
-    } catch (e) {
+    const r = await enqueueTask(
+      projectId,
+      "regenerate-asset",
+      `Regenerate ${kind}: ${slug}`,
+      { kind, slug, prompt },
+    );
+    if (!r.ok) {
       set((s) => ({
-        assetsError: String(e),
         regenerating: s.regenerating.filter((k) => k !== key),
+        assetsError: r.error,
       }));
     }
   },
@@ -496,65 +328,17 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
 
     set({
       videosRendering: true,
-      videoStatus: "Rendering videos...",
+      videoStatus: "Queued…",
       videosError: null,
       videoProgress: null,
     });
-    movieStudioAbortController = new AbortController();
-    const signal = movieStudioAbortController.signal;
-
-    try {
-      const res = await fetch(`${API_BASE}/api/movie-studio/render-videos`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectId,
-          characters: result.characters,
-          scenes: result.scenes,
-        }),
-        signal,
-      });
-      if (!res.ok) throw new Error(await res.text());
-
-      await readSSEStream(res, (event, data) => {
-        switch (event) {
-          case "progress":
-            set({
-              videoStatus: data.label as string,
-              videoProgress: {
-                current: Number(data.current) || 0,
-                total: Number(data.total) || 0,
-              },
-            });
-            break;
-          case "video":
-            set((s) => ({
-              videos: upsertVideo(s.videos, data.slug, {
-                filename: data.filename,
-                url: data.url,
-                updatedAt: Date.now(),
-              }),
-              videoStatus: `Generated video: ${data.slug}`,
-            }));
-            break;
-          case "error":
-            set({ videosError: data.error || "Video render failed" });
-            break;
-          case "complete":
-            set({ videoStatus: "Videos rendered" });
-            playDing3x();
-            break;
-        }
-      });
-    } catch (e) {
-      if ((e as any)?.name !== "AbortError") {
-        set({ videosError: String(e) });
-      }
-    } finally {
-      movieStudioAbortController = null;
-      set({ videosRendering: false });
-      persistMovieStudioState();
-    }
+    const r = await enqueueTask(
+      projectId,
+      "render-videos",
+      "Render scene videos",
+      { characters: result.characters, scenes: result.scenes },
+    );
+    if (!r.ok) set({ videosRendering: false, videosError: r.error });
   },
 
   regenerateVideo: async (projectId, slug) => {
@@ -567,28 +351,16 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
       regeneratingVideos: [...s.regeneratingVideos, slug],
       videosError: null,
     }));
-
-    try {
-      const res = await fetch(`${API_BASE}/api/movie-studio/render-video`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, scene, characters: result.characters }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = (await res.json()) as { filename: string; url: string };
+    const r = await enqueueTask(
+      projectId,
+      "regenerate-video",
+      `Regenerate video: ${slug}`,
+      { slug, scene, characters: result.characters },
+    );
+    if (!r.ok) {
       set((s) => ({
-        videos: upsertVideo(s.videos, slug, {
-          filename: data.filename,
-          url: data.url,
-          updatedAt: Date.now(),
-        }),
         regeneratingVideos: s.regeneratingVideos.filter((k) => k !== slug),
-      }));
-      persistMovieStudioState();
-    } catch (e) {
-      set((s) => ({
-        videosError: String(e),
-        regeneratingVideos: s.regeneratingVideos.filter((k) => k !== slug),
+        videosError: r.error,
       }));
     }
   },
@@ -599,66 +371,17 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
 
     set({
       sceneImagesRendering: true,
-      sceneImageStatus: "Rendering scene images...",
+      sceneImageStatus: "Queued…",
       sceneImagesError: null,
       sceneImageProgress: null,
     });
-    movieStudioAbortController = new AbortController();
-    const signal = movieStudioAbortController.signal;
-
-    try {
-      const res = await fetch(
-        `${API_BASE}/api/movie-studio/render-scene-images`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ projectId, scenes: result.scenes }),
-          signal,
-        },
-      );
-      if (!res.ok) throw new Error(await res.text());
-
-      await readSSEStream(res, (event, data) => {
-        switch (event) {
-          case "progress":
-            set({
-              sceneImageStatus: data.label as string,
-              sceneImageProgress: {
-                current: Number(data.current) || 0,
-                total: Number(data.total) || 0,
-              },
-            });
-            break;
-          case "image":
-            set((s) => ({
-              sceneImages: upsertSceneImage(s.sceneImages, data.slug, {
-                filename: data.filename,
-                url: data.url,
-                updatedAt: Date.now(),
-              }),
-              sceneImageStatus: `Generated scene image: ${data.slug}`,
-            }));
-            break;
-          case "error":
-            set({
-              sceneImagesError: data.error || "Scene image render failed",
-            });
-            break;
-          case "complete":
-            set({ sceneImageStatus: "Scene images rendered" });
-            playDing3x();
-            break;
-        }
-      });
-    } catch (e) {
-      if ((e as any)?.name !== "AbortError") {
-        set({ sceneImagesError: String(e) });
-      }
-    } finally {
-      movieStudioAbortController = null;
-      set({ sceneImagesRendering: false });
-      persistMovieStudioState();
-    }
+    const r = await enqueueTask(
+      projectId,
+      "render-scene-images",
+      "Render scene images",
+      { scenes: result.scenes },
+    );
+    if (!r.ok) set({ sceneImagesRendering: false, sceneImagesError: r.error });
   },
 
   regenerateSceneImage: async (projectId, slug) => {
@@ -671,50 +394,250 @@ export const useMovieStudioStore = create<MovieStudioStore>((set, get) => ({
       regeneratingSceneImages: [...s.regeneratingSceneImages, slug],
       sceneImagesError: null,
     }));
-
-    try {
-      const res = await fetch(
-        `${API_BASE}/api/movie-studio/render-scene-image`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ projectId, scene }),
-        },
-      );
-      if (!res.ok) throw new Error(await res.text());
-      const data = (await res.json()) as { filename: string; url: string };
+    const r = await enqueueTask(
+      projectId,
+      "regenerate-scene-image",
+      `Regenerate scene image: ${slug}`,
+      { slug, scene },
+    );
+    if (!r.ok) {
       set((s) => ({
-        sceneImages: upsertSceneImage(s.sceneImages, slug, {
-          filename: data.filename,
-          url: data.url,
-          updatedAt: Date.now(),
-        }),
         regeneratingSceneImages: s.regeneratingSceneImages.filter(
           (k) => k !== slug,
         ),
-      }));
-      persistMovieStudioState();
-    } catch (e) {
-      set((s) => ({
-        sceneImagesError: String(e),
-        regeneratingSceneImages: s.regeneratingSceneImages.filter(
-          (k) => k !== slug,
-        ),
+        sceneImagesError: r.error,
       }));
     }
   },
 
-  stop: () => {
-    if (movieStudioAbortController) {
-      movieStudioAbortController.abort();
-      movieStudioAbortController = null;
+  // Reconcile the movie studio store with the latest queue task state.
+  applyQueueTask: (task) => {
+    const isActive = task.status === "pending" || task.status === "running";
+    const err = task.status === "failed" ? task.error : null;
+
+    switch (task.type) {
+      case "generate": {
+        if (task.status === "completed" && task.result) {
+          if (!appliedCompleted.has(task.id)) {
+            appliedCompleted.add(task.id);
+            set({ result: task.result, generating: false });
+            persistMovieStudioState();
+            playDing3x();
+          }
+        } else if (err) {
+          set({ generating: false, error: err });
+        } else {
+          set({ generating: isActive });
+        }
+        break;
+      }
+
+      case "render-assets": {
+        if (task.status === "completed" && task.result) {
+          if (!appliedCompleted.has(task.id)) {
+            appliedCompleted.add(task.id);
+            set({
+              assets: task.result.assets ?? [],
+              assetsRendering: false,
+              assetStatus: "Assets rendered",
+            });
+            persistMovieStudioState();
+            playDing3x();
+          }
+        } else if (err) {
+          set({ assetsRendering: false, assetsError: err });
+        } else {
+          set({
+            assetsRendering: isActive,
+            assetStatus: task.status === "running" ? task.statusText : null,
+            assetsError: null,
+          });
+        }
+        break;
+      }
+
+      case "render-scene-images": {
+        if (task.status === "completed" && task.result) {
+          if (!appliedCompleted.has(task.id)) {
+            appliedCompleted.add(task.id);
+            set({
+              sceneImages: task.result.sceneImages ?? [],
+              sceneImagesRendering: false,
+              sceneImageStatus: "Scene images rendered",
+              sceneImageProgress: null,
+            });
+            persistMovieStudioState();
+            playDing3x();
+          }
+        } else if (err) {
+          set({ sceneImagesRendering: false, sceneImagesError: err });
+        } else {
+          set({
+            sceneImagesRendering: isActive,
+            sceneImageStatus: task.status === "running" ? task.statusText : null,
+            sceneImageProgress: task.progress,
+            sceneImagesError: null,
+          });
+        }
+        break;
+      }
+
+      case "render-videos": {
+        if (task.status === "completed" && task.result) {
+          if (!appliedCompleted.has(task.id)) {
+            appliedCompleted.add(task.id);
+            set({
+              videos: task.result.videos ?? [],
+              videosRendering: false,
+              videoStatus: "Videos rendered",
+              videoProgress: null,
+            });
+            persistMovieStudioState();
+            playDing3x();
+          }
+        } else if (err) {
+          set({ videosRendering: false, videosError: err });
+        } else {
+          set({
+            videosRendering: isActive,
+            videoStatus: task.status === "running" ? task.statusText : null,
+            videoProgress: task.progress,
+            videosError: null,
+          });
+        }
+        break;
+      }
+
+      case "render": {
+        if (task.status === "completed" && task.result) {
+          if (!appliedCompleted.has(task.id)) {
+            appliedCompleted.add(task.id);
+            set({
+              renderedScenes: task.result.renderedScenes ?? [],
+              assets: task.result.assets ?? get().assets,
+              sceneImages: task.result.sceneImages ?? get().sceneImages,
+              videos: task.result.videos ?? get().videos,
+              rendering: false,
+              renderStatus: "Render complete",
+              renderProgress: null,
+            });
+            persistMovieStudioState();
+            playDing3x();
+          }
+        } else if (err) {
+          set({ rendering: false, renderError: err });
+        } else {
+          set({
+            rendering: isActive,
+            renderStatus: task.status === "running" ? task.statusText : null,
+            renderProgress: task.progress,
+            renderError: null,
+          });
+        }
+        break;
+      }
+
+      case "regenerate-asset": {
+        const key = `${task.payload?.kind}:${task.payload?.slug}`;
+        if (task.status === "completed" && task.result) {
+          if (!appliedCompleted.has(task.id)) {
+            appliedCompleted.add(task.id);
+            const r = task.result;
+            set((s) => ({
+              assets: [
+                ...s.assets.filter((a) => `${a.kind}:${a.slug}` !== key),
+                r,
+              ],
+              regenerating: s.regenerating.filter((k) => k !== key),
+            }));
+            persistMovieStudioState();
+          }
+        } else if (task.status === "failed" || task.status === "cancelled") {
+          set((s) => ({
+            regenerating: s.regenerating.filter((k) => k !== key),
+            assetsError: err,
+          }));
+        }
+        break;
+      }
+
+      case "regenerate-video": {
+        const slug = task.payload?.slug;
+        if (task.status === "completed" && task.result) {
+          if (!appliedCompleted.has(task.id)) {
+            appliedCompleted.add(task.id);
+            const r = task.result;
+            set((s) => ({
+              videos: upsertVideo(s.videos, slug, r),
+              regeneratingVideos: s.regeneratingVideos.filter((k) => k !== slug),
+            }));
+            persistMovieStudioState();
+          }
+        } else if (task.status === "failed" || task.status === "cancelled") {
+          set((s) => ({
+            regeneratingVideos: s.regeneratingVideos.filter((k) => k !== slug),
+            videosError: err,
+          }));
+        }
+        break;
+      }
+
+      case "regenerate-scene-image": {
+        const slug = task.payload?.slug;
+        if (task.status === "completed" && task.result) {
+          if (!appliedCompleted.has(task.id)) {
+            appliedCompleted.add(task.id);
+            const r = task.result;
+            set((s) => ({
+              sceneImages: upsertSceneImage(s.sceneImages, slug, r),
+              regeneratingSceneImages: s.regeneratingSceneImages.filter(
+                (k) => k !== slug,
+              ),
+            }));
+            persistMovieStudioState();
+          }
+        } else if (task.status === "failed" || task.status === "cancelled") {
+          set((s) => ({
+            regeneratingSceneImages: s.regeneratingSceneImages.filter(
+              (k) => k !== slug,
+            ),
+            sceneImagesError: err,
+          }));
+        }
+        break;
+      }
     }
+  },
+
+  // Mark already-finished tasks as applied so re-opening a project does not
+  // re-apply stale results over newer persisted state.
+  primeAppliedQueue: (tasks) => {
+    for (const t of tasks) {
+      if (t.status === "completed" || t.status === "failed" || t.status === "cancelled") {
+        appliedCompleted.add(t.id);
+      }
+    }
+  },
+
+  stop: () => {
     fetch(`${API_BASE}/api/render/cancel`, { method: "POST" }).catch(() => {});
+    const projectId = get().projectId;
+    if (projectId) {
+      fetch(`${API_BASE}/api/queue/cancel-active`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId }),
+      }).catch(() => {});
+    }
     set({
       generating: false,
       rendering: false,
       assetsRendering: false,
       videosRendering: false,
+      sceneImagesRendering: false,
+      regenerating: [],
+      regeneratingVideos: [],
+      regeneratingSceneImages: [],
     });
   },
 

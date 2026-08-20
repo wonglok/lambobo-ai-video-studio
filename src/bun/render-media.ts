@@ -515,8 +515,20 @@ function backupFile(sourcePath: string, projectId: string): string | null {
   }
 }
 
+/** Kill the currently active spawn process (used to cancel a running task). */
+export function cancelActiveRender(): void {
+  if (activeProc) {
+    try {
+      activeProc.kill();
+    } catch {
+      // process may already be dead
+    }
+    activeProc = null;
+  }
+}
+
 /** Generate a single character/place image (text-to-image) and back it up. */
-async function generateAssetImage(
+export async function generateAssetImage(
   projectId: string,
   kind: "character" | "place",
   slug: string,
@@ -574,7 +586,7 @@ function buildVideoPrompt(scene: any, characters: any[]): string {
 }
 
 /** Generate a single scene video (LTX-2.3) from its scene image, and back it up. */
-async function generateSceneVideo(
+export async function generateSceneVideo(
   uvPath: string,
   projectId: string,
   scene: any,
@@ -647,7 +659,7 @@ function slugify(v: unknown): string {
  * Generate a single scene image via fast-image-edit (FLUX.2 Klein), using the
  * already-generated character/place images referenced by the scene's slugs.
  */
-async function generateSceneImage(
+export async function generateSceneImage(
   projectId: string,
   scene: any,
 ): Promise<{ filename: string; url: string } | { error: string }> {
@@ -3669,14 +3681,7 @@ export async function renderMediaRoutes({
   // ========== Render: Cancel ==========
 
   app.post("/api/render/cancel", (_req, res) => {
-    if (activeProc) {
-      try {
-        activeProc.kill();
-      } catch {
-        // process may already be dead
-      }
-      activeProc = null;
-    }
+    cancelActiveRender();
     res.json({ ok: true });
   });
 

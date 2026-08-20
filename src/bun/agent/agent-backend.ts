@@ -254,6 +254,114 @@ function extractJsonObject(text: string): any {
   return JSON.parse(t.slice(start, end + 1));
 }
 
+/**
+ * Generate the movie production bible (characters, places, scenes) from an idea.
+ * Persists the result to studio/:projectId/data/*.json and returns the parsed
+ * result. Used both by the HTTP route below and by the generation queue worker.
+ */
+export async function generateMovieStudioBible(
+  projectId: string,
+  idea: string,
+  model?: string,
+): Promise<{ characters: any[]; places: any[]; scenes: any[] }> {
+  const resolvedModel =
+    typeof model === "string" && model.trim() ? model.trim() : DEFAULT_MODEL;
+
+  const client = new OpenAI({
+    baseURL: "http://localhost:8881/v1",
+    apiKey: "local",
+  });
+
+  const toStr = (v: unknown): string => (typeof v === "string" ? v : "");
+  const toNum = (v: unknown): number => {
+    const n = typeof v === "number" ? v : Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const ask = async (systemPrompt: string, userContent: string): Promise<any> => {
+    const completion = await client.chat.completions.create({
+      model: resolvedModel,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent },
+      ],
+      temperature: 0.7,
+    });
+    const text = completion.choices?.[0]?.message?.content ?? "";
+    return extractJsonObject(text);
+  };
+
+  // 1. Characters + art style.
+  const charData = await ask(MOVIE_STUDIO_CHARACTERS_PROMPT, idea.trim());
+  const artStyle = toStr(charData?.artStyle);
+  const characters = (
+    Array.isArray(charData.characters) ? charData.characters : []
+  ).map((c: any) => ({
+    slug: toStr(c?.slug),
+    name: toStr(c?.name),
+    imagePrompt: toStr(c?.imagePrompt),
+  }));
+
+  // 2. Places (with art style + characters as context).
+  const placeData = await ask(
+    MOVIE_STUDIO_PLACES_PROMPT,
+    `Art style: ${artStyle || "photo realistic render"}\n\nIdea: ${idea.trim()}\n\nCharacters:\n${JSON.stringify(characters)}`,
+  );
+  const places = (
+    Array.isArray(placeData.places) ? placeData.places : []
+  ).map((p: any) => ({
+    slug: toStr(p?.slug),
+    name: toStr(p?.name),
+    imagePrompt: toStr(p?.imagePrompt),
+  }));
+
+  // 3. Scenes (with art style + characters + places as context).
+  const sceneData = await ask(
+    MOVIE_STUDIO_SCENES_PROMPT,
+    `Art style: ${artStyle || "photo realistic render"}\n\nIdea: ${idea.trim()}\n\nCharacters:\n${JSON.stringify(characters)}\n\nPlaces:\n${JSON.stringify(places)}`,
+  );
+  const scenes = (
+    Array.isArray(sceneData.scenes) ? sceneData.scenes : []
+  ).map((s: any) => ({
+    slug: toStr(s?.slug),
+    duration: toNum(s?.duration),
+    description: toStr(s?.description),
+    characterSlugs: Array.isArray(s?.characterSlugs)
+      ? s.characterSlugs.map(toStr).filter(Boolean)
+      : [],
+    placeSlug: toStr(s?.placeSlug),
+    scriptLines: Array.isArray(s?.scriptLines)
+      ? s.scriptLines.map((l: any) => ({
+          characterSlug: toStr(l?.characterSlug),
+          line: toStr(l?.line),
+        }))
+      : [],
+    voiceOver: toStr(s?.voiceOver),
+    imagePrompt: toStr(s?.imagePrompt),
+  }));
+
+  // Persist the generated production bible to studio/:projectId/data/*.json
+  const dataDir = movieStudioDataDir(projectId);
+  ensureDir(dataDir);
+  writeFileSync(
+    join(dataDir, "characters.json"),
+    JSON.stringify(characters, null, 2),
+    "utf-8",
+  );
+  writeFileSync(
+    join(dataDir, "places.json"),
+    JSON.stringify(places, null, 2),
+    "utf-8",
+  );
+  writeFileSync(
+    join(dataDir, "scenes.json"),
+    JSON.stringify(scenes, null, 2),
+    "utf-8",
+  );
+
+  return { characters, places, scenes };
+}
+
 // ========== Routes ==========
 
 export async function agentBackend({
@@ -713,106 +821,14 @@ export async function agentBackend({
       res.status(400).json({ error: "Invalid project ID" });
       return;
     }
-    const resolvedModel =
-      typeof model === "string" && model.trim() ? model.trim() : DEFAULT_MODEL;
 
     try {
-      const client = new OpenAI({
-        baseURL: "http://localhost:8881/v1",
-        apiKey: "local",
-      });
-
-      const toStr = (v: unknown): string => (typeof v === "string" ? v : "");
-      const toNum = (v: unknown): number => {
-        const n = typeof v === "number" ? v : Number(v);
-        return Number.isFinite(n) ? n : 0;
-      };
-
-      const ask = async (
-        systemPrompt: string,
-        userContent: string,
-      ): Promise<any> => {
-        const completion = await client.chat.completions.create({
-          model: resolvedModel,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userContent },
-          ],
-          temperature: 0.7,
-        });
-        const text = completion.choices?.[0]?.message?.content ?? "";
-        return extractJsonObject(text);
-      };
-
-      // 1. Characters + art style.
-      const charData = await ask(MOVIE_STUDIO_CHARACTERS_PROMPT, idea.trim());
-      const artStyle = toStr(charData?.artStyle);
-      const characters = (
-        Array.isArray(charData.characters) ? charData.characters : []
-      ).map((c: any) => ({
-        slug: toStr(c?.slug),
-        name: toStr(c?.name),
-        imagePrompt: toStr(c?.imagePrompt),
-      }));
-
-      // 2. Places (with art style + characters as context).
-      const placeData = await ask(
-        MOVIE_STUDIO_PLACES_PROMPT,
-        `Art style: ${artStyle || "photo realistic render"}\n\nIdea: ${idea.trim()}\n\nCharacters:\n${JSON.stringify(characters)}`,
+      const result = await generateMovieStudioBible(
+        projectId,
+        idea.trim(),
+        model,
       );
-      const places = (
-        Array.isArray(placeData.places) ? placeData.places : []
-      ).map((p: any) => ({
-        slug: toStr(p?.slug),
-        name: toStr(p?.name),
-        imagePrompt: toStr(p?.imagePrompt),
-      }));
-
-      // 3. Scenes (with art style + characters + places as context).
-      const sceneData = await ask(
-        MOVIE_STUDIO_SCENES_PROMPT,
-        `Art style: ${artStyle || "photo realistic render"}\n\nIdea: ${idea.trim()}\n\nCharacters:\n${JSON.stringify(characters)}\n\nPlaces:\n${JSON.stringify(places)}`,
-      );
-      const scenes = (
-        Array.isArray(sceneData.scenes) ? sceneData.scenes : []
-      ).map((s: any) => ({
-        slug: toStr(s?.slug),
-        duration: toNum(s?.duration),
-        description: toStr(s?.description),
-        characterSlugs: Array.isArray(s?.characterSlugs)
-          ? s.characterSlugs.map(toStr).filter(Boolean)
-          : [],
-        placeSlug: toStr(s?.placeSlug),
-        scriptLines: Array.isArray(s?.scriptLines)
-          ? s.scriptLines.map((l: any) => ({
-              characterSlug: toStr(l?.characterSlug),
-              line: toStr(l?.line),
-            }))
-          : [],
-        voiceOver: toStr(s?.voiceOver),
-        imagePrompt: toStr(s?.imagePrompt),
-      }));
-
-      // Persist the generated production bible to studio/:projectId/data/*.json
-      const dataDir = movieStudioDataDir(projectId);
-      ensureDir(dataDir);
-      writeFileSync(
-        join(dataDir, "characters.json"),
-        JSON.stringify(characters, null, 2),
-        "utf-8",
-      );
-      writeFileSync(
-        join(dataDir, "places.json"),
-        JSON.stringify(places, null, 2),
-        "utf-8",
-      );
-      writeFileSync(
-        join(dataDir, "scenes.json"),
-        JSON.stringify(scenes, null, 2),
-        "utf-8",
-      );
-
-      res.json({ characters, places, scenes });
+      res.json(result);
     } catch (e) {
       res.status(500).json({ error: String(e) });
     }

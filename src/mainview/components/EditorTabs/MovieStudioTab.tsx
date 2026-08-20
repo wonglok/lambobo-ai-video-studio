@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMovieStudioStore } from "../../stores/movieStudioStore";
 import { useGenerationStore } from "../../stores/generationStore";
 import { useProjectStore } from "../../stores/projectStore";
+import { useQueueStore } from "../../stores/queueStore";
 import MlxVlmServerPanel from "./MlxVlmServerPanel";
+import TaskQueuePanel from "./TaskQueuePanel";
 
 interface Props {
   projectId: string;
@@ -11,6 +13,7 @@ interface Props {
 export default function MovieStudioTab({ projectId }: Props) {
   const store = useMovieStudioStore();
   const gen = useGenerationStore();
+  const queue = useQueueStore();
   const { openFolder } = useProjectStore();
   const model = gen.agent.model;
   const [preview, setPreview] = useState<{
@@ -24,6 +27,25 @@ export default function MovieStudioTab({ projectId }: Props) {
     store.hydrate(projectId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
+
+  // Poll the generation queue for this project.
+  useEffect(() => {
+    queue.startPolling(projectId);
+    return () => queue.stopPolling();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
+
+  // Reconcile the movie studio store with the latest queue task state.
+  // Prime once per project so already-finished tasks aren't re-applied.
+  const primedProjectRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (primedProjectRef.current !== projectId) {
+      store.primeAppliedQueue(queue.tasks);
+      primedProjectRef.current = projectId;
+    }
+    for (const task of queue.tasks) store.applyQueueTask(task);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queue.tasks, projectId]);
 
   // List output-folder images so the tables can show generated thumbnails.
   useEffect(() => {
@@ -221,6 +243,8 @@ export default function MovieStudioTab({ projectId }: Props) {
           Show Output Folder
         </button>
       </div>
+
+      <TaskQueuePanel projectId={projectId} />
 
       {gen.agent.serverRunning && gen.agent.serverOnline ? (
         <>

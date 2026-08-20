@@ -21,6 +21,7 @@ import express from "express";
 import cors from "cors";
 import { renderMediaRoutes } from "./render-media";
 import { agentBackend } from "./agent/agent-backend";
+import { generationQueueSetup } from "./generation-queue";
 // import { readdir } from "node:fs/promises";
 // import { rename } from "node:fs/promises";
 // import { execSync } from "node:child_process";
@@ -374,6 +375,8 @@ export async function runSetup({}: {}): Promise<SetupState> {
   //
   //
   agentBackend({ app, getUvPath, backendPort: BACKEND_PORT });
+  //
+  generationQueueSetup({ app, getUvPath });
   //
 
   app.listen(BACKEND_PORT);
